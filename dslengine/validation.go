@@ -38,6 +38,9 @@ func (verr *ValidationErrors) Add(def Definition, format string, vals ...any) {
 // AddError "flattens" validation errors so that the recorded errors are never ValidationErrors
 // themselves.
 func (verr *ValidationErrors) AddError(def Definition, err error) {
+	if err == nil {
+		return
+	}
 	if v, ok := err.(*ValidationErrors); ok {
 		verr.Errors = append(verr.Errors, v.Errors...)
 		verr.Definitions = append(verr.Definitions, v.Definitions...)

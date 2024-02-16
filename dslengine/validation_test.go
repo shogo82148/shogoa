@@ -57,3 +57,20 @@ func TestValidationErrors(t *testing.T) {
 	verr2.Add(new(mockDefinition), "error %s", "9")
 	verr.AddError(new(mockDefinition), verr2)
 }
+
+func TestValidationErrorsMergeWithSelf(t *testing.T) {
+	verr := &ValidationErrors{}
+	verr.Add(new(mockDefinition), "error %s", "self")
+	verr.Merge(verr)
+	if len(verr.Errors) != 1 {
+		t.Errorf("expected 1 error after merging with self, got %d", len(verr.Errors))
+	}
+}
+
+func TestValidationErrorsAddNilError(t *testing.T) {
+	verr := &ValidationErrors{}
+	verr.AddError(new(mockDefinition), nil)
+	if len(verr.Errors) != 0 {
+		t.Errorf("expected 0 errors after adding nil, got %d", len(verr.Errors))
+	}
+}
