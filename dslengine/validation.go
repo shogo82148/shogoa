@@ -22,7 +22,7 @@ func (verr *ValidationErrors) Error() string {
 
 // Merge merges validation errors into the target.
 func (verr *ValidationErrors) Merge(err *ValidationErrors) {
-	if err == nil {
+	if err == nil || verr == err {
 		return
 	}
 	verr.Errors = append(verr.Errors, err.Errors...)
