@@ -31,3 +31,69 @@ type Root interface {
 // SetIterator is the function signature used to iterate over definition sets with
 // IterateSets.
 type SetIterator func(s DefinitionSet) error
+
+// Validate is the interface implemented by definitions that can be validated.
+// Validation is done by the DSL dsl post execution.
+type Validate interface {
+	Definition
+	// Validate returns nil if the definition contains no validation error.
+	// The Validate implementation may take advantage of ValidationErrors to report
+	// more than one errors at a time.
+	Validate() error
+}
+
+// Source is the interface implemented by definitions that can be initialized via DSL.
+type Source interface {
+	Definition
+	// DSL returns the DSL used to initialize the definition if any.
+	DSL() func()
+}
+
+// Finalize is the interface implemented by definitions that require an additional pass
+// after the DSL has executed (e.g. to merge generated definitions or initialize default
+// values)
+type Finalize interface {
+	Definition
+	// Finalize is run by the DSL runner once the definition DSL has executed and the
+	// definition has been validated.
+	Finalize()
+}
+
+// MetadataDefinition is a set of key/value pairs
+type MetadataDefinition map[string][]string
+
+// TraitDefinition defines a set of reusable properties.
+type TraitDefinition struct {
+	// Trait name
+	Name string
+	// Trait DSL
+	DSLFunc func()
+}
+
+// ValidationDefinition contains validation rules for an attribute.
+type ValidationDefinition struct {
+	// Values represents an enum validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor76.
+	Values []interface{}
+	// Format represents a format validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor104.
+	Format string
+	// PatternValidationDefinition represents a pattern validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor33
+	Pattern string
+	// Minimum represents an minimum value validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor21.
+	Minimum *float64
+	// Maximum represents a maximum value validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor17.
+	Maximum *float64
+	// MinLength represents an minimum length validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor29.
+	MinLength *int
+	// MaxLength represents an maximum length validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor26.
+	MaxLength *int
+	// Required list the required fields of object attributes as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor61.
+	Required []string
+}
