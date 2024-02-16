@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const maxRecursionDepth = 100
+
 // Error represents an error that occurred while running the API DSL.
 // It contains the name of the file and line number of where the error
 // occurred as well as the original Go error.
@@ -70,7 +72,7 @@ func Run() error {
 		for _, root := range roots[start:] {
 			root.IterateSets(runSet)
 		}
-		if recursed > 100 {
+		if recursed > maxRecursionDepth {
 			// Let's cross that bridge once we get there
 			return fmt.Errorf("too many generated roots, infinite loop?")
 		}
@@ -242,7 +244,7 @@ func runSet(set DefinitionSet) error {
 				}
 			}
 		}
-		if recursed > 100 {
+		if recursed > maxRecursionDepth {
 			return fmt.Errorf("too many generated definitions, infinite loop?")
 		}
 	}
