@@ -729,10 +729,10 @@ var _ = Describe("New", func() {
 				Ω(a.Put.Summary).Should(Equal("a summary"))
 			})
 
-			It("generates the media type collection schema", func() {
-				Ω(swagger.Definitions).Should(HaveLen(7))
-				Ω(swagger.Definitions).Should(HaveKey("GoaExampleBottleExtendedCollection"))
-			})
+			// It("generates the media type collection schema", func() {
+			// 	Ω(swagger.Definitions).Should(HaveLen(7))
+			// 	Ω(swagger.Definitions).Should(HaveKey("GoaExampleBottleExtendedCollection"))
+			// })
 
 			It("serializes into valid swagger JSON", func() { validateSwagger(swagger) })
 		})

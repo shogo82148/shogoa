@@ -39,7 +39,7 @@ var _ = Describe("BuildEncoders", func() {
 			jd := data[0]
 			Ω(jd).ShouldNot(BeNil())
 			Ω(jd.PackagePath).Should(Equal("github.com/shogo82148/shogoa"))
-			Ω(jd.PackageName).Should(Equal("goa"))
+			Ω(jd.PackageName).Should(Equal("shogoa"))
 			Ω(jd.Function).Should(Equal("NewJSONEncoder"))
 			Ω(jd.MIMETypes).Should(HaveLen(1))
 			Ω(jd.MIMETypes[0]).Should(Equal("application/json"))
@@ -61,7 +61,7 @@ var _ = Describe("BuildEncoders", func() {
 			jd := data[0]
 			Ω(jd).ShouldNot(BeNil())
 			Ω(jd.PackagePath).Should(Equal("github.com/shogo82148/shogoa"))
-			Ω(jd.PackageName).Should(Equal("goa"))
+			Ω(jd.PackageName).Should(Equal("shogoa"))
 			Ω(jd.Function).Should(Equal("NewJSONDecoder"))
 			Ω(jd.MIMETypes).Should(HaveLen(1))
 			Ω(jd.MIMETypes[0]).Should(Equal("application/json"))
