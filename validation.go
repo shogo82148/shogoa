@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/mail"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"sync"
@@ -26,42 +27,39 @@ const (
 	FormatUUID Format = "uuid"
 
 	// FormatEmail defines RFC5322 email addresses.
-	FormatEmail = "email"
+	FormatEmail Format = "email"
 
 	// FormatHostname defines RFC1035 Internet host names.
-	FormatHostname = "hostname"
+	FormatHostname Format = "hostname"
 
 	// FormatIPv4 defines RFC2373 IPv4 address values.
-	FormatIPv4 = "ipv4"
+	FormatIPv4 Format = "ipv4"
 
 	// FormatIPv6 defines RFC2373 IPv6 address values.
-	FormatIPv6 = "ipv6"
+	FormatIPv6 Format = "ipv6"
 
 	// FormatIP defines RFC2373 IPv4 or IPv6 address values.
-	FormatIP = "ip"
+	FormatIP Format = "ip"
 
 	// FormatURI defines RFC3986 URI values.
-	FormatURI = "uri"
+	FormatURI Format = "uri"
 
 	// FormatMAC defines IEEE 802 MAC-48, EUI-48 or EUI-64 MAC address values.
-	FormatMAC = "mac"
+	FormatMAC Format = "mac"
 
 	// FormatCIDR defines RFC4632 and RFC4291 CIDR notation IP address values.
-	FormatCIDR = "cidr"
+	FormatCIDR Format = "cidr"
 
 	// FormatRegexp Regexp defines regular expression syntax accepted by RE2.
-	FormatRegexp = "regexp"
+	FormatRegexp Format = "regexp"
 
 	// FormatRFC1123 defines RFC1123 date time values.
-	FormatRFC1123 = "rfc1123"
+	FormatRFC1123 Format = "rfc1123"
 )
 
 var (
 	// Regular expression used to validate RFC1035 hostnames*/
 	hostnameRegex = regexp.MustCompile(`^[[:alnum:]][[:alnum:]\-]{0,61}[[:alnum:]]|[[:alpha:]]$`)
-
-	// Simple regular expression for IPv4 values, more rigorous checking is done via net.ParseIP
-	ipv4Regex = regexp.MustCompile(`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`)
 )
 
 // ValidateFormat validates a string against a standard format.
@@ -96,20 +94,19 @@ func ValidateFormat(f Format, val string) error {
 			err = fmt.Errorf("hostname value '%s' does not match %s",
 				val, hostnameRegex.String())
 		}
-	case FormatIPv4, FormatIPv6, FormatIP:
-		ip := net.ParseIP(val)
-		if ip == nil {
-			err = fmt.Errorf("\"%s\" is an invalid %s value", val, f)
+	case FormatIP:
+		_, err = netip.ParseAddr(val)
+	case FormatIPv4:
+		if ip, err0 := netip.ParseAddr(val); err0 != nil {
+			err = err0
+		} else if !ip.Is4() {
+			err = fmt.Errorf("value '%s' is not an IPv4 address", val)
 		}
-		if f == FormatIPv4 {
-			if !ipv4Regex.MatchString(val) {
-				err = fmt.Errorf("\"%s\" is an invalid ipv4 value", val)
-			}
-		}
-		if f == FormatIPv6 {
-			if ipv4Regex.MatchString(val) {
-				err = fmt.Errorf("\"%s\" is an invalid ipv6 value", val)
-			}
+	case FormatIPv6:
+		if ip, err0 := netip.ParseAddr(val); err0 != nil {
+			err = err0
+		} else if !ip.Is6() {
+			err = fmt.Errorf("value '%s' is not an IPv6 address", val)
 		}
 	case FormatURI:
 		_, err = url.ParseRequestURI(val)
@@ -137,7 +134,7 @@ func ValidateFormat(f Format, val string) error {
 var knownPatterns = make(map[string]*regexp.Regexp)
 
 // knownPatternsLock is the mutex used to access knownPatterns
-var knownPatternsLock = &sync.RWMutex{}
+var knownPatternsLock sync.RWMutex
 
 // ValidatePattern returns an error if val does not match the regular expression p.
 // It makes an effort to minimize the number of times the regular expression needs to be compiled.
