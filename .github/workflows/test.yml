@@ -14,7 +14,7 @@ jobs:
           - "windows-latest"
           - "macos-latest"
         go:
-          - "latest"
+          - "stable"
           - "1.22"
       fail-fast: false
     runs-on: ${{ matrix.os }}
