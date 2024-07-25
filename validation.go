@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/mail"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"sync"
@@ -59,9 +60,6 @@ const (
 var (
 	// Regular expression used to validate RFC1035 hostnames*/
 	hostnameRegex = regexp.MustCompile(`^[[:alnum:]][[:alnum:]\-]{0,61}[[:alnum:]]|[[:alpha:]]$`)
-
-	// Simple regular expression for IPv4 values, more rigorous checking is done via net.ParseIP
-	ipv4Regex = regexp.MustCompile(`^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$`)
 )
 
 // ValidateFormat validates a string against a standard format.
@@ -96,20 +94,19 @@ func ValidateFormat(f Format, val string) error {
 			err = fmt.Errorf("hostname value '%s' does not match %s",
 				val, hostnameRegex.String())
 		}
-	case FormatIPv4, FormatIPv6, FormatIP:
-		ip := net.ParseIP(val)
-		if ip == nil {
-			err = fmt.Errorf("\"%s\" is an invalid %s value", val, f)
+	case FormatIP:
+		_, err = netip.ParseAddr(val)
+	case FormatIPv4:
+		if ip, err0 := netip.ParseAddr(val); err0 != nil {
+			err = err0
+		} else if !ip.Is4() {
+			err = fmt.Errorf("value '%s' is not an IPv4 address", val)
 		}
-		if f == FormatIPv4 {
-			if !ipv4Regex.MatchString(val) {
-				err = fmt.Errorf("\"%s\" is an invalid ipv4 value", val)
-			}
-		}
-		if f == FormatIPv6 {
-			if ipv4Regex.MatchString(val) {
-				err = fmt.Errorf("\"%s\" is an invalid ipv6 value", val)
-			}
+	case FormatIPv6:
+		if ip, err0 := netip.ParseAddr(val); err0 != nil {
+			err = err0
+		} else if !ip.Is6() {
+			err = fmt.Errorf("value '%s' is not an IPv6 address", val)
 		}
 	case FormatURI:
 		_, err = url.ParseRequestURI(val)
