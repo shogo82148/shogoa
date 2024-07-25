@@ -170,7 +170,7 @@ func TestIssue161(t *testing.T) {
 // TODO: fix me
 // func TestIssue301(t *testing.T) {
 // 	cleanup("./issue301/*")
-// 	if err := goagen("./issue301", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/issue301/design"); err != nil {
+// 	if err := shogoagen("./issue301", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/issue301/design"); err != nil {
 // 		t.Error(err.Error())
 // 	}
 // 	if err := gobuild("./issue301"); err != nil {
@@ -212,7 +212,7 @@ func TestIssue161(t *testing.T) {
 // }
 
 func shogoagen(dir, command string, args ...string) error {
-	pkg, err := build.Import("github.com/shogo82148/shogoa/goagen", "", 0)
+	pkg, err := build.Import("github.com/shogo82148/shogoa/shogoagen", "", 0)
 	if err != nil {
 		return err
 	}

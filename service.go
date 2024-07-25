@@ -21,7 +21,7 @@ type (
 	// Service is the data structure supporting shogoa services.
 	// It provides methods for configuring a service and running it.
 	// At the basic level a service consists of a set of controllers, each implementing a given
-	// resource actions. goagen generates global functions - one per resource - that make it
+	// resource actions. shogoagen generates global functions - one per resource - that make it
 	// possible to mount the corresponding controller onto a service. A service contains the
 	// middleware, not found handler, encoders and muxes shared by all its controllers.
 	Service struct {
