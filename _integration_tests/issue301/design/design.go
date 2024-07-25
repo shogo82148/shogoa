@@ -1,8 +1,8 @@
 package design
 
 import (
-	. "github.com/shogo82148/goa-v1/design"
-	. "github.com/shogo82148/goa-v1/design/apidsl"
+	. "github.com/shogo82148/shogoa/design"
+	. "github.com/shogo82148/shogoa/design/apidsl"
 )
 
 var _ = API("issue301", func() {
@@ -22,7 +22,7 @@ var _ = Resource("issue301", func() {
 var Issue301Payload = Type("Issue301Type", func() {
 	Attribute("user-definition-type", Integer, func() {
 		Default(10)
-		Metadata("struct:field:type", "design.SecuritySchemeKind", "github.com/shogo82148/goa-v1/design")
+		Metadata("struct:field:type", "design.SecuritySchemeKind", "github.com/shogo82148/shogoa/design")
 	})
 
 	Attribute("primitive-type-number", Number, func() {

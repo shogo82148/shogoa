@@ -19,7 +19,7 @@ type (
 		Do(context.Context, *http.Request) (*http.Response, error)
 	}
 
-	// Client is the common client data structure for all goa service clients.
+	// Client is the common client data structure for all shogoa service clients.
 	Client struct {
 		// Doer is the underlying http client.
 		Doer

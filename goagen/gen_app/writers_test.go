@@ -1295,14 +1295,14 @@ var _ = Describe("ControllersWriter", func() {
 					contexts = []string{"ListBottleContext"}
 					encoders = []*genapp.EncoderTemplateData{
 						{
-							PackageName: "goa",
+							PackageName: "shogoa",
 							Function:    "NewEncoder",
 							MIMETypes:   []string{"application/json"},
 						},
 					}
 					decoders = []*genapp.EncoderTemplateData{
 						{
-							PackageName: "goa",
+							PackageName: "shogoa",
 							Function:    "NewDecoder",
 							MIMETypes:   []string{"application/json"},
 						},

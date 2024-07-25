@@ -1,5 +1,5 @@
 /*
-Package goa standardizes on structured error responses: a request that fails because of an
+Package shogoa standardizes on structured error responses: a request that fails because of an
 invalid input or an unexpected condition produces a response that contains a structured error.
 
 The error data structures returned to clients contains five fields: an ID, a code, a status, a
@@ -21,7 +21,7 @@ encountered error via the Error Merge method. The helper functions are error cla
 global variable. This means your code can override their values to produce arbitrary error
 responses.
 
-goa includes an error handler middleware that takes care of mapping back any error returned by
+shogoa includes an error handler middleware that takes care of mapping back any error returned by
 previously called middleware or action handler into HTTP responses. If the error was created via an
 error class then the corresponding content including the HTTP status is used otherwise an internal
 error is returned. Errors that bubble up all the way to the top (i.e. not handled by the error
@@ -245,7 +245,7 @@ func InvalidLengthError(ctx string, target interface{}, ln, value int, min bool)
 	return ErrInvalidRequest(msg, "attribute", ctx, "value", target, "len", ln, "comp", comp, "expected", value)
 }
 
-// NoAuthMiddleware is the error produced when goa is unable to lookup a auth middleware for a
+// NoAuthMiddleware is the error produced when shogoa is unable to lookup a auth middleware for a
 // security scheme defined in the design.
 func NoAuthMiddleware(schemeName string) error {
 	msg := fmt.Sprintf("Auth middleware for security scheme %s is not mounted", schemeName)

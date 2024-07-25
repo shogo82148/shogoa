@@ -36,7 +36,7 @@ type (
 		sampleSize      int
 	}
 
-	// tracedDoer is a goa client Doer that inserts the tracing headers for
+	// tracedDoer is a shogoa client Doer that inserts the tracing headers for
 	// each request it makes.
 	tracedDoer struct {
 		client.Doer
@@ -161,7 +161,7 @@ func Tracer(sampleRate int, spanIDFunc, traceIDFunc IDFunc) shogoa.Middleware {
 	return NewTracer(SamplingPercent(sampleRate), SpanIDFunc(spanIDFunc), TraceIDFunc(traceIDFunc))
 }
 
-// TraceDoer wraps a goa client Doer and sets the trace headers so that the
+// TraceDoer wraps a shogoa client Doer and sets the trace headers so that the
 // downstream service may properly retrieve the parent span ID and trace ID.
 func TraceDoer(doer client.Doer) client.Doer {
 	return &tracedDoer{doer}

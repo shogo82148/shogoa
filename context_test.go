@@ -17,7 +17,7 @@ type contextKey struct {
 	name string
 }
 
-func (k *contextKey) String() string { return "goa-v1 context value " + k.name }
+func (k *contextKey) String() string { return "shogoa context value " + k.name }
 
 var _ = Describe("ResponseData", func() {
 	var data *shogoa.ResponseData

@@ -1,5 +1,5 @@
 /*
-Package genmain provides a generator for a skeleton goa application.
+Package genmain provides a generator for a skeleton shogoa application.
 This generator generates the code for a basic "main" package and is mainly intended as a way to
 bootstrap new applications.
 The generator creates a main.go file and one file per resource listed in the API metadata.

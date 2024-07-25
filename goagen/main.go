@@ -30,8 +30,8 @@ func main() {
 	// rootCmd is the base command used when goagen is called with no argument.
 	rootCmd := &cobra.Command{
 		Use:   "goagen",
-		Short: "goa code generation tool",
-		Long: `The goagen tool generates artifacts from a goa service design package.
+		Short: "shogoa code generation tool",
+		Long: `The goagen tool generates artifacts from a shogoa service design package.
 
 Each command supported by the tool produces a specific type of artifacts. For example
 the "app" command generates the code that supports the service controllers.
@@ -54,7 +54,7 @@ package and tool and the Swagger specification for the API.
 		Use:   "version",
 		Short: "Print the version number of goagen",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("goagen " + version.String() + "\nThe goa generation tool.")
+			fmt.Println("goagen " + version.String() + "\nThe shogoa generation tool.")
 		},
 	}
 	rootCmd.AddCommand(versionCmd)
@@ -347,7 +347,7 @@ func runCommands(root *cobra.Command) {
 // Remember to update as goagen commands and flags evolve
 //
 // The flag argument values use variable names that cary semantic:
-// $DIR for file system directories, $DESIGN_PKG for import path to Go goa design Go packages, $PKG
+// $DIR for file system directories, $DESIGN_PKG for import path to Go shogoa design Go packages, $PKG
 // for import path to any Go package.
 func flagJSON(fl *pflag.Flag) *flag {
 	f := &flag{Long: fl.Name, Short: fl.Shorthand, Description: fl.Usage}

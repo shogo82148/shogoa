@@ -747,7 +747,7 @@ func NewMediaTypeDefinition(name, identifier string, dsl func()) *MediaTypeDefin
 // Kind implements DataKind.
 func (m *MediaTypeDefinition) Kind() Kind { return MediaTypeKind }
 
-// IsError returns true if the media type is implemented via a goa struct.
+// IsError returns true if the media type is implemented via a shogoa struct.
 func (m *MediaTypeDefinition) IsError() bool {
 	base, params, err := mime.ParseMediaType(m.Identifier)
 	if err != nil {

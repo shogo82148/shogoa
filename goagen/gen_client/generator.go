@@ -265,7 +265,7 @@ func (g *Generator) generateClient(clientFile string, clientPkg string, funcs te
 	// Setup codegen
 	imports := []*codegen.ImportSpec{
 		codegen.SimpleImport("net/http"),
-		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
+		codegen.NewImport("shogoa", "github.com/shogo82148/shogoa"),
 		codegen.NewImport("goaclient", "github.com/shogo82148/shogoa/client"),
 		codegen.NewImport("uuid", "github.com/shogo82148/shogoa/uuid"),
 	}
@@ -587,7 +587,7 @@ func (g *Generator) generateMediaTypes(pkgDir string, funcs template.FuncMap) (e
 	}()
 	title := fmt.Sprintf("%s: Application Media Types", g.API.Context())
 	imports := []*codegen.ImportSpec{
-		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
+		codegen.NewImport("shogoa", "github.com/shogo82148/shogoa"),
 		codegen.SimpleImport("fmt"),
 		codegen.SimpleImport("net/http"),
 		codegen.SimpleImport("time"),
@@ -641,7 +641,7 @@ func (g *Generator) generateUserTypes(pkgDir string) (err error) {
 	}()
 	title := fmt.Sprintf("%s: Application User Types", g.API.Context())
 	imports := []*codegen.ImportSpec{
-		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
+		codegen.NewImport("shogoa", "github.com/shogo82148/shogoa"),
 		codegen.SimpleImport("fmt"),
 		codegen.SimpleImport("time"),
 		codegen.SimpleImport("unicode/utf8"),
@@ -837,7 +837,7 @@ func defaultPath(action *design.ActionDefinition) string {
 func signerType(scheme *design.SecuritySchemeDefinition) string {
 	switch scheme.Kind {
 	case design.JWTSecurityKind:
-		return "goaclient.JWTSigner" // goa client package imported under goaclient
+		return "goaclient.JWTSigner" // shogoa client package imported under goaclient
 	case design.OAuth2SecurityKind:
 		return "goaclient.OAuth2Signer"
 	case design.APIKeySecurityKind:

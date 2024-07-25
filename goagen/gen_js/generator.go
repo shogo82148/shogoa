@@ -259,7 +259,7 @@ func (g *Generator) generateExample() error {
 	imports := []*codegen.ImportSpec{
 		codegen.SimpleImport("net/http"),
 		codegen.SimpleImport("github.com/dimfeld/httptreemux"),
-		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
+		codegen.NewImport("shogoa", "github.com/shogo82148/shogoa"),
 	}
 	if err := file.WriteHeader(fmt.Sprintf("%s JavaScript Client Example", g.API.Name), "js", imports); err != nil {
 		return err
@@ -349,7 +349,7 @@ const jsFuncsT = `{{$params := params .Action}}
 const exampleT = `<!doctype html>
 <html>
   <head>
-    <title>goa JavaScript client loader</title>
+    <title>shogoa JavaScript client loader</title>
   </head>
   <body>
     <h1>{{.API.Name}} Client Test</h1>

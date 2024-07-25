@@ -1,12 +1,12 @@
 /*
-Package goalog15 contains an adapter that makes it possible to configure goa so it uses log15
+Package goalog15 contains an adapter that makes it possible to configure shogoa so it uses log15
 as logger backend.
 Usage:
 
 	logger := log15.New()
 	// ... Initialize logger handler using log15 package
 	service.WithLogger(goalog15.New(logger))
-	// ... Proceed with configuring and starting the goa service
+	// ... Proceed with configuring and starting the shogoa service
 
 	// In handlers:
 	goalog15.Logger(ctx).Info("foo")
@@ -20,12 +20,12 @@ import (
 	"github.com/shogo82148/shogoa"
 )
 
-// adapter is the log15 goa adapter logger.
+// adapter is the log15 shogoa adapter logger.
 type adapter struct {
 	log15.Logger
 }
 
-// New wraps a log15 logger into a goa logger adapter.
+// New wraps a log15 logger into a shogoa logger adapter.
 func New(logger log15.Logger) shogoa.LogAdapter {
 	return &adapter{Logger: logger}
 }

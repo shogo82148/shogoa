@@ -459,7 +459,7 @@ var _ = Describe("Validation", func() {
 		// FIXME @shogo82148
 		// Context("with package in gopath", func() {
 		// 	BeforeEach(func() {
-		// 		packagePath := path.Join(cellarPath, "../goa/encoding/foo")
+		// 		packagePath := path.Join(cellarPath, "../shogoa/encoding/foo")
 
 		// 		Ω(os.MkdirAll(packagePath, 0777)).ShouldNot(HaveOccurred())
 		// 		Ω(ioutil.WriteFile(path.Join(packagePath, "encoding.go"), []byte("package foo"), 0777)).ShouldNot(HaveOccurred())

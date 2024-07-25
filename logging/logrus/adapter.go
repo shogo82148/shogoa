@@ -1,12 +1,12 @@
 /*
-Package goalogrus contains an adapter that makes it possible to configure goa so it uses logrus
+Package goalogrus contains an adapter that makes it possible to configure shogoa so it uses logrus
 as logger backend.
 Usage:
 
 	logger := logrus.New()
 	// Initialize logger handler using logrus package
 	service.WithLogger(goalogrus.New(logger))
-	// ... Proceed with configuring and starting the goa service
+	// ... Proceed with configuring and starting the shogoa service
 
 	// In handlers:
 	goalogrus.Entry(ctx).Info("foo", "bar")
@@ -21,17 +21,17 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// adapter is the logrus goa logger adapter.
+// adapter is the logrus shogoa logger adapter.
 type adapter struct {
 	*logrus.Entry
 }
 
-// New wraps a logrus logger into a goa logger.
+// New wraps a logrus logger into a shogoa logger.
 func New(logger *logrus.Logger) shogoa.LogAdapter {
 	return FromEntry(logrus.NewEntry(logger))
 }
 
-// FromEntry wraps a logrus log entry into a goa logger.
+// FromEntry wraps a logrus log entry into a shogoa logger.
 func FromEntry(entry *logrus.Entry) shogoa.LogAdapter {
 	return &adapter{Entry: entry}
 }

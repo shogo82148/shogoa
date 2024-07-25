@@ -7,7 +7,7 @@ type generator interface {
 }
 
 // Run runs all generators passed as parameter. Call ParseDSL first to
-// fill `design.Design`.  Each `goa` generator lives in its own
+// fill `design.Design`.  Each `shogoa` generator lives in its own
 // `goagen/gen_something` package in `generator.go` and has a
 // `Generator` object which implements the interface required here.
 //

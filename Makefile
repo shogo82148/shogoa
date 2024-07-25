@@ -1,6 +1,6 @@
 #! /usr/bin/make
 #
-# Makefile for goa
+# Makefile for shogoa
 #
 # Targets:
 # - "depend" retrieves the Go packages needed to run the linter and tests

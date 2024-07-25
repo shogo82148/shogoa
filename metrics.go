@@ -91,7 +91,7 @@ func (*NoOpSink) AddSampleWithLabels(key []string, val float32, labels []metrics
 // Shutdown implements metrics.MetricSin.
 func (*NoOpSink) Shutdown() {}
 
-// NewMetrics initializes goa's metrics instance with the supplied
+// NewMetrics initializes shogoa's metrics instance with the supplied
 // configuration and metrics sink
 // This method is deprecated and SetMetrics should be used instead.
 func NewMetrics(conf *metrics.Config, sink metrics.MetricSink) error {
@@ -104,14 +104,14 @@ func NewMetrics(conf *metrics.Config, sink metrics.MetricSink) error {
 	return nil
 }
 
-// SetMetrics initializes goa's metrics instance with the supplied metrics adapter interface.
+// SetMetrics initializes shogoa's metrics instance with the supplied metrics adapter interface.
 func SetMetrics(m Collector) {
 	metriksMu.Lock()
 	metriks = m
 	metriksMu.Unlock()
 }
 
-// GetMetrics returns goa's metrics collector adapter interface.
+// GetMetrics returns shogoa's metrics collector adapter interface.
 func GetMetrics() Collector {
 	metriksMu.Lock()
 	m := metriks

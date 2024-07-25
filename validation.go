@@ -125,7 +125,7 @@ func ValidateFormat(f Format, val string) error {
 		return fmt.Errorf("unknown format %#v", f)
 	}
 	if err != nil {
-		go IncrCounter([]string{"goa", "validation", "error", string(f)}, 1.0)
+		go IncrCounter([]string{"shogoa", "validation", "error", string(f)}, 1.0)
 		return fmt.Errorf("invalid %s value, %s", f, err)
 	}
 	return nil

@@ -14,7 +14,7 @@ import (
 )
 
 // New returns a middleware to be used with the JWTSecurity DSL definitions of shogoa.  It supports the
-// scopes claim in the JWT and ensures goa-defined Security DSLs are properly validated.
+// scopes claim in the JWT and ensures shogoa-defined Security DSLs are properly validated.
 //
 // The steps taken by the middleware are:
 //

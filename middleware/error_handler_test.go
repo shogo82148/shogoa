@@ -97,12 +97,12 @@ var _ = Describe("ErrorHandler", func() {
 				Ω(fmt.Sprintf("%v", decoded.Error())).Should(MatchRegexp(msg))
 			})
 
-			Context("and goa 500 error", func() {
+			Context("and shogoa 500 error", func() {
 				var origID string
 
 				BeforeEach(func() {
 					h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-						e := shogoa.ErrInternal("goa-500-boom")
+						e := shogoa.ErrInternal("shogoa-500-boom")
 						origID = e.(shogoa.ServiceError).Token()
 						return e
 					}
@@ -119,9 +119,9 @@ var _ = Describe("ErrorHandler", func() {
 				})
 			})
 
-			Context("and goa 504 error", func() {
+			Context("and shogoa 504 error", func() {
 				BeforeEach(func() {
-					meaningful := shogoa.NewErrorClass("goa-504-with-info", http.StatusGatewayTimeout)
+					meaningful := shogoa.NewErrorClass("shogoa-504-with-info", http.StatusGatewayTimeout)
 					h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 						return meaningful("gatekeeper says no")
 					}
@@ -133,14 +133,14 @@ var _ = Describe("ErrorHandler", func() {
 					Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
 					err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(decoded.Code).Should(Equal("goa-504-with-info"))
+					Ω(decoded.Code).Should(Equal("shogoa-504-with-info"))
 					Ω(decoded.Detail).Should(Equal("gatekeeper says no"))
 				})
 			})
 		})
 	})
 
-	Context("with a handler returning a goa error", func() {
+	Context("with a handler returning a shogoa error", func() {
 		var gerr error
 
 		BeforeEach(func() {
@@ -151,7 +151,7 @@ var _ = Describe("ErrorHandler", func() {
 			}
 		})
 
-		It("maps goa errors to HTTP responses", func() {
+		It("maps shogoa errors to HTTP responses", func() {
 			var decoded errorResponse
 			Ω(rw.Status).Should(Equal(gerr.(shogoa.ServiceError).ResponseStatus()))
 			Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))

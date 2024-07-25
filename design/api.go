@@ -85,7 +85,7 @@ var (
 	// DefaultEncoders contains the encoding definitions used when no Produces DSL is found.
 	DefaultEncoders []*EncodingDefinition
 
-	// KnownEncoders contains the list of encoding packages and factories known by goa indexed
+	// KnownEncoders contains the list of encoding packages and factories known by shogoa indexed
 	// by MIME type.
 	KnownEncoders = map[string]string{
 		"application/json":      "github.com/shogo82148/shogoa",
@@ -101,7 +101,7 @@ var (
 	}
 
 	// KnownEncoderFunctions contains the list of encoding encoder and decoder functions known
-	// by goa indexed by MIME type.
+	// by shogoa indexed by MIME type.
 	KnownEncoderFunctions = map[string][2]string{
 		"application/json":      {"NewJSONEncoder", "NewJSONDecoder"},
 		"application/xml":       {"NewXMLEncoder", "NewXMLDecoder"},
@@ -115,15 +115,15 @@ var (
 		"application/x-msgpack": {"NewEncoder", "NewDecoder"},
 	}
 
-	// JSONContentTypes list the Content-Type header values that cause goa to encode or decode
+	// JSONContentTypes list the Content-Type header values that cause shogoa to encode or decode
 	// JSON by default.
 	JSONContentTypes = []string{"application/json"}
 
-	// XMLContentTypes list the Content-Type header values that cause goa to encode or decode
+	// XMLContentTypes list the Content-Type header values that cause shogoa to encode or decode
 	// XML by default.
 	XMLContentTypes = []string{"application/xml"}
 
-	// GobContentTypes list the Content-Type header values that cause goa to encode or decode
+	// GobContentTypes list the Content-Type header values that cause shogoa to encode or decode
 	// Gob by default.
 	GobContentTypes = []string{"application/gob", "application/x-gob"}
 
@@ -188,16 +188,16 @@ var (
 )
 
 func init() {
-	goa := "github.com/shogo82148/shogoa"
+	shogoa := "github.com/shogo82148/shogoa"
 	DefaultEncoders = []*EncodingDefinition{
-		{MIMETypes: JSONContentTypes, PackagePath: goa, Function: "NewJSONEncoder"},
-		{MIMETypes: XMLContentTypes, PackagePath: goa, Function: "NewXMLEncoder"},
-		{MIMETypes: GobContentTypes, PackagePath: goa, Function: "NewGobEncoder"},
+		{MIMETypes: JSONContentTypes, PackagePath: shogoa, Function: "NewJSONEncoder"},
+		{MIMETypes: XMLContentTypes, PackagePath: shogoa, Function: "NewXMLEncoder"},
+		{MIMETypes: GobContentTypes, PackagePath: shogoa, Function: "NewGobEncoder"},
 	}
 	DefaultDecoders = []*EncodingDefinition{
-		{MIMETypes: JSONContentTypes, PackagePath: goa, Function: "NewJSONDecoder"},
-		{MIMETypes: XMLContentTypes, PackagePath: goa, Function: "NewXMLDecoder"},
-		{MIMETypes: GobContentTypes, PackagePath: goa, Function: "NewGobDecoder"},
+		{MIMETypes: JSONContentTypes, PackagePath: shogoa, Function: "NewJSONDecoder"},
+		{MIMETypes: XMLContentTypes, PackagePath: shogoa, Function: "NewXMLDecoder"},
+		{MIMETypes: GobContentTypes, PackagePath: shogoa, Function: "NewGobDecoder"},
 	}
 	errorMediaView.Parent = ErrorMedia
 }

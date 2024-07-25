@@ -15,7 +15,7 @@ type wrapDoer struct {
 
 var _ client.Doer = (*wrapDoer)(nil)
 
-// WrapDoer wraps a goa client Doer, and creates xray subsegments for traced requests.
+// WrapDoer wraps a shogoa client Doer, and creates xray subsegments for traced requests.
 func WrapDoer(wrapped client.Doer) client.Doer {
 	return &wrapDoer{wrapped}
 }

@@ -161,7 +161,7 @@ func BasePath(val string) {
 //	        Credentials()                        // Sets Access-Control-Allow-Credentials header
 //	})
 //
-//	Origin("/(api|swagger)[.]goa[.]design/", func() {}) // Define CORS policy with a regular expression
+//	Origin("/(api|swagger)[.]shogoa[.]design/", func() {}) // Define CORS policy with a regular expression
 func Origin(origin string, dsl func()) {
 	cors := &design.CORSDefinition{Origin: origin}
 
@@ -444,7 +444,7 @@ func Function(fn string) {
 //
 //	Response(OK, "vnd.shogoa.example")
 //
-// goa comes with a set of predefined response templates (one per standard HTTP status code). The
+// shogoa comes with a set of predefined response templates (one per standard HTTP status code). The
 // OK template is the only one that accepts an argument. It is used as shown in the example above to
 // set the response media type. Other predefined templates do not use arguments. ResponseTemplate
 // makes it possible to define additional response templates specific to the API.

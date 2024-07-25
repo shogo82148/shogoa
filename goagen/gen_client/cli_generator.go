@@ -135,7 +135,7 @@ func (g *Generator) generateCommands(commandsFile string, clientPkg string, func
 		codegen.SimpleImport("strings"),
 		codegen.SimpleImport("strconv"),
 		codegen.SimpleImport("time"),
-		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
+		codegen.NewImport("shogoa", "github.com/shogo82148/shogoa"),
 		codegen.SimpleImport("github.com/spf13/cobra"),
 		codegen.SimpleImport(clientPkg),
 		codegen.SimpleImport("context"),

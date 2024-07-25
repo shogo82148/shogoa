@@ -17,8 +17,8 @@ import (
 // The resource dsl can also specify a parent resource. Parent resources have two effects.
 // First, they set the prefix of all resource action paths to the parent resource href. Note that
 // actions can override the path using an absolute path (that is a path starting with "//").
-// Second, goa uses the parent resource href coupled with the resource BasePath if any to build
-// hrefs to the resource collection or resource collection items. By default goa uses the show
+// Second, shogoa uses the parent resource href coupled with the resource BasePath if any to build
+// hrefs to the resource collection or resource collection items. By default shogoa uses the show
 // action if present to compute a resource href (basically concatenating the parent resource href
 // with the base path and show action path). The resource definition may specify a canonical action
 // via CanonicalActionName to override that default. Here is an example of a resource definition:

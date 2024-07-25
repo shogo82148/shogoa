@@ -5,13 +5,13 @@ import (
 	. "github.com/shogo82148/shogoa/design/apidsl"
 )
 
-// This is the cellar application API design used by goa to generate
+// This is the cellar application API design used by shogoa to generate
 // the application code, client, tests, documentation etc.
 var _ = API("cellar", func() {
 	Title("The virtual wine cellar")
-	Description("A basic example of a CRUD API implemented with goa")
+	Description("A basic example of a CRUD API implemented with shogoa")
 	Contact(func() {
-		Name("goa team")
+		Name("shogoa team")
 		Email("admin@shogoa.design")
 		URL("http://shogoa.design")
 	})
@@ -20,7 +20,7 @@ var _ = API("cellar", func() {
 		URL("https://github.com/shogo82148/shogoa/blob/master/LICENSE")
 	})
 	Docs(func() {
-		Description("goa guide")
+		Description("shogoa guide")
 		URL("http://shogoa.design/getting-started.html")
 	})
 	Host("localhost:8081")

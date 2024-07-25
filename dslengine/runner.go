@@ -246,7 +246,7 @@ func (s contextStack) Current() Definition {
 
 // computeErrorLocation implements a heuristic to find the location in the user
 // code where the error occurred. It walks back the callstack until the file
-// doesn't match "/goa/design/*.go" or one of the DSL package paths.
+// doesn't match "/shogoa/design/*.go" or one of the DSL package paths.
 // When successful it returns the file name and line number, empty string and
 // 0 otherwise.
 func computeErrorLocation() (file string, line int) {

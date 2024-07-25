@@ -359,7 +359,7 @@ var _ = Describe("ValidateFormat", func() {
 
 		Context("with a valid value", func() {
 			BeforeEach(func() {
-				val = "^goa$"
+				val = "^shogoa$"
 			})
 
 			It("validates", func() {

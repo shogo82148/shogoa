@@ -18,7 +18,7 @@ import (
 )
 
 type (
-	// Service is the data structure supporting goa services.
+	// Service is the data structure supporting shogoa services.
 	// It provides methods for configuring a service and running it.
 	// At the basic level a service consists of a set of controllers, each implementing a given
 	// resource actions. goagen generates global functions - one per resource - that make it
@@ -176,7 +176,7 @@ func (service *Service) CancelAll() {
 }
 
 // Use adds a middleware to the service wide middleware chain.
-// goa comes with a set of commonly used middleware, see the middleware package.
+// shogoa comes with a set of commonly used middleware, see the middleware package.
 // Controller specific middleware should be mounted using the Controller struct Use method instead.
 func (service *Service) Use(m Middleware) {
 	service.middleware = append(service.middleware, m)

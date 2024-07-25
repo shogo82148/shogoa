@@ -5,7 +5,7 @@ import (
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
-// Security defines an authentication requirements to access a goa Action.  When defined on a
+// Security defines an authentication requirements to access a shogoa Action.  When defined on a
 // Resource, it applies to all Actions, unless overridden by individual actions.  When defined at the
 // API level, it will apply to all resources by default, following the same logic.
 //

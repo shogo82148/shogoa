@@ -1,13 +1,13 @@
 /*
-Package goakit contains an adapter that makes it possible to configure goa so it uses the go-kit
+Package goakit contains an adapter that makes it possible to configure shogoa so it uses the go-kit
 log package as logger backend.
 Usage:
 
 	// Initialize logger using github.com/go-kit/log package
 	logger := log.NewLogfmtLogger(w)
-	// Initialize goa service logger using adapter
+	// Initialize shogoa service logger using adapter
 	service.WithLogger(goakit.New(logger))
-	// ... Proceed with configuring and starting the goa service
+	// ... Proceed with configuring and starting the shogoa service
 
 	// In middlewares:
 	goakit.Logger(ctx).Log("foo", "bar")
@@ -21,12 +21,12 @@ import (
 	"github.com/shogo82148/shogoa"
 )
 
-// adapter is the go-kit log goa logger adapter.
+// adapter is the go-kit log shogoa logger adapter.
 type adapter struct {
 	log.Logger
 }
 
-// New wraps a go-kit logger into a goa logger.
+// New wraps a go-kit logger into a shogoa logger.
 func New(logger log.Logger) shogoa.LogAdapter {
 	return &adapter{logger}
 }

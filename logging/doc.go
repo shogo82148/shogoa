@@ -1,9 +1,9 @@
 /*
-Package logging contains logger adapters that make it possible for goa to log messages to various
+Package logging contains logger adapters that make it possible for shogoa to log messages to various
 logger backends. Each adapter exists in its own sub-package named after the corresponding logger
 package.
 
-Once instantiated adapters can be used by setting the goa service logger with WithLogger:
+Once instantiated adapters can be used by setting the shogoa service logger with WithLogger:
 
 ```go
 

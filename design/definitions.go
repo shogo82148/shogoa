@@ -202,7 +202,7 @@ type (
 		Parent dslengine.Definition
 		// Metadata is a list of key/value pairs
 		Metadata dslengine.MetadataDefinition
-		// Standard is true if the response definition comes from the goa default responses
+		// Standard is true if the response definition comes from the shogoa default responses
 		Standard bool
 	}
 
@@ -445,7 +445,7 @@ func NewAPIDefinition() *APIDefinition {
 
 // DSLName is the name of the DSL as displayed to the user during execution.
 func (a *APIDefinition) DSLName() string {
-	return "goa API"
+	return "shogoa API"
 }
 
 // DependsOn returns the other roots this root depends on, nothing for APIDefinition.

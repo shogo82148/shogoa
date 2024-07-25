@@ -12,7 +12,7 @@ import (
 )
 
 func TestBootstrapReadme(t *testing.T) {
-	defer cleanup("./readme/*")
+	cleanup("./readme/*")
 	if err := goagen("./readme", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/readme/design"); err != nil {
 		t.Error(err.Error())
 	}
@@ -84,14 +84,14 @@ func TestDefaultTime(t *testing.T) {
 }
 
 func TestCellar(t *testing.T) {
-	defer cleanup("./goa-cellar/*")
-	if err := goagen("./goa-cellar", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/goa-cellar/design"); err != nil {
+	defer cleanup("./shogoa-cellar/*")
+	if err := goagen("./shogoa-cellar", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/shogoa-cellar/design"); err != nil {
 		t.Error(err.Error())
 	}
-	if err := gobuild("./goa-cellar"); err != nil {
+	if err := gobuild("./shogoa-cellar"); err != nil {
 		t.Error(err.Error())
 	}
-	if err := gobuild("./goa-cellar/tool/cellar-cli"); err != nil {
+	if err := gobuild("./shogoa-cellar/tool/cellar-cli"); err != nil {
 		t.Error(err.Error())
 	}
 }

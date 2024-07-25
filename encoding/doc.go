@@ -1,5 +1,5 @@
 /*
-Package encoding provide goa adapters to many different encoders.
+Package encoding provide shogoa adapters to many different encoders.
 
 Use the Consumes and Produces DSL in your design to specify the encoding supported by the service.
 

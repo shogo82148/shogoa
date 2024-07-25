@@ -77,7 +77,7 @@ var _ = Describe("MediaTypeRoot", func() {
 		Ω(root.DSLName()).ShouldNot(BeEmpty())
 	})
 
-	It("depends on the goa API design root", func() {
+	It("depends on the shogoa API design root", func() {
 		Ω(root.DependsOn()).Should(Equal([]dslengine.Root{design.Design}))
 	})
 

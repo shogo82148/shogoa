@@ -19,7 +19,7 @@ var _ = Describe("NewMiddleware", func() {
 		middleware, mErr = shogoa.NewMiddleware(input)
 	})
 
-	Context("using a goa Middleware", func() {
+	Context("using a shogoa Middleware", func() {
 		var goaMiddleware shogoa.Middleware
 
 		BeforeEach(func() {
@@ -33,7 +33,7 @@ var _ = Describe("NewMiddleware", func() {
 		})
 	})
 
-	Context("using a goa middleware func", func() {
+	Context("using a shogoa middleware func", func() {
 		var goaMiddlewareFunc func(shogoa.Handler) shogoa.Handler
 
 		BeforeEach(func() {
@@ -64,7 +64,7 @@ var _ = Describe("NewMiddleware", func() {
 			Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(0))
 		})
 
-		Context("using a goa handler", func() {
+		Context("using a shogoa handler", func() {
 			BeforeEach(func() {
 				var goaHandler shogoa.Handler = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 					service.Send(ctx, 200, "ok")
@@ -81,7 +81,7 @@ var _ = Describe("NewMiddleware", func() {
 			})
 		})
 
-		Context("using a goa handler func", func() {
+		Context("using a shogoa handler func", func() {
 			BeforeEach(func() {
 				input = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 					service.Send(ctx, 200, "ok")

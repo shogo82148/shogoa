@@ -17,7 +17,7 @@ import (
 var WildcardRegex = regexp.MustCompile("(?:[^/]*/:([^/]+))+")
 
 type (
-	// ContextsWriter generate codes for a goa application contexts.
+	// ContextsWriter generate codes for a shogoa application contexts.
 	ContextsWriter struct {
 		*codegen.SourceFile
 		CtxTmpl     *template.Template
@@ -28,7 +28,7 @@ type (
 		Validator   *codegen.Validator
 	}
 
-	// ControllersWriter generate code for a goa application handlers.
+	// ControllersWriter generate code for a shogoa application handlers.
 	// Handlers receive a HTTP request, create the action context, call the action code and send the
 	// resulting HTTP response.
 	ControllersWriter struct {
@@ -45,7 +45,7 @@ type (
 		SecurityTmpl *template.Template
 	}
 
-	// ResourcesWriter generate code for a goa application resources.
+	// ResourcesWriter generate code for a shogoa application resources.
 	// Resources are data structures initialized by the application handlers and passed to controller
 	// actions.
 	ResourcesWriter struct {
@@ -53,7 +53,7 @@ type (
 		ResourceTmpl *template.Template
 	}
 
-	// MediaTypesWriter generate code for a goa application media types.
+	// MediaTypesWriter generate code for a shogoa application media types.
 	// Media types are data structures used to render the response bodies.
 	MediaTypesWriter struct {
 		*codegen.SourceFile
@@ -61,7 +61,7 @@ type (
 		Validator     *codegen.Validator
 	}
 
-	// UserTypesWriter generate code for a goa application user types.
+	// UserTypesWriter generate code for a shogoa application user types.
 	// User types are data structures defined in the DSL with "Type".
 	UserTypesWriter struct {
 		*codegen.SourceFile

@@ -21,7 +21,7 @@ func CheckVersion(ver string) error {
 		return err
 	}
 	if !compat {
-		return fmt.Errorf("version mismatch: using goagen %s to generate code that compiles with goa %s",
+		return fmt.Errorf("version mismatch: using goagen %s to generate code that compiles with shogoa %s",
 			ver, version.String())
 	}
 	return nil
