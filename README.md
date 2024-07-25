@@ -1,15 +1,11 @@
-# <img src="http://shogoa.design/img/shogoa-logo.svg">
-
-# A fork of Goa v1
-
-This is unofficial fork of Goa v1.
-If you want to use the latest version of Goa, go to [goadesign/shogoa](https://github.com/goadesign/shogoa).
+# shogoa
 
 shogoa is a framework for building micro-services and REST APIs in Go using a
 unique design-first approach.
+It was forked from [goadesign/goa](https://github.com/goadesign/goa) v1.
 
-[![Build Status](https://github.com/shogo82148/shogoa/workflows/test/badge.svg?branch=master)](https://github.com/shogo82148/shogoa/actions?query=workflow%3Atest)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/shogo82148/shogoa/blob/master/LICENSE)
+[![Build Status](https://github.com/shogo82148/shogoa/workflows/test/badge.svg?branch=main)](https://github.com/shogo82148/shogoa/actions?query=workflow%3Atest)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/shogo82148/shogoa/blob/main/LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/shogo82148/shoshogoa.svg)](https://pkg.go.dev/github.com/shogo82148/shogoa)
 
 ## Why Goa?
