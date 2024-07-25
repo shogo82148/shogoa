@@ -1,125 +1,121 @@
 package shogoa
 
 import (
-	"bytes"
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
+	"runtime"
+	"time"
 )
 
 // ErrMissingLogValue is the value used to log keys with missing values
 const ErrMissingLogValue = "MISSING"
 
-type (
-	// LogAdapter is the logger interface used by shogoa to log informational and error messages.
-	// Adapters to different logging backends are provided in the logging sub-packages.
-	// shogoa takes care of initializing the logging context with the service, controller and
-	// action names.
-	LogAdapter interface {
-		// Info logs an informational message.
-		Info(msg string, keyvals ...interface{})
-		// Error logs an error.
-		Error(msg string, keyvals ...interface{})
-		// New appends to the logger context and returns the updated logger logger.
-		New(keyvals ...interface{}) LogAdapter
-	}
-
-	// WarningLogAdapter is the logger interface used by shogoa to log informational, warning and error messages.
-	// Adapters to different logging backends are provided in the logging sub-packages.
-	// shogoa takes care of initializing the logging context with the service, controller and
-	// action names.
-	WarningLogAdapter interface {
-		LogAdapter
-		// Warn logs a warning message.
-		Warn(mgs string, keyvals ...interface{})
-	}
-
-	// ContextLogAdapter is the logger interface used by shogoa to log informational, warning and error messages.
-	// It allows to pass a context.Context to the logger.
-	ContextLogAdapter interface {
-		WarningLogAdapter
-
-		// InfoContext is same as Info but with context.
-		InfoContext(ctx context.Context, msg string, keyvals ...interface{})
-		// ErrorContext is same as Error but with context.
-		ErrorContext(ctx context.Context, msg string, keyvals ...interface{})
-		// WarnContext is same as Warn but with context.
-		WarnContext(ctx context.Context, mgs string, keyvals ...interface{})
-	}
-
-	// adapter is the stdlib logger adapter.
-	adapter struct {
-		*log.Logger
-		keyvals []interface{}
-	}
-)
-
-// NewLogger returns a shogoa log adapter backed by a log logger.
-func NewLogger(logger *log.Logger) LogAdapter {
-	return &adapter{Logger: logger}
+// LogAdapter is the logger interface used by shogoa to log informational and error messages.
+// Adapters to different logging backends are provided in the logging sub-packages.
+// shogoa takes care of initializing the logging context with the service, controller and
+// action names.
+type LogAdapter interface {
+	// Info logs an informational message.
+	Info(msg string, keyvals ...any)
+	// Error logs an error.
+	Error(msg string, keyvals ...any)
+	// New appends to the logger context and returns the updated logger logger.
+	New(keyvals ...any) LogAdapter
 }
 
-// Logger returns the logger stored in the context if any, nil otherwise.
-func Logger(ctx context.Context) *log.Logger {
-	logger := ContextLogger(ctx)
-	if a, ok := logger.(*adapter); ok {
-		return a.Logger
-	}
-	return nil
+// WarningLogAdapter is the logger interface used by shogoa to log informational, warning and error messages.
+// Adapters to different logging backends are provided in the logging sub-packages.
+// shogoa takes care of initializing the logging context with the service, controller and
+// action names.
+type WarningLogAdapter interface {
+	LogAdapter
+	// Warn logs a warning message.
+	Warn(mgs string, keyvals ...any)
 }
 
-func (a *adapter) Info(msg string, keyvals ...interface{}) {
-	a.logit(msg, keyvals, "INFO")
+// ContextLogAdapter is the logger interface used by shogoa to log informational, warning and error messages.
+// It allows to pass a context.Context to the logger.
+type ContextLogAdapter interface {
+	WarningLogAdapter
+
+	// InfoContext is same as Info but with context.
+	InfoContext(ctx context.Context, msg string, keyvals ...any)
+	// ErrorContext is same as Error but with context.
+	ErrorContext(ctx context.Context, msg string, keyvals ...any)
+	// WarnContext is same as Warn but with context.
+	WarnContext(ctx context.Context, mgs string, keyvals ...any)
 }
 
-func (a *adapter) Warn(msg string, keyvals ...interface{}) {
-	a.logit(msg, keyvals, "WARN")
+var _ LogAdapter = (*adapter)(nil)
+var _ ContextLogAdapter = (*adapter)(nil)
+
+// adapter is the slog shogoa logger adapter.
+type adapter struct {
+	handler slog.Handler
 }
 
-func (a *adapter) Error(msg string, keyvals ...interface{}) {
-	a.logit(msg, keyvals, "EROR")
+// New wraps a [log/slog.Handler] into a shogoa logger.
+func NewLogger(handler slog.Handler) LogAdapter {
+	return &adapter{handler: handler}
 }
 
-func (a *adapter) New(keyvals ...interface{}) LogAdapter {
-	if len(keyvals) == 0 {
-		return a
-	}
-	kvs := append(a.keyvals, keyvals...)
-	if len(kvs)%2 != 0 {
-		kvs = append(kvs, ErrMissingLogValue)
-	}
-	return &adapter{
-		Logger: a.Logger,
-		// Limiting the capacity of the stored keyvals ensures that a new
-		// backing array is created if the slice must grow.
-		keyvals: kvs[:len(kvs):len(kvs)],
-	}
+// Info logs messages using [log/slog].
+func (a *adapter) Info(msg string, data ...any) {
+	a.log(context.Background(), slog.LevelInfo, msg, data...)
 }
 
-func (a *adapter) logit(msg string, keyvals []interface{}, level string) {
-	n := (len(keyvals) + 1) / 2
-	if len(keyvals)%2 != 0 {
-		keyvals = append(keyvals, ErrMissingLogValue)
+// InfoContext logs messages using [log/slog].
+func (a *adapter) InfoContext(ctx context.Context, msg string, data ...any) {
+	a.log(ctx, slog.LevelInfo, msg, data...)
+}
+
+// Warn logs message using [log/slog].
+func (a *adapter) Warn(msg string, data ...any) {
+	a.log(context.Background(), slog.LevelWarn, msg, data...)
+}
+
+// WarnContext logs message using [log/slog].
+func (a *adapter) WarnContext(ctx context.Context, msg string, data ...any) {
+	a.log(ctx, slog.LevelWarn, msg, data...)
+}
+
+// Error logs errors using [log/slog].
+func (a *adapter) Error(msg string, data ...any) {
+	a.log(context.Background(), slog.LevelError, msg, data...)
+}
+
+// ErrorContext logs errors using [log/slog].
+func (a *adapter) ErrorContext(ctx context.Context, msg string, data ...any) {
+	a.log(ctx, slog.LevelError, msg, data...)
+}
+
+// New creates a new logger given a context.
+func (a *adapter) New(data ...any) LogAdapter {
+	r := slog.NewRecord(time.Now(), slog.LevelInfo, "", 0)
+	r.Add(data...)
+
+	attrs := make([]slog.Attr, 0, r.NumAttrs())
+	r.Attrs(func(a slog.Attr) bool {
+		attrs = append(attrs, a)
+		return true
+	})
+	h := a.handler.WithAttrs(attrs)
+	return &adapter{handler: h}
+}
+
+func (a *adapter) log(ctx context.Context, level slog.Level, msg string, data ...any) {
+	if !a.handler.Enabled(ctx, level) {
+		return
 	}
-	m := (len(a.keyvals) + 1) / 2
-	n += m
-	var fm bytes.Buffer
-	fm.WriteString(fmt.Sprintf("[%s] %s", level, msg))
-	vals := make([]interface{}, n)
-	offset := len(a.keyvals)
-	for i := 0; i < offset; i += 2 {
-		k := a.keyvals[i]
-		v := a.keyvals[i+1]
-		vals[i/2] = v
-		fm.WriteString(fmt.Sprintf(" %s=%%+v", k))
-	}
-	for i := 0; i < len(keyvals); i += 2 {
-		k := keyvals[i]
-		v := keyvals[i+1]
-		vals[i/2+offset/2] = v
-		fm.WriteString(fmt.Sprintf(" %s=%%+v", k))
-	}
-	a.Logger.Printf(fm.String(), vals...)
+
+	var pc uintptr
+	var pcs [1]uintptr
+	// skip [runtime.Callers, this functions, this functions caller, the caller of the adapter]
+	runtime.Callers(4, pcs[:])
+	pc = pcs[0]
+	r := slog.NewRecord(time.Now(), level, msg, pc)
+	r.Add(data...)
+	a.handler.Handle(ctx, r)
 }
 
 // LogInfo extracts the logger from the given context and calls Info on it.
