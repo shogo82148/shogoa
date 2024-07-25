@@ -53,7 +53,7 @@ func init() {
 func Register(r Root) {
 	for _, o := range roots {
 		if r.DSLName() == o.DSLName() {
-			fmt.Fprintf(os.Stderr, "goagen: duplicate DSL %s", r.DSLName())
+			fmt.Fprintf(os.Stderr, "shogoagen: duplicate DSL %s", r.DSLName())
 			os.Exit(1)
 		}
 	}

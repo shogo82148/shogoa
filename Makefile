@@ -11,7 +11,7 @@
 # - "all" is the default target, it runs all the targets in the order above.
 #
 
-all: depend lint goagen
+all: depend lint shogoagen
 
 .PHONY: depend
 depend:
@@ -23,7 +23,7 @@ test:
 	ginkgo -r --randomizeAllSpecs --failOnPending --randomizeSuites -race
 	go test -v github.com/shogo82148/shogoa/_integration_tests
 
-.PHONY: goagen
-goagen:
-	@cd goagen && \
+.PHONY: shogoagen
+shogoagen:
+	@cd shogoagen && \
 	go install
