@@ -14,8 +14,11 @@ func String() string {
 // Compatible returns true if Major matches the major version of the given version string.
 // It returns an error if the given string is not a valid version string.
 func Compatible(v string) (bool, error) {
-	if len(v) < 5 {
+	if len(v) < 6 {
 		return false, fmt.Errorf("invalid version string format %#v", v)
+	}
+	if v[0] != 'v' {
+		return false, fmt.Errorf("version string must start with 'v' %#v", v)
 	}
 	v = v[1:]
 	elems := strings.Split(v, ".")
