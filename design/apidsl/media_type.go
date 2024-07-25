@@ -192,7 +192,7 @@ func Reference(t design.DataType) {
 // TypeName can be used in: MediaType
 //
 // TypeName makes it possible to set the Go struct name for a media type in the
-// generated code. By default goagen uses the identifier to compute a valid Go
+// generated code. By default shogoagen uses the identifier to compute a valid Go
 // identifier. This function makes it possible to override that and provide a
 // custom name. name must be a valid Go identifier.
 func TypeName(name string) {

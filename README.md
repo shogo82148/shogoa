@@ -33,10 +33,10 @@ re-use design elements for consistency.
 
 The Goa DSL allows writing self-explanatory code that describes the resources
 exposed by the API and for each resource the properties and actions. Goa comes
-with the `goagen` tool which runs the DSL and generates various types of
+with the `shogoagen` tool which runs the DSL and generates various types of
 artifacts from the resulting data structures.
 
-One of the `goagen` output is glue code that binds your code with the underlying
+One of the `shogoagen` output is glue code that binds your code with the underlying
 HTTP server. This code is specific to your API so that for example there is no
 need to cast or "bind" any handler argument prior to using them. Each generated
 handler has a signature that is specific to the corresponding resource action.
@@ -129,15 +129,15 @@ its body.
 
 ### 2. Implement
 
-Now that the design is done, let's run `goagen` on the design package:
+Now that the design is done, let's run `shogoagen` on the design package:
 ```
 cd $GOPATH/src/shogoa-adder
-goagen bootstrap -d shogoa-adder/design
+shogoagen bootstrap -d shogoa-adder/design
 ```
 This produces the following outputs:
 
 * `main.go` and `operands.go` contain scaffolding code to help bootstrap the implementation.
-  running `goagen` again does not recreate them so that it's safe to edit their content.
+  running `shogoagen` again does not recreate them so that it's safe to edit their content.
 * an `app` package which contains glue code that binds the low level HTTP server to your
   implementation.
 * a `client` package with a `Client` struct that implements a `AddOperands` function which calls
@@ -269,7 +269,7 @@ var _ = Resource("swagger", func() {
 })
 ```
 
-Re-run `goagen bootstrap -d shogoa-adder/design` and note the new file
+Re-run `shogoagen bootstrap -d shogoa-adder/design` and note the new file
 `swagger.go` containing the implementation for a controller that serves the
 `swagger.json` file.
 
