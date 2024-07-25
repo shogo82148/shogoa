@@ -1,64 +1,79 @@
-package version_test
+package version
 
 import (
-	"strconv"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/shogo82148/shogoa/version"
+	"fmt"
+	"regexp"
+	"testing"
 )
 
-var _ = Describe("version", func() {
-	var ver string
+func TestString(t *testing.T) {
+	re := regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
+	ver := String()
+	if !re.MatchString(ver) {
+		t.Errorf("unexpected version string: %s", ver)
+	}
+}
 
-	JustBeforeEach(func() {
-		ver = version.String()
-	})
+func TestCompatible(t *testing.T) {
+	tests := []struct {
+		name     string
+		ver      string
+		expected bool
+	}{
+		{
+			name:     "a version with identical major should be compatible",
+			ver:      fmt.Sprintf("v%d.12.13", Major),
+			expected: true,
+		},
+		{
+			name:     "a version with different major should not be compatible",
+			ver:      "v99999121299999.1.0",
+			expected: false,
+		},
+	}
 
-	Context("with the default build number", func() {
-		It("should be properly formatted", func() {
-			Ω(ver).Should(HavePrefix("v"))
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			compatible, err := Compatible(tc.ver)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if compatible != tc.expected {
+				t.Errorf("unexpected result: %t", compatible)
+			}
 		})
-	})
+	}
+}
 
-	Context("checking compatibility", func() {
-		var otherVersion string
-		var compatible bool
-		var compErr error
+func TestCompatible_error(t *testing.T) {
+	tests := []struct {
+		name string
+		ver  string
+	}{
+		{
+			name: "version string too short",
+			ver:  "v1.2",
+		},
+		{
+			name: "version string must start with 'v'",
+			ver:  "w1.2.3",
+		},
+		{
+			name: "version not of the form Major.Minor.Build",
+			ver:  "v99999121299999.2",
+		},
+		{
+			name: "major version must be a number",
+			ver:  "vX.2.3",
+		},
+	}
 
-		JustBeforeEach(func() {
-			compatible, compErr = version.Compatible(otherVersion)
+	for _, tc := range tests {
+		t.Run(tc.ver, func(t *testing.T) {
+			_, err := Compatible(tc.ver)
+			if err == nil {
+				t.Errorf("%s: expected an error", tc.name)
+			}
 		})
-
-		Context("with a version with identical major", func() {
-			BeforeEach(func() {
-				otherVersion = "v" + strconv.Itoa(version.Major) + ".12.13"
-			})
-			It("returns true", func() {
-				Ω(compErr).ShouldNot(HaveOccurred())
-				Ω(compatible).Should(BeTrue())
-			})
-		})
-
-		Context("with a version with different major", func() {
-			BeforeEach(func() {
-				otherVersion = "v99999121299999.1.0"
-			})
-			It("returns false", func() {
-				Ω(compErr).ShouldNot(HaveOccurred())
-				Ω(compatible).Should(BeFalse())
-			})
-		})
-
-		Context("with a non version string", func() {
-			BeforeEach(func() {
-				otherVersion = "v99999121299999.2"
-			})
-			It("returns an error", func() {
-				Ω(compErr).Should(HaveOccurred())
-				Ω(compatible).Should(BeFalse())
-			})
-		})
-	})
-
-})
+	}
+}
