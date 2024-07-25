@@ -9,12 +9,12 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
-	"github.com/shogo82148/goa-v1/goagen/utils"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/goagen/codegen"
+	"github.com/shogo82148/shogoa/goagen/utils"
 )
 
-//NewGenerator returns an initialized instance of a JavaScript Client Generator
+// NewGenerator returns an initialized instance of a JavaScript Client Generator
 func NewGenerator(options ...Option) *Generator {
 	g := &Generator{}
 

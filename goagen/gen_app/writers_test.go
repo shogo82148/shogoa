@@ -5,11 +5,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/design/apidsl"
-	"github.com/shogo82148/goa-v1/dslengine"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
-	genapp "github.com/shogo82148/goa-v1/goagen/gen_app"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/design/apidsl"
+	"github.com/shogo82148/shogoa/dslengine"
+	"github.com/shogo82148/shogoa/goagen/codegen"
+	genapp "github.com/shogo82148/shogoa/goagen/gen_app"
 )
 
 var _ = Describe("ContextsWriter", func() {
@@ -108,7 +108,7 @@ var _ = Describe("ContextsWriter", func() {
 								Type: design.Object{"foo": {Type: design.String}},
 							},
 						},
-						Identifier:  "application/vnd.goa.test",
+						Identifier:  "application/vnd.shogoa.test",
 						ContentType: contentType,
 					}
 					defView := &design.ViewDefinition{
@@ -148,7 +148,7 @@ var _ = Describe("ContextsWriter", func() {
 								Type: design.Object{"foo": {Type: design.String}},
 							},
 						},
-						Identifier: "application/vnd.goa.test",
+						Identifier: "application/vnd.shogoa.test",
 					}
 					defView := &design.ViewDefinition{
 						AttributeDefinition: elemType.AttributeDefinition,
@@ -1295,14 +1295,14 @@ var _ = Describe("ControllersWriter", func() {
 					contexts = []string{"ListBottleContext"}
 					encoders = []*genapp.EncoderTemplateData{
 						{
-							PackageName: "goa",
+							PackageName: "shogoa",
 							Function:    "NewEncoder",
 							MIMETypes:   []string{"application/json"},
 						},
 					}
 					decoders = []*genapp.EncoderTemplateData{
 						{
-							PackageName: "goa",
+							PackageName: "shogoa",
 							Function:    "NewDecoder",
 							MIMETypes:   []string{"application/json"},
 						},
@@ -1655,17 +1655,17 @@ const (
 	emptyContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 }
 `
 
 	emptyContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	return &rctx, err
@@ -1675,18 +1675,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	intContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param *int
 }
 `
 
 	intContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -1697,7 +1697,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 			tmp1 := &tmp2
 			rctx.Param = tmp1
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "integer"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "integer"))
 		}
 	}
 	return &rctx, err
@@ -1707,18 +1707,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	intDefaultContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param int
 }
 `
 
 	intDefaultContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -1729,7 +1729,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 		if param, err2 := strconv.Atoi(rawParam); err2 == nil {
 			rctx.Param = param
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "integer"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "integer"))
 		}
 	}
 	return &rctx, err
@@ -1739,18 +1739,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	intRequiredDefaultContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param int
 }
 `
 
 	intRequiredDefaultContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -1761,7 +1761,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 		if param, err2 := strconv.Atoi(rawParam); err2 == nil {
 			rctx.Param = param
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "integer"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "integer"))
 		}
 	}
 	return &rctx, err
@@ -1771,28 +1771,28 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	intRequiredContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param int
 }
 `
 	intRequiredContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
 	if len(paramParam) == 0 {
-		err = goa.MergeErrors(err, goa.MissingParamError("param"))
+		err = shogoa.MergeErrors(err, shogoa.MissingParamError("param"))
 	} else {
 		rawParam := paramParam[0]
 		if param, err2 := strconv.Atoi(rawParam); err2 == nil {
 			rctx.Param = param
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "integer"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "integer"))
 		}
 	}
 	return &rctx, err
@@ -1802,18 +1802,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	strContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param *string
 }
 `
 
 	strContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -1828,18 +1828,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	strNonOptionalContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param string
 }
 `
 
 	strDefaultContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -1854,16 +1854,16 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 `
 
 	strRequiredContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
 	if len(paramParam) == 0 {
-		err = goa.MergeErrors(err, goa.MissingParamError("param"))
+		err = shogoa.MergeErrors(err, shogoa.MissingParamError("param"))
 	} else {
 		rawParam := paramParam[0]
 		rctx.Param = rawParam
@@ -1875,18 +1875,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	strHeaderContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Header *string
 }
 `
 
 	strHeaderContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	headerHeader := req.Header["Header"]
@@ -1900,11 +1900,11 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 `
 
 	strHeaderParamContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	headerParam := req.Header["Param"]
@@ -1925,18 +1925,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	numContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param *float64
 }
 `
 
 	numContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -1946,7 +1946,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 			tmp1 := &param
 			rctx.Param = tmp1
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "number"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "number"))
 		}
 	}
 	return &rctx, err
@@ -1956,18 +1956,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	numNonOptionalContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param float64
 }
 `
 
 	numDefaultContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -1978,7 +1978,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 		if param, err2 := strconv.ParseFloat(rawParam, 64); err2 == nil {
 			rctx.Param = param
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "number"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "number"))
 		}
 	}
 	return &rctx, err
@@ -1986,22 +1986,22 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 `
 
 	numRequiredContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
 	if len(paramParam) == 0 {
-		err = goa.MergeErrors(err, goa.MissingParamError("param"))
+		err = shogoa.MergeErrors(err, shogoa.MissingParamError("param"))
 	} else {
 		rawParam := paramParam[0]
 		if param, err2 := strconv.ParseFloat(rawParam, 64); err2 == nil {
 			rctx.Param = param
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "number"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "number"))
 		}
 	}
 	return &rctx, err
@@ -2011,18 +2011,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	boolContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param *bool
 }
 `
 
 	boolContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -2032,7 +2032,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 			tmp1 := &param
 			rctx.Param = tmp1
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "boolean"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "boolean"))
 		}
 	}
 	return &rctx, err
@@ -2042,18 +2042,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	boolNonOptionalContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param bool
 }
 `
 
 	boolDefaultContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -2064,7 +2064,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 		if param, err2 := strconv.ParseBool(rawParam); err2 == nil {
 			rctx.Param = param
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "boolean"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "boolean"))
 		}
 	}
 	return &rctx, err
@@ -2072,22 +2072,22 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 `
 
 	boolRequiredContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
 	if len(paramParam) == 0 {
-		err = goa.MergeErrors(err, goa.MissingParamError("param"))
+		err = shogoa.MergeErrors(err, shogoa.MissingParamError("param"))
 	} else {
 		rawParam := paramParam[0]
 		if param, err2 := strconv.ParseBool(rawParam); err2 == nil {
 			rctx.Param = param
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "boolean"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "boolean"))
 		}
 	}
 	return &rctx, err
@@ -2097,18 +2097,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	arrayContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param []string
 }
 `
 
 	arrayContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -2121,11 +2121,11 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 `
 
 	arrayParamContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -2138,11 +2138,11 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 `
 
 	arrayDefaultContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -2157,16 +2157,16 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 `
 
 	arrayRequiredContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
 	if len(paramParam) == 0 {
-		err = goa.MergeErrors(err, goa.MissingParamError("param"))
+		err = shogoa.MergeErrors(err, shogoa.MissingParamError("param"))
 	} else {
 		params := paramParam
 		rctx.Param = params
@@ -2178,18 +2178,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	intArrayContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Param []int
 }
 `
 
 	intArrayContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -2199,7 +2199,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 			if param, err2 := strconv.Atoi(rawParam); err2 == nil {
 				params[i] = param
 			} else {
-				err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "integer"))
+				err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "integer"))
 			}
 		}
 		rctx.Param = params
@@ -2209,11 +2209,11 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 `
 
 	intArrayDefaultContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
@@ -2225,7 +2225,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 			if param, err2 := strconv.Atoi(rawParam); err2 == nil {
 				params[i] = param
 			} else {
-				err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "integer"))
+				err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "integer"))
 			}
 		}
 		rctx.Param = params
@@ -2235,23 +2235,23 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 `
 
 	intArrayRequiredContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramParam := req.Params["param"]
 	if len(paramParam) == 0 {
-		err = goa.MergeErrors(err, goa.MissingParamError("param"))
+		err = shogoa.MergeErrors(err, shogoa.MissingParamError("param"))
 	} else {
 		params := make([]int, len(paramParam))
 		for i, rawParam := range paramParam {
 			if param, err2 := strconv.Atoi(rawParam); err2 == nil {
 				params[i] = param
 			} else {
-				err = goa.MergeErrors(err, goa.InvalidParamTypeError("param", rawParam, "integer"))
+				err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("param", rawParam, "integer"))
 			}
 		}
 		rctx.Param = params
@@ -2263,18 +2263,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	resContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Int *int
 }
 `
 
 	resContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramInt := req.Params["int"]
@@ -2285,7 +2285,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 			tmp1 := &tmp2
 			rctx.Int = tmp1
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("int", rawInt, "integer"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("int", rawInt, "integer"))
 		}
 	}
 	return &rctx, err
@@ -2295,29 +2295,29 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	requiredContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Int int
 }
 `
 
 	requiredContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramInt := req.Params["int"]
 	if len(paramInt) == 0 {
-		err = goa.MergeErrors(err, goa.MissingParamError("int"))
+		err = shogoa.MergeErrors(err, shogoa.MissingParamError("int"))
 	} else {
 		rawInt := paramInt[0]
 		if int_, err2 := strconv.Atoi(rawInt); err2 == nil {
 			rctx.Int = int_
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("int", rawInt, "integer"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("int", rawInt, "integer"))
 		}
 	}
 	return &rctx, err
@@ -2327,18 +2327,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	customContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Custom *int
 }
 `
 
 	customContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramCustom := req.Params["int"]
@@ -2349,7 +2349,7 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 			tmp1 := &tmp2
 			rctx.Custom = tmp1
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("int", rawCustom, "integer"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("int", rawCustom, "integer"))
 		}
 	}
 	return &rctx, err
@@ -2359,18 +2359,18 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	payloadContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Payload ListBottlePayload
 }
 `
 
 	payloadContextFactory = `
-func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Service) (*ListBottleContext, error) {
+func NewListBottleContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*ListBottleContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := ListBottleContext{Context: ctx, ResponseData: resp, RequestData: req}
 	return &rctx, err
@@ -2379,24 +2379,24 @@ func NewListBottleContext(ctx context.Context, r *http.Request, service *goa.Ser
 	payloadObjContext = `
 type ListBottleContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	Payload *ListBottlePayload
 }
 `
 
 	payloadObjUnmarshal = `
-func unmarshalListBottlePayload(ctx context.Context, service *goa.Service, req *http.Request) error {
+func unmarshalListBottlePayload(ctx context.Context, service *shogoa.Service, req *http.Request) error {
 	payload := &listBottlePayload{}
 	if err := service.DecodeRequest(req, payload); err != nil {
 		return err
 	}
 	if err := payload.Validate(); err != nil {
 		// Initialize payload with private data structure so it can be logged
-		goa.ContextRequest(ctx).Payload = payload
+		shogoa.ContextRequest(ctx).Payload = payload
 		return err
 	}
-	goa.ContextRequest(ctx).Payload = payload.Publicize()
+	shogoa.ContextRequest(ctx).Payload = payload.Publicize()
 	return nil
 }
 `
@@ -2408,7 +2408,7 @@ func unmarshalListBottlePayload(ctx context.Context, service *goa.Service, req *
 		tmp1 := &tmp2
 		payload.ID = tmp1
 	} else {
-		err = goa.MergeErrors(err, goa.InvalidParamTypeError("id", rawID, "integer"))
+		err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("id", rawID, "integer"))
 	}`
 
 	payloadMultipartObjUnmarshalTitle = `
@@ -2420,7 +2420,7 @@ func unmarshalListBottlePayload(ctx context.Context, service *goa.Service, req *
 	if err2 == nil {
 		payload.Icon = rawIcon
 	} else if !errors.Is(err2, http.ErrMissingFile) {
-		err = goa.MergeErrors(err, goa.InvalidParamTypeError("icon", "icon", "file"))
+		err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("icon", "icon", "file"))
 	}`
 
 	payloadMultipartObjUnmarshalCommentLines = `
@@ -2438,7 +2438,7 @@ func unmarshalListBottlePayload(ctx context.Context, service *goa.Service, req *
 	for i := 0; i < len(rawFlags); i++ {
 		tmp, err2 := strconv.ParseBool(rawFlags[i])
 		if err2 != nil {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("flags", rawFlags, "[]bool"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("flags", rawFlags, "[]bool"))
 			break
 		}
 		tmpFlags[i] = tmp
@@ -2451,7 +2451,7 @@ func unmarshalListBottlePayload(ctx context.Context, service *goa.Service, req *
 	for i := 0; i < len(rawOptionCodes); i++ {
 		tmp, err2 := strconv.Atoi(rawOptionCodes[i])
 		if err2 != nil {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("optionCodes", rawOptionCodes, "[]int"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("optionCodes", rawOptionCodes, "[]int"))
 			break
 		}
 		tmpOptionCodes[i] = tmp
@@ -2464,7 +2464,7 @@ func unmarshalListBottlePayload(ctx context.Context, service *goa.Service, req *
 	for i := 0; i < len(rawRatios); i++ {
 		tmp, err2 := strconv.ParseFloat(rawRatios[i])
 		if err2 != nil {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("ratios", rawRatios, "[]float"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("ratios", rawRatios, "[]float"))
 			break
 		}
 		tmpRatios[i] = tmp
@@ -2477,7 +2477,7 @@ func unmarshalListBottlePayload(ctx context.Context, service *goa.Service, req *
 	for i := 0; i < len(rawObjs); i++ {
 		tmp, err2 := (interface{})(nil), (error)(nil)
 		if err2 != nil {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("objs", rawObjs, "[]interface{}"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("objs", rawObjs, "[]interface{}"))
 			break
 		}
 		tmpObjs[i] = tmp
@@ -2490,7 +2490,7 @@ func unmarshalListBottlePayload(ctx context.Context, service *goa.Service, req *
 	for i := 0; i < len(rawHashObjs); i++ {
 		tmp, err2 := map[string][]string{}, (error)(nil)
 		if err2 != nil {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("hashObjs", rawHashObjs, "[]map[string][]string"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("hashObjs", rawHashObjs, "[]map[string][]string"))
 			break
 		}
 		tmpHashObjs[i] = tmp
@@ -2498,20 +2498,20 @@ func unmarshalListBottlePayload(ctx context.Context, service *goa.Service, req *
 	payload.HashObjs = tmpHashObjs`
 
 	payloadNoValidationsObjUnmarshal = `
-func unmarshalListBottlePayload(ctx context.Context, service *goa.Service, req *http.Request) error {
+func unmarshalListBottlePayload(ctx context.Context, service *shogoa.Service, req *http.Request) error {
 	payload := &listBottlePayload{}
 	if err := service.DecodeRequest(req, payload); err != nil {
 		return err
 	}
-	goa.ContextRequest(ctx).Payload = payload.Publicize()
+	shogoa.ContextRequest(ctx).Payload = payload.Publicize()
 	return nil
 }
 `
 
 	simpleFileServer = `// PublicController is the controller interface for the Public actions.
 type PublicController interface {
-	goa.Muxer
-	goa.FileServer
+	shogoa.Muxer
+	shogoa.FileServer
 }
 `
 
@@ -2519,7 +2519,7 @@ type PublicController interface {
 
 	simpleController = `// BottlesController is the controller interface for the Bottles actions.
 type BottlesController interface {
-	goa.Muxer
+	shogoa.Muxer
 	List(*ListBottleContext) error
 }
 `
@@ -2529,7 +2529,7 @@ type BottlesController interface {
 	service.Mux.Handle`
 
 	originsHandler = `// handleBottlesOrigin applies the CORS response headers corresponding to the origin.
-func handleBottlesOrigin(h goa.Handler) goa.Handler {
+func handleBottlesOrigin(h shogoa.Handler) shogoa.Handler {
 
 	return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		origin := req.Header.Get("Origin")
@@ -2538,7 +2538,7 @@ func handleBottlesOrigin(h goa.Handler) goa.Handler {
 			return h(ctx, rw, req)
 		}
 		if cors.MatchOrigin(origin, "here.example.com") {
-			ctx = goa.WithLogContext(ctx, "origin", origin)
+			ctx = shogoa.WithLogContext(ctx, "origin", origin)
 			rw.Header().Set("Access-Control-Allow-Origin", origin)
 			rw.Header().Set("Vary", "Origin")
 			rw.Header().Set("Access-Control-Expose-Headers", "X-Three")
@@ -2551,7 +2551,7 @@ func handleBottlesOrigin(h goa.Handler) goa.Handler {
 			return h(ctx, rw, req)
 		}
 		if cors.MatchOrigin(origin, "there.example.com") {
-			ctx = goa.WithLogContext(ctx, "origin", origin)
+			ctx = shogoa.WithLogContext(ctx, "origin", origin)
 			rw.Header().Set("Access-Control-Allow-Origin", origin)
 			rw.Header().Set("Vary", "Origin")
 			if acrm := req.Header.Get("Access-Control-Request-Method"); acrm != "" {
@@ -2568,7 +2568,7 @@ func handleBottlesOrigin(h goa.Handler) goa.Handler {
 `
 
 	regexpOriginsHandler = `// handleBottlesOrigin applies the CORS response headers corresponding to the origin.
-func handleBottlesOrigin(h goa.Handler) goa.Handler {
+func handleBottlesOrigin(h shogoa.Handler) shogoa.Handler {
 	spec0 := regexp.MustCompile("[here|there].example.com")
 
 	return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
@@ -2578,7 +2578,7 @@ func handleBottlesOrigin(h goa.Handler) goa.Handler {
 			return h(ctx, rw, req)
 		}
 		if cors.MatchOriginRegexp(origin, spec0) {
-			ctx = goa.WithLogContext(ctx, "origin", origin)
+			ctx = shogoa.WithLogContext(ctx, "origin", origin)
 			rw.Header().Set("Access-Control-Allow-Origin", origin)
 			rw.Header().Set("Vary", "Origin")
 			rw.Header().Set("Access-Control-Expose-Headers", "X-Three")
@@ -2591,7 +2591,7 @@ func handleBottlesOrigin(h goa.Handler) goa.Handler {
 			return h(ctx, rw, req)
 		}
 		if cors.MatchOrigin(origin, "there.example.com") {
-			ctx = goa.WithLogContext(ctx, "origin", origin)
+			ctx = shogoa.WithLogContext(ctx, "origin", origin)
 			rw.Header().Set("Access-Control-Allow-Origin", origin)
 			rw.Header().Set("Vary", "Origin")
 			if acrm := req.Header.Get("Access-Control-Request-Method"); acrm != "" {
@@ -2609,13 +2609,13 @@ func handleBottlesOrigin(h goa.Handler) goa.Handler {
 
 	encoderController = `
 // MountBottlesController "mounts" a Bottles resource controller on the given service.
-func MountBottlesController(service *goa.Service, ctrl BottlesController) {
+func MountBottlesController(service *shogoa.Service, ctrl BottlesController) {
 	initService(service)
-	var h goa.Handler
+	var h shogoa.Handler
 
 	h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		// Check if there was an error loading the request
-		if err := goa.ContextError(ctx); err != nil {
+		if err := shogoa.ContextError(ctx); err != nil {
 			return err
 		}
 		// Build the context
@@ -2630,13 +2630,13 @@ func MountBottlesController(service *goa.Service, ctrl BottlesController) {
 }
 `
 
-	simpleMount = `func MountBottlesController(service *goa.Service, ctrl BottlesController) {
+	simpleMount = `func MountBottlesController(service *shogoa.Service, ctrl BottlesController) {
 	initService(service)
-	var h goa.Handler
+	var h shogoa.Handler
 
 	h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		// Check if there was an error loading the request
-		if err := goa.ContextError(ctx); err != nil {
+		if err := shogoa.ContextError(ctx); err != nil {
 			return err
 		}
 		// Build the context
@@ -2653,19 +2653,19 @@ func MountBottlesController(service *goa.Service, ctrl BottlesController) {
 
 	multiController = `// BottlesController is the controller interface for the Bottles actions.
 type BottlesController interface {
-	goa.Muxer
+	shogoa.Muxer
 	List(*ListBottleContext) error
 	Show(*ShowBottleContext) error
 }
 `
 
-	multiMount = `func MountBottlesController(service *goa.Service, ctrl BottlesController) {
+	multiMount = `func MountBottlesController(service *shogoa.Service, ctrl BottlesController) {
 	initService(service)
-	var h goa.Handler
+	var h shogoa.Handler
 
 	h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		// Check if there was an error loading the request
-		if err := goa.ContextError(ctx); err != nil {
+		if err := shogoa.ContextError(ctx); err != nil {
 			return err
 		}
 		// Build the context
@@ -2680,7 +2680,7 @@ type BottlesController interface {
 
 	h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		// Check if there was an error loading the request
-		if err := goa.ContextError(ctx); err != nil {
+		if err := shogoa.ContextError(ctx); err != nil {
 			return err
 		}
 		// Build the context

@@ -42,10 +42,10 @@ type (
 
 func init() {
 	dslPackages = map[string]bool{
-		"github.com/shogo82148/goa-v1/":            true,
-		"github.com/shogo82148/goa-v1/middleware/": true,
-		"github.com/shogo82148/goa-v1/encoding/":   true,
-		"github.com/shogo82148/goa-v1/logging/":    true,
+		"github.com/shogo82148/shogoa/":            true,
+		"github.com/shogo82148/shogoa/middleware/": true,
+		"github.com/shogo82148/shogoa/encoding/":   true,
+		"github.com/shogo82148/shogoa/logging/":    true,
 	}
 }
 
@@ -246,7 +246,7 @@ func (s contextStack) Current() Definition {
 
 // computeErrorLocation implements a heuristic to find the location in the user
 // code where the error occurred. It walks back the callstack until the file
-// doesn't match "/goa/design/*.go" or one of the DSL package paths.
+// doesn't match "/shogoa/design/*.go" or one of the DSL package paths.
 // When successful it returns the file name and line number, empty string and
 // 0 otherwise.
 func computeErrorLocation() (file string, line int) {

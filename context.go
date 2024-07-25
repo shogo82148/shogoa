@@ -1,4 +1,4 @@
-package goa
+package shogoa
 
 import (
 	"context"
@@ -52,9 +52,9 @@ type contextKey struct {
 	name string
 }
 
-func (k *contextKey) String() string { return "goa-v1 context value " + k.name }
+func (k *contextKey) String() string { return "shogo1 context value " + k.name }
 
-// NewContext builds a new goa request context.
+// NewContext builds a new shogoa request context.
 // If ctx is nil then req.Context() is used.
 func NewContext(ctx context.Context, rw http.ResponseWriter, req *http.Request, params url.Values) context.Context {
 	if ctx == nil {
@@ -219,7 +219,7 @@ func (r *ResponseData) Written() bool {
 
 // WriteHeader records the response status code and calls the underlying writer.
 func (r *ResponseData) WriteHeader(status int) {
-	go IncrCounter([]string{"goa", "response", strconv.Itoa(status)}, 1.0)
+	go IncrCounter([]string{"shogoa", "response", strconv.Itoa(status)}, 1.0)
 	r.Status = status
 	r.ResponseWriter.WriteHeader(status)
 }

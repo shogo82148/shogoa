@@ -8,8 +8,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/middleware"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/middleware"
 )
 
 var _ = Describe("LogResponse", func() {
@@ -34,8 +34,8 @@ var _ = Describe("LogResponse", func() {
 
 	It("logs responses", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			goa.ContextResponse(ctx).WriteHeader(200)
-			goa.ContextResponse(ctx).Write([]byte(responseText))
+			shogoa.ContextResponse(ctx).WriteHeader(200)
+			shogoa.ContextResponse(ctx).Write([]byte(responseText))
 			return nil
 		}
 		lg := middleware.LogResponse()(h)

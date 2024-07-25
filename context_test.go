@@ -1,4 +1,4 @@
-package goa_test
+package shogoa_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 // contextKey is a value for use with context.WithValue. It's used as
@@ -17,10 +17,10 @@ type contextKey struct {
 	name string
 }
 
-func (k *contextKey) String() string { return "goa-v1 context value " + k.name }
+func (k *contextKey) String() string { return "shogoa context value " + k.name }
 
 var _ = Describe("ResponseData", func() {
-	var data *goa.ResponseData
+	var data *shogoa.ResponseData
 	var rw http.ResponseWriter
 	var req *http.Request
 	var params url.Values
@@ -31,8 +31,8 @@ var _ = Describe("ResponseData", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = &TestResponseWriter{Status: 42}
 		params = url.Values{"query": []string{"value"}}
-		ctx := goa.NewContext(context.Background(), rw, req, params)
-		data = goa.ContextResponse(ctx)
+		ctx := shogoa.NewContext(context.Background(), rw, req, params)
+		data = shogoa.ContextResponse(ctx)
 	})
 
 	Context("SwitchWriter", func() {
@@ -68,7 +68,7 @@ var _ = Describe("ResponseData", func() {
 		mergeContext := func(parent, child context.Context) context.Context {
 			req, err := http.NewRequestWithContext(child, "GET", "google.com", nil)
 			Ω(err).Should(BeNil())
-			return goa.NewContext(parent, &TestResponseWriter{Status: 42}, req, url.Values{})
+			return shogoa.NewContext(parent, &TestResponseWriter{Status: 42}, req, url.Values{})
 		}
 		Context("Deadline", func() {
 			It("should be empty if the parent and the child have no deadline", func() {

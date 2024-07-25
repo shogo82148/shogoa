@@ -10,23 +10,23 @@ import (
 	jwtpkg "github.com/golang-jwt/jwt/v4"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/middleware/security/jwt"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/middleware/security/jwt"
 )
 
 var _ = Describe("Middleware", func() {
-	var securityScheme *goa.JWTSecurity
+	var securityScheme *shogoa.JWTSecurity
 	var respRecord *httptest.ResponseRecorder
 	var request *http.Request
-	var handler goa.Handler
-	var middleware goa.Middleware
+	var handler shogoa.Handler
+	var middleware shogoa.Middleware
 	var dispatchResult error
 	var fetchedToken *jwtpkg.Token
 
 	Context("JWT with Authorization Header", func() {
 		BeforeEach(func() {
-			securityScheme = &goa.JWTSecurity{
-				In:   goa.LocHeader,
+			securityScheme = &shogoa.JWTSecurity{
+				In:   shogoa.LocHeader,
 				Name: "Authorization",
 			}
 			respRecord = httptest.NewRecorder()
@@ -95,7 +95,7 @@ var _ = Describe("Middleware", func() {
 
 				BeforeEach(func() {
 					middleware = jwt.New("keys", nil, securityScheme)
-					ctx = goa.WithRequiredScopes(context.Background(), []string{"scope1"})
+					ctx = shogoa.WithRequiredScopes(context.Background(), []string{"scope1"})
 				})
 
 				It("should accept scopes specified using the 'scope' claim", func() {
@@ -206,8 +206,8 @@ var _ = Describe("Middleware", func() {
 
 	Context("JWT with Authorization Query Parameter", func() {
 		BeforeEach(func() {
-			securityScheme = &goa.JWTSecurity{
-				In:   goa.LocQuery,
+			securityScheme = &shogoa.JWTSecurity{
+				In:   shogoa.LocQuery,
 				Name: "access_token",
 			}
 			respRecord = httptest.NewRecorder()
@@ -282,7 +282,7 @@ var _ = Describe("Middleware", func() {
 
 				BeforeEach(func() {
 					middleware = jwt.New("keys", nil, securityScheme)
-					ctx = goa.WithRequiredScopes(context.Background(), []string{"scope1"})
+					ctx = shogoa.WithRequiredScopes(context.Background(), []string{"scope1"})
 				})
 
 				It("should accept scopes specified using the 'scope' claim", func() {

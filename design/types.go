@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // DefaultView is the name of the default view.
@@ -747,7 +747,7 @@ func NewMediaTypeDefinition(name, identifier string, dsl func()) *MediaTypeDefin
 // Kind implements DataKind.
 func (m *MediaTypeDefinition) Kind() Kind { return MediaTypeKind }
 
-// IsError returns true if the media type is implemented via a goa struct.
+// IsError returns true if the media type is implemented via a shogoa struct.
 func (m *MediaTypeDefinition) IsError() bool {
 	base, params, err := mime.ParseMediaType(m.Identifier)
 	if err != nil {

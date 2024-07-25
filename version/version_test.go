@@ -5,7 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/version"
+	"github.com/shogo82148/shogoa/version"
 )
 
 var _ = Describe("version", func() {

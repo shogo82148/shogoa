@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // MediaTypeRoot is the data structure that represents the additional DSL definition root
@@ -85,23 +85,23 @@ var (
 	// DefaultEncoders contains the encoding definitions used when no Produces DSL is found.
 	DefaultEncoders []*EncodingDefinition
 
-	// KnownEncoders contains the list of encoding packages and factories known by goa indexed
+	// KnownEncoders contains the list of encoding packages and factories known by shogoa indexed
 	// by MIME type.
 	KnownEncoders = map[string]string{
-		"application/json":      "github.com/shogo82148/goa-v1",
-		"application/xml":       "github.com/shogo82148/goa-v1",
-		"application/gob":       "github.com/shogo82148/goa-v1",
-		"application/x-gob":     "github.com/shogo82148/goa-v1",
-		"application/binc":      "github.com/shogo82148/goa-v1/encoding/binc",
-		"application/x-binc":    "github.com/shogo82148/goa-v1/encoding/binc",
-		"application/cbor":      "github.com/shogo82148/goa-v1/encoding/cbor",
-		"application/x-cbor":    "github.com/shogo82148/goa-v1/encoding/cbor",
-		"application/msgpack":   "github.com/shogo82148/goa-v1/encoding/msgpack",
-		"application/x-msgpack": "github.com/shogo82148/goa-v1/encoding/msgpack",
+		"application/json":      "github.com/shogo82148/shogoa",
+		"application/xml":       "github.com/shogo82148/shogoa",
+		"application/gob":       "github.com/shogo82148/shogoa",
+		"application/x-gob":     "github.com/shogo82148/shogoa",
+		"application/binc":      "github.com/shogo82148/shogoa/encoding/binc",
+		"application/x-binc":    "github.com/shogo82148/shogoa/encoding/binc",
+		"application/cbor":      "github.com/shogo82148/shogoa/encoding/cbor",
+		"application/x-cbor":    "github.com/shogo82148/shogoa/encoding/cbor",
+		"application/msgpack":   "github.com/shogo82148/shogoa/encoding/msgpack",
+		"application/x-msgpack": "github.com/shogo82148/shogoa/encoding/msgpack",
 	}
 
 	// KnownEncoderFunctions contains the list of encoding encoder and decoder functions known
-	// by goa indexed by MIME type.
+	// by shogoa indexed by MIME type.
 	KnownEncoderFunctions = map[string][2]string{
 		"application/json":      {"NewJSONEncoder", "NewJSONDecoder"},
 		"application/xml":       {"NewXMLEncoder", "NewXMLDecoder"},
@@ -115,20 +115,20 @@ var (
 		"application/x-msgpack": {"NewEncoder", "NewDecoder"},
 	}
 
-	// JSONContentTypes list the Content-Type header values that cause goa to encode or decode
+	// JSONContentTypes list the Content-Type header values that cause shogoa to encode or decode
 	// JSON by default.
 	JSONContentTypes = []string{"application/json"}
 
-	// XMLContentTypes list the Content-Type header values that cause goa to encode or decode
+	// XMLContentTypes list the Content-Type header values that cause shogoa to encode or decode
 	// XML by default.
 	XMLContentTypes = []string{"application/xml"}
 
-	// GobContentTypes list the Content-Type header values that cause goa to encode or decode
+	// GobContentTypes list the Content-Type header values that cause shogoa to encode or decode
 	// Gob by default.
 	GobContentTypes = []string{"application/gob", "application/x-gob"}
 
 	// ErrorMediaIdentifier is the media type identifier used for error responses.
-	ErrorMediaIdentifier = "application/vnd.goa.error"
+	ErrorMediaIdentifier = "application/vnd.shogoa.error"
 
 	// ErrorMedia is the built-in media type for error responses.
 	ErrorMedia = &MediaTypeDefinition{
@@ -188,16 +188,16 @@ var (
 )
 
 func init() {
-	goa := "github.com/shogo82148/goa-v1"
+	shogoa := "github.com/shogo82148/shogoa"
 	DefaultEncoders = []*EncodingDefinition{
-		{MIMETypes: JSONContentTypes, PackagePath: goa, Function: "NewJSONEncoder"},
-		{MIMETypes: XMLContentTypes, PackagePath: goa, Function: "NewXMLEncoder"},
-		{MIMETypes: GobContentTypes, PackagePath: goa, Function: "NewGobEncoder"},
+		{MIMETypes: JSONContentTypes, PackagePath: shogoa, Function: "NewJSONEncoder"},
+		{MIMETypes: XMLContentTypes, PackagePath: shogoa, Function: "NewXMLEncoder"},
+		{MIMETypes: GobContentTypes, PackagePath: shogoa, Function: "NewGobEncoder"},
 	}
 	DefaultDecoders = []*EncodingDefinition{
-		{MIMETypes: JSONContentTypes, PackagePath: goa, Function: "NewJSONDecoder"},
-		{MIMETypes: XMLContentTypes, PackagePath: goa, Function: "NewXMLDecoder"},
-		{MIMETypes: GobContentTypes, PackagePath: goa, Function: "NewGobDecoder"},
+		{MIMETypes: JSONContentTypes, PackagePath: shogoa, Function: "NewJSONDecoder"},
+		{MIMETypes: XMLContentTypes, PackagePath: shogoa, Function: "NewXMLDecoder"},
+		{MIMETypes: GobContentTypes, PackagePath: shogoa, Function: "NewGobDecoder"},
 	}
 	errorMediaView.Parent = ErrorMedia
 }
@@ -216,7 +216,7 @@ func CanonicalIdentifier(identifier string) string {
 	return mime.FormatMediaType(id, params)
 }
 
-// HasKnownEncoder returns true if the encoder for the given MIME type is known by goa.
+// HasKnownEncoder returns true if the encoder for the given MIME type is known by shogoa.
 // MIME types with unknown encoders must be associated with a package path explicitly in the DSL.
 func HasKnownEncoder(mimeType string) bool {
 	return KnownEncoders[mimeType] != ""

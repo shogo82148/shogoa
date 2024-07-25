@@ -1,6 +1,6 @@
 #! /usr/bin/make
 #
-# Makefile for goa
+# Makefile for shogoa
 #
 # Targets:
 # - "depend" retrieves the Go packages needed to run the linter and tests
@@ -21,7 +21,7 @@ depend:
 .PHONY: test
 test:
 	ginkgo -r --randomizeAllSpecs --failOnPending --randomizeSuites -race
-	go test -v github.com/shogo82148/goa-v1/_integration_tests
+	go test -v github.com/shogo82148/shogoa/_integration_tests
 
 .PHONY: goagen
 goagen:

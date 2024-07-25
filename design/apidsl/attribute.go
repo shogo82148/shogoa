@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // Attribute can be used in: View, Type, Attribute, Attributes
@@ -307,7 +307,7 @@ func Default(def interface{}) {
 //		Attribute("name", String, func() {
 //			Example("Cabernet Sauvignon")
 //		})
-//		Attribute("price", String) //If no Example() is provided, goa generates one that fits your specification
+//		Attribute("price", String) //If no Example() is provided, shogoa generates one that fits your specification
 //	})
 //
 // If you do not want an auto-generated example for an attribute, add NoExample() to it.
@@ -403,7 +403,7 @@ var SupportedValidationFormats = []string{
 //
 // Format adds a "format" validation to the attribute.
 // See http://json-schema.org/latest/json-schema-validation.html#anchor104.
-// The formats supported by goa are:
+// The formats supported by shogoa are:
 //
 // "date": RFC3339 date
 //

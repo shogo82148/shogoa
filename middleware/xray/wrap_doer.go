@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/shogo82148/goa-v1/client"
-	"github.com/shogo82148/goa-v1/middleware"
+	"github.com/shogo82148/shogoa/client"
+	"github.com/shogo82148/shogoa/middleware"
 )
 
 // wrapDoer is a client.Doer middleware that will create xray subsegments for traced requests.
@@ -15,7 +15,7 @@ type wrapDoer struct {
 
 var _ client.Doer = (*wrapDoer)(nil)
 
-// WrapDoer wraps a goa client Doer, and creates xray subsegments for traced requests.
+// WrapDoer wraps a shogoa client Doer, and creates xray subsegments for traced requests.
 func WrapDoer(wrapped client.Doer) client.Doer {
 	return &wrapDoer{wrapped}
 }

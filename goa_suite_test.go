@@ -1,4 +1,4 @@
-package goa_test
+package shogoa_test
 
 import (
 	. "github.com/onsi/ginkgo"

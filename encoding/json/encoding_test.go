@@ -7,12 +7,12 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/uuid"
+	"github.com/shogo82148/shogoa/uuid"
 )
 
 var _ = Describe("JsonEncoding", func() {
 
-	Describe("handle goa/uuid/UUID", func() {
+	Describe("handle shogoa/uuid/UUID", func() {
 		name := "Test"
 		id, _ := uuid.FromString("c0586f01-87b5-462b-a673-3b2dcf619091")
 

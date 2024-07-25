@@ -1,4 +1,4 @@
-package goa
+package shogoa
 
 import (
 	"encoding/gob"
@@ -105,7 +105,7 @@ func NewHTTPDecoder() *HTTPDecoder {
 // Decode uses registered Decoders to unmarshal a body based on the contentType.
 func (decoder *HTTPDecoder) Decode(v interface{}, body io.Reader, contentType string) error {
 	now := time.Now()
-	defer MeasureSince([]string{"goa", "decode", contentType}, now)
+	defer MeasureSince([]string{"shogoa", "decode", contentType}, now)
 	var p *decoderPool
 	if contentType == "" {
 		// Default to JSON
@@ -196,7 +196,7 @@ func (encoder *HTTPEncoder) Encode(v interface{}, resp io.Writer, accept string)
 			break
 		}
 	}
-	defer MeasureSince([]string{"goa", "encode", contentType}, now)
+	defer MeasureSince([]string{"shogoa", "encode", contentType}, now)
 	p := encoder.pools[contentType]
 	if p == nil && contentType != "*/*" {
 		p = encoder.pools["*/*"]

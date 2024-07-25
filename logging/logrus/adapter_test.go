@@ -6,14 +6,14 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
-	goalogrus "github.com/shogo82148/goa-v1/logging/logrus"
+	"github.com/shogo82148/shogoa"
+	goalogrus "github.com/shogo82148/shogoa/logging/logrus"
 	"github.com/sirupsen/logrus"
 )
 
 var _ = Describe("goalogrus", func() {
 	var logger *logrus.Logger
-	var adapter goa.LogAdapter
+	var adapter shogoa.LogAdapter
 	var buf bytes.Buffer
 
 	BeforeEach(func() {
@@ -29,7 +29,7 @@ var _ = Describe("goalogrus", func() {
 	})
 
 	It("adapts warn messages", func() {
-		adapter := adapter.(goa.WarningLogAdapter)
+		adapter := adapter.(shogoa.WarningLogAdapter)
 		msg := "msg"
 		adapter.Warn(msg)
 		Ω(buf.String()).Should(ContainSubstring(msg))
@@ -44,7 +44,7 @@ var _ = Describe("goalogrus", func() {
 
 var _ = Describe("FromEntry", func() {
 	var entry *logrus.Entry
-	var adapter goa.LogAdapter
+	var adapter shogoa.LogAdapter
 	var buf bytes.Buffer
 
 	BeforeEach(func() {
@@ -64,7 +64,7 @@ var _ = Describe("FromEntry", func() {
 		var ctx context.Context
 
 		BeforeEach(func() {
-			ctx = goa.WithLogger(context.Background(), adapter)
+			ctx = shogoa.WithLogger(context.Background(), adapter)
 		})
 
 		It("extracts the log entry", func() {

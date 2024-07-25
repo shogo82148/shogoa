@@ -1,16 +1,12 @@
-# <img src="http://goa.design/img/goa-logo.svg">
+# shogoa
 
-# A fork of Goa v1
-
-This is unofficial fork of Goa v1.
-If you want to use the latest version of Goa, go to [goadesign/goa](https://github.com/goadesign/goa).
-
-goa is a framework for building micro-services and REST APIs in Go using a
+shogoa is a framework for building micro-services and REST APIs in Go using a
 unique design-first approach.
+It was forked from [goadesign/goa](https://github.com/goadesign/goa) v1.
 
-[![Build Status](https://github.com/shogo82148/goa-v1/workflows/test/badge.svg?branch=master)](https://github.com/shogo82148/goa-v1/actions?query=workflow%3Atest)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/shogo82148/goa-v1/blob/master/LICENSE)
-[![Go Reference](https://pkg.go.dev/badge/github.com/shogo82148/goa-v1.svg)](https://pkg.go.dev/github.com/shogo82148/goa-v1)
+[![Build Status](https://github.com/shogo82148/shogoa/workflows/test/badge.svg?branch=main)](https://github.com/shogo82148/shogoa/actions?query=workflow%3Atest)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/shogo82148/shogoa/blob/main/LICENSE)
+[![Go Reference](https://pkg.go.dev/badge/github.com/shogo82148/shoshogoa.svg)](https://pkg.go.dev/github.com/shogo82148/shogoa)
 
 ## Why Goa?
 
@@ -59,7 +55,7 @@ boon.
 
 This idea of separating design and implementation is not new, the
 excellent [Praxis](http://praxis-framework.io) framework from RightScale follows
-the same pattern and was an inspiration to Goa.
+the same pattern and was an inspiration to shogoa.
 
 ## Installation
 
@@ -68,7 +64,7 @@ Goa v1 can be used with Go modules:
 ```bash
 export GO111MODULE=on
 go mod init <my project>
-go get github.com/shogo82148/goa-v1/...@v1
+go get github.com/shogo82148/shogoa/...@v1
 ```
 
 Or without Go modules by cloning the repo first:
@@ -77,9 +73,9 @@ Or without Go modules by cloning the repo first:
 cd $GOPATH/src
 mkdir -p github.com/goadesign
 cd github.com/goadesign
-git clone https://github.com/shogo82148/goa-v1
-cd goa; git checkout v1
-go get -v github.com/shogo82148/goa-v1/...
+git clone https://github.com/shogo82148/shogoa
+cd shogoa; git checkout v1
+go get -v github.com/shogo82148/shogoa/...
 ```
 
 ### Stable Versions
@@ -98,18 +94,18 @@ Stable Branch: `v1`
 
 ### 1. Design
 
-Create the file `$GOPATH/src/goa-adder/design/design.go` with the following content:
+Create the file `$GOPATH/src/shogoa-adder/design/design.go` with the following content:
 ```go
 package design
 
 import (
-        . "github.com/shogo82148/goa-v1/design"
-        . "github.com/shogo82148/goa-v1/design/apidsl"
+        . "github.com/shogo82148/shogoa/design"
+        . "github.com/shogo82148/shogoa/design/apidsl"
 )
 
 var _ = API("adder", func() {
         Title("The adder API")
-        Description("A teaser for goa")
+        Description("A teaser for shogoa")
         Host("localhost:8080")
         Scheme("http")
 })
@@ -135,8 +131,8 @@ its body.
 
 Now that the design is done, let's run `goagen` on the design package:
 ```
-cd $GOPATH/src/goa-adder
-goagen bootstrap -d goa-adder/design
+cd $GOPATH/src/shogoa-adder
+goagen bootstrap -d shogoa-adder/design
 ```
 This produces the following outputs:
 
@@ -166,15 +162,15 @@ func (c *OperandsController) Add(ctx *app.AddOperandsContext) error {
 ```
 Now let's compile and run the service:
 ```
-cd $GOPATH/src/goa-adder
+cd $GOPATH/src/shogoa-adder
 go build
-./goa-adder
+./shogoa-adder
 2016/04/05 20:39:10 [INFO] mount ctrl=Operands action=Add route=GET /add/:left/:right
 2016/04/05 20:39:10 [INFO] listen transport=http addr=:8080
 ```
 Open a new console and compile the generated CLI tool:
 ```
-cd $GOPATH/src/goa-adder/tool/adder-cli
+cd $GOPATH/src/shogoa-adder/tool/adder-cli
 go build
 ```
 The tool includes contextual help:
@@ -249,19 +245,19 @@ The `swagger` directory contains the API Swagger (OpenAPI) specification in both
 YAML and JSON format.
 
 For open source projects hosted on
-github [swagger.goa.design](http://swagger.goa.design) provides a free service
-that renders the Swagger representation dynamically from goa design packages.
+github [swagger.shogoa.design](http://swagger.shogoa.design) provides a free service
+that renders the Swagger representation dynamically from shogoa design packages.
 Simply set the `url` query string with the import path to the design package.
-For example displaying the docs for `github.com/shogo82148/goa-v1-cellar/design` is
+For example displaying the docs for `github.com/shogo82148/shogoa-cellar/design` is
 done by browsing to:
 
-http://swagger.goa.design/?url=goadesign%2Fgoa-cellar%2Fdesign
+http://swagger.shogoa.design/?url=goadesign%2Fgoa-cellar%2Fdesign
 
 Note that the above generates the swagger spec dynamically and does not require it to be present in
 the Github repo.
 
 The Swagger JSON can also easily be served from the documented service itself using a simple
-[Files](http://goa.design/reference/goa/design/apidsl/#func-files-a-name-apidsl-files-a)
+[Files](http://shogoa.design/reference/shogoa/design/apidsl/#func-files-a-name-apidsl-files-a)
 definition in the design. Edit the file `design/design.go` and add:
 
 ```go
@@ -273,7 +269,7 @@ var _ = Resource("swagger", func() {
 })
 ```
 
-Re-run `goagen bootstrap -d goa-adder/design` and note the new file
+Re-run `goagen bootstrap -d shogoa-adder/design` and note the new file
 `swagger.go` containing the implementation for a controller that serves the
 `swagger.json` file.
 
@@ -290,7 +286,7 @@ Recompile and restart the service:
 ```
 ^C
 go build
-./goa-adder
+./shogoa-adder
 2016/06/06 10:31:14 [INFO] mount ctrl=Operands action=Add route=GET /add/:left/:right
 2016/06/06 10:31:14 [INFO] mount ctrl=Swagger files=swagger/swagger.json route=GET /swagger.json
 2016/06/06 10:31:14 [INFO] listen transport=http addr=:8080
@@ -333,11 +329,11 @@ API design changes.
 
 ## Resources
 
-Consult the following resources to learn more about Goa.
+Consult the following resources to learn more about shogoa.
 
-### goa.design
+### shogoa.design
 
-[goa.design](https://goa.design) contains further information on Goa including a getting
+[shogoa.design](https://shogoa.design) contains further information on Goa including a getting
 started guide, detailed DSL documentation as well as information on how to implement a Goa service.
 
 ### Examples
@@ -345,7 +341,7 @@ started guide, detailed DSL documentation as well as information on how to imple
 The [examples](https://github.com/goadesign/examples) repo contains simple examples illustrating
 basic concepts.
 
-The [goa-cellar](https://github.com/shogo82148/goa-v1-cellar) repo contains the implementation for a
+The [shogoa-cellar](https://github.com/shogo82148/shogoa-cellar) repo contains the implementation for a
 Goa service which demonstrates many aspects of the design language. It is kept up-to-date and
 provides a reference for testing functionality.
 

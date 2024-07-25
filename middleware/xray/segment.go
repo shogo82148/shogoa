@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 type (
@@ -195,7 +195,7 @@ func (s *Segment) RecordResponse(resp *http.Response) {
 //
 // It sets Throttle, Fault, Error and HTTP.Response
 func (s *Segment) RecordContextResponse(ctx context.Context) {
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	if resp == nil {
 		return
 	}
@@ -268,11 +268,10 @@ func (s *Segment) NewSubsegment(name string) *Segment {
 // Capture creates a subsegment to record the execution of the given function.
 // Usage:
 //
-//     s := xray.ContextSegment(ctx)
-//     s.Capture("slow-func", func() {
-//         // ... some long executing code
-//     })
-//
+//	s := xray.ContextSegment(ctx)
+//	s.Capture("slow-func", func() {
+//	    // ... some long executing code
+//	})
 func (s *Segment) Capture(name string, fn func()) {
 	sub := s.NewSubsegment(name)
 	sub.SubmitInProgress()
@@ -352,7 +351,8 @@ func (s *Segment) Close() {
 // This method should be called no more than once for this segment. Subsequent calls will have no effect.
 //
 // See the `in_progress` docs:
-//     https://docs.aws.amazon.com/xray/latest/devguide/xray-api-segmentdocuments.html#api-segmentdocuments-fields
+//
+//	https://docs.aws.amazon.com/xray/latest/devguide/xray-api-segmentdocuments.html#api-segmentdocuments-fields
 func (s *Segment) SubmitInProgress() {
 	s.Lock()
 	defer s.Unlock()

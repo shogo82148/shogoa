@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 // loggingResponseWriter wraps an http.ResponseWriter and writes only raw
@@ -17,17 +17,17 @@ type loggingResponseWriter struct {
 
 // Write will write raw data to logger and response writer.
 func (lrw *loggingResponseWriter) Write(buf []byte) (int, error) {
-	goa.LogInfo(lrw.ctx, "response", "body", string(buf))
+	shogoa.LogInfo(lrw.ctx, "response", "body", string(buf))
 	return lrw.ResponseWriter.Write(buf)
 }
 
 // LogResponse creates a response logger middleware.
 // Only Logs the raw response data without accumulating any statistics.
-func LogResponse() goa.Middleware {
-	return func(h goa.Handler) goa.Handler {
+func LogResponse() shogoa.Middleware {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			// chain a new logging writer to the current response writer.
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.SwitchWriter(
 				&loggingResponseWriter{
 					ResponseWriter: resp.SwitchWriter(nil),

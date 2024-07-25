@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/middleware"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/middleware"
 )
 
 const (
@@ -37,14 +37,14 @@ const (
 // the Close method once the request completes. The middleware takes care of
 // closing the top level segment. Typical usage:
 //
-//     segment := xray.ContextSegment(ctx)
-//     sub := segment.NewSubsegment("external-service")
-//     defer sub.Close()
-//     err := client.MakeRequest()
-//     if err != nil {
-//         sub.Error = xray.Wrap(err)
-//     }
-//     return
+//	segment := xray.ContextSegment(ctx)
+//	sub := segment.NewSubsegment("external-service")
+//	defer sub.Close()
+//	err := client.MakeRequest()
+//	if err != nil {
+//	    sub.Error = xray.Wrap(err)
+//	}
+//	return
 //
 // An X-Ray trace is limited to 500 KB of segment data (JSON) being submitted
 // for it. See: https://aws.amazon.com/xray/pricing/
@@ -64,14 +64,14 @@ const (
 // Besides those varying size limitations, a trace may be open for up to 7 days.
 //
 // DEPRECATED: please use official AWS X-Ray SDK https://github.com/aws/aws-xray-sdk-go
-func New(service, daemon string) (goa.Middleware, error) {
+func New(service, daemon string) (shogoa.Middleware, error) {
 	connection, err := periodicallyRedialingConn(context.Background(), time.Minute, func() (net.Conn, error) {
 		return net.Dial("udp", daemon)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("xray: failed to connect to daemon - %s", err)
 	}
-	return func(h goa.Handler) goa.Handler {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			var (
 				err     error

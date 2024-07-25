@@ -1,26 +1,25 @@
 package codegen
 
-import "github.com/shogo82148/goa-v1/dslengine"
+import "github.com/shogo82148/shogoa/dslengine"
 
 type generator interface {
 	Generate() ([]string, error)
 }
 
 // Run runs all generators passed as parameter. Call ParseDSL first to
-// fill `design.Design`.  Each `goa` generator lives in its own
+// fill `design.Design`.  Each `shogoa` generator lives in its own
 // `goagen/gen_something` package in `generator.go` and has a
 // `Generator` object which implements the interface required here.
 //
-//   codegen.Run(
-//     &genapp.Generator{
-//       API: design.Design,
-//       Target: "app",
-//     },
-//     &genmain.Generator{
-//       API: design.Design,
-//     },
-//   )
-//
+//	codegen.Run(
+//	  &genapp.Generator{
+//	    API: design.Design,
+//	    Target: "app",
+//	  },
+//	  &genmain.Generator{
+//	    API: design.Design,
+//	  },
+//	)
 func Run(generators ...generator) {
 	for _, generator := range generators {
 		dslengine.PrintFilesOrFail(generator.Generate())

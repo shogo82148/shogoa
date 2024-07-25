@@ -7,12 +7,12 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/middleware"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/middleware"
 )
 
 var _ = Describe("Recover", func() {
-	var h goa.Handler
+	var h shogoa.Handler
 	var err error
 
 	JustBeforeEach(func() {

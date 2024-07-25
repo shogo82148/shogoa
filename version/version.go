@@ -2,9 +2,9 @@ package version
 
 const (
 	// Major version number
-	Major = 1
+	Major = 0
 	// Minor version number
-	Minor = 6
+	Minor = 0
 	// Build version number
-	Build = 2
+	Build = 0
 )

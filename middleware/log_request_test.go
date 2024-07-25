@@ -8,8 +8,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/middleware"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/middleware"
 )
 
 var _ = Describe("LogRequest", func() {
@@ -18,7 +18,7 @@ var _ = Describe("LogRequest", func() {
 	var req *http.Request
 	var params url.Values
 	var logger *testLogger
-	var service *goa.Service
+	var service *shogoa.Service
 
 	payload := map[string]interface{}{"payload": 42}
 
@@ -32,13 +32,13 @@ var _ = Describe("LogRequest", func() {
 		rw = new(testResponseWriter)
 		params = url.Values{"query": []string{"value"}}
 		ctrl := service.NewController("test")
-		ctx = goa.NewContext(ctrl.Context, rw, req, params)
-		goa.ContextRequest(ctx).Payload = payload
+		ctx = shogoa.NewContext(ctrl.Context, rw, req, params)
+		shogoa.ContextRequest(ctx).Payload = payload
 	})
 
 	It("logs requests", func() {
 		// Add Action name to the context to make sure we log it properly.
-		ctx = goa.WithAction(ctx, "goo")
+		ctx = shogoa.WithAction(ctx, "goo")
 
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			return service.Send(ctx, 200, "ok")
@@ -77,7 +77,7 @@ var _ = Describe("LogRequest", func() {
 
 	It("logs error codes", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			return goa.MissingParamError("foo")
+			return shogoa.MissingParamError("foo")
 		}
 		rw.ParentHeader = make(http.Header)
 		lg := middleware.LogRequest(false)(middleware.ErrorHandler(service, false)(h))
@@ -105,7 +105,7 @@ var _ = Describe("LogRequest", func() {
 
 	It("hides secret headers", func() {
 		// Add Action name to the context to make sure we log it properly.
-		ctx = goa.WithAction(ctx, "goo")
+		ctx = shogoa.WithAction(ctx, "goo")
 
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			return service.Send(ctx, 200, "ok")

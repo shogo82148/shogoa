@@ -1,4 +1,4 @@
-package goa
+package shogoa
 
 import (
 	"bytes"
@@ -11,9 +11,9 @@ import (
 const ErrMissingLogValue = "MISSING"
 
 type (
-	// LogAdapter is the logger interface used by goa to log informational and error messages.
+	// LogAdapter is the logger interface used by shogoa to log informational and error messages.
 	// Adapters to different logging backends are provided in the logging sub-packages.
-	// goa takes care of initializing the logging context with the service, controller and
+	// shogoa takes care of initializing the logging context with the service, controller and
 	// action names.
 	LogAdapter interface {
 		// Info logs an informational message.
@@ -24,9 +24,9 @@ type (
 		New(keyvals ...interface{}) LogAdapter
 	}
 
-	// WarningLogAdapter is the logger interface used by goa to log informational, warning and error messages.
+	// WarningLogAdapter is the logger interface used by shogoa to log informational, warning and error messages.
 	// Adapters to different logging backends are provided in the logging sub-packages.
-	// goa takes care of initializing the logging context with the service, controller and
+	// shogoa takes care of initializing the logging context with the service, controller and
 	// action names.
 	WarningLogAdapter interface {
 		LogAdapter
@@ -34,7 +34,7 @@ type (
 		Warn(mgs string, keyvals ...interface{})
 	}
 
-	// ContextLogAdapter is the logger interface used by goa to log informational, warning and error messages.
+	// ContextLogAdapter is the logger interface used by shogoa to log informational, warning and error messages.
 	// It allows to pass a context.Context to the logger.
 	ContextLogAdapter interface {
 		WarningLogAdapter
@@ -54,7 +54,7 @@ type (
 	}
 )
 
-// NewLogger returns a goa log adapter backed by a log logger.
+// NewLogger returns a shogoa log adapter backed by a log logger.
 func NewLogger(logger *log.Logger) LogAdapter {
 	return &adapter{Logger: logger}
 }
@@ -123,7 +123,7 @@ func (a *adapter) logit(msg string, keyvals []interface{}, level string) {
 }
 
 // LogInfo extracts the logger from the given context and calls Info on it.
-// This is intended for code that needs portable logging such as the internal code of goa and
+// This is intended for code that needs portable logging such as the internal code of shogoa and
 // middleware. User code should use the log adapters instead.
 func LogInfo(ctx context.Context, msg string, keyvals ...interface{}) {
 	// This block should be synced with Service.LogInfo
@@ -138,7 +138,7 @@ func LogInfo(ctx context.Context, msg string, keyvals ...interface{}) {
 }
 
 // LogWarn extracts the logger from the given context and calls Warn on it.
-// This is intended for code that needs portable logging such as the internal code of goa and
+// This is intended for code that needs portable logging such as the internal code of shogoa and
 // middleware. User code should use the log adapters instead.
 func LogWarn(ctx context.Context, msg string, keyvals ...interface{}) {
 	if l := ctx.Value(logKey); l != nil {
@@ -154,7 +154,7 @@ func LogWarn(ctx context.Context, msg string, keyvals ...interface{}) {
 }
 
 // LogError extracts the logger from the given context and calls Error on it.
-// This is intended for code that needs portable logging such as the internal code of goa and
+// This is intended for code that needs portable logging such as the internal code of shogoa and
 // middleware. User code should use the log adapters instead.
 func LogError(ctx context.Context, msg string, keyvals ...interface{}) {
 	// this block should be synced with Service.LogError

@@ -2,14 +2,14 @@
 // +build go1.21
 
 /*
-Package goaslog contains an adapter that makes it possible to configure goa so it uses [log/slog]
+Package goaslog contains an adapter that makes it possible to configure shogoa so it uses [log/slog]
 as logger backend.
 Usage:
 
 	handler := slog.NewJSONHandler(os.Stderr, nil)
 	// Initialize logger handler using [log/slog] package
 	service.WithLogger(goaslog.New(handler))
-	// ... Proceed with configuring and starting the goa service
+	// ... Proceed with configuring and starting the shogoa service
 
 	// In handlers:
 	goaslog.Entry(ctx).Info("foo", "bar")
@@ -22,19 +22,19 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
-var _ goa.LogAdapter = (*adapter)(nil)
-var _ goa.ContextLogAdapter = (*adapter)(nil)
+var _ shogoa.LogAdapter = (*adapter)(nil)
+var _ shogoa.ContextLogAdapter = (*adapter)(nil)
 
-// adapter is the slog goa logger adapter.
+// adapter is the slog shogoa logger adapter.
 type adapter struct {
 	handler slog.Handler
 }
 
-// New wraps a [log/slog.Handler] into a goa logger.
-func New(handler slog.Handler) goa.LogAdapter {
+// New wraps a [log/slog.Handler] into a shogoa logger.
+func New(handler slog.Handler) shogoa.LogAdapter {
 	return &adapter{handler: handler}
 }
 
@@ -69,7 +69,7 @@ func (a *adapter) ErrorContext(ctx context.Context, msg string, data ...any) {
 }
 
 // New creates a new logger given a context.
-func (a *adapter) New(data ...any) goa.LogAdapter {
+func (a *adapter) New(data ...any) shogoa.LogAdapter {
 	r := slog.NewRecord(time.Now(), slog.LevelInfo, "", 0)
 	r.Add(data...)
 

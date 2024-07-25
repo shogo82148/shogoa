@@ -10,13 +10,13 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	genjs "github.com/shogo82148/goa-v1/goagen/gen_js"
-	"github.com/shogo82148/goa-v1/version"
+	"github.com/shogo82148/shogoa/design"
+	genjs "github.com/shogo82148/shogoa/goagen/gen_js"
+	"github.com/shogo82148/shogoa/version"
 )
 
 var _ = Describe("Generate", func() {
-	const testgenPackagePath = "github.com/shogo82148/goa-v1/goagen/gen_js/test_"
+	const testgenPackagePath = "github.com/shogo82148/shogoa/goagen/gen_js/test_"
 
 	var outDir string
 	var files []string

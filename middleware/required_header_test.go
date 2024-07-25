@@ -8,15 +8,15 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/middleware"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/middleware"
 )
 
 var _ = Describe("RequireHeader", func() {
 	var ctx context.Context
 	var req *http.Request
 	var rw http.ResponseWriter
-	var service *goa.Service
+	var service *shogoa.Service
 	headerName := "Some-Header"
 
 	BeforeEach(func() {
@@ -43,7 +43,7 @@ var _ = Describe("RequireHeader", func() {
 			http.StatusUnauthorized)(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		Ω(goa.ContextResponse(newCtx).Status).Should(Equal(http.StatusOK))
+		Ω(shogoa.ContextResponse(newCtx).Status).Should(Equal(http.StatusOK))
 	})
 
 	It("responds with failure on mismatch", func() {
@@ -59,7 +59,7 @@ var _ = Describe("RequireHeader", func() {
 			http.StatusUnauthorized)(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		Ω(goa.ContextResponse(ctx).Status).Should(Equal(http.StatusUnauthorized))
+		Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(http.StatusUnauthorized))
 	})
 
 	It("responds with failure when header is missing", func() {
@@ -74,7 +74,7 @@ var _ = Describe("RequireHeader", func() {
 			http.StatusUnauthorized)(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		Ω(goa.ContextResponse(ctx).Status).Should(Equal(http.StatusUnauthorized))
+		Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(http.StatusUnauthorized))
 	})
 
 	It("passes through for a non-matching path", func() {
@@ -92,7 +92,7 @@ var _ = Describe("RequireHeader", func() {
 			http.StatusUnauthorized)(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		Ω(goa.ContextResponse(newCtx).Status).Should(Equal(http.StatusOK))
+		Ω(shogoa.ContextResponse(newCtx).Status).Should(Equal(http.StatusOK))
 	})
 
 	It("matches value for a nil path pattern", func() {
@@ -108,6 +108,6 @@ var _ = Describe("RequireHeader", func() {
 			http.StatusNotFound)(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		Ω(goa.ContextResponse(ctx).Status).Should(Equal(http.StatusNotFound))
+		Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(http.StatusNotFound))
 	})
 })

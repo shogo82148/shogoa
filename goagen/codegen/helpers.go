@@ -9,8 +9,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/version"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/version"
 )
 
 // CheckVersion returns an error if the ver is empty, contains an incorrect value or
@@ -21,7 +21,7 @@ func CheckVersion(ver string) error {
 		return err
 	}
 	if !compat {
-		return fmt.Errorf("version mismatch: using goagen %s to generate code that compiles with goa %s",
+		return fmt.Errorf("version mismatch: using goagen %s to generate code that compiles with shogoa %s",
 			ver, version.String())
 	}
 	return nil

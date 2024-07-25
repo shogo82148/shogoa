@@ -6,9 +6,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
+	"github.com/shogo82148/shogoa/goagen/codegen"
 )
 
 var _ = Describe("validation code generation", func() {
@@ -338,88 +338,88 @@ var _ = Describe("validation code generation", func() {
 const (
 	enumValCode = `	if val != nil {
 		if !(*val == 1 || *val == 2 || *val == 3) {
-			err = goa.MergeErrors(err, goa.InvalidEnumValueError(` + "`context`" + `, *val, []interface{}{1, 2, 3}))
+			err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`context`" + `, *val, []interface{}{1, 2, 3}))
 		}
 	}`
 
 	patternValCode = `	if val != nil {
-		if ok := goa.ValidatePattern(` + "`.*`" + `, *val); !ok {
-			err = goa.MergeErrors(err, goa.InvalidPatternError(` + "`context`" + `, *val, ` + "`.*`" + `))
+		if ok := shogoa.ValidatePattern(` + "`.*`" + `, *val); !ok {
+			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`context`" + `, *val, ` + "`.*`" + `))
 		}
 	}`
 
 	minValCode = `	if val != nil {
 		if *val < 0 {
-			err = goa.MergeErrors(err, goa.InvalidRangeError(` + "`" + `context` + "`" + `, *val, 0, true))
+			err = shogoa.MergeErrors(err, shogoa.InvalidRangeError(` + "`" + `context` + "`" + `, *val, 0, true))
 		}
 	}`
 
 	maxValCode = `	if val != nil {
 		if *val > 9223372036854775807 {
-			err = goa.MergeErrors(err, goa.InvalidRangeError(` + "`" + `context` + "`" + `, *val, 9223372036854775807, false))
+			err = shogoa.MergeErrors(err, shogoa.InvalidRangeError(` + "`" + `context` + "`" + `, *val, 9223372036854775807, false))
 		}
 	}`
 
 	minminValCode = `	if val != nil {
 		if *val < -9223372036854775808 {
-			err = goa.MergeErrors(err, goa.InvalidRangeError(` + "`" + `context` + "`" + `, *val, -9223372036854775808, true))
+			err = shogoa.MergeErrors(err, shogoa.InvalidRangeError(` + "`" + `context` + "`" + `, *val, -9223372036854775808, true))
 		}
 	}`
 
 	arrayMinLengthValCode = `	if val != nil {
 		if len(val) < 1 {
-			err = goa.MergeErrors(err, goa.InvalidLengthError(` + "`" + `context` + "`" + `, val, len(val), 1, true))
+			err = shogoa.MergeErrors(err, shogoa.InvalidLengthError(` + "`" + `context` + "`" + `, val, len(val), 1, true))
 		}
 	}`
 
 	arrayElementsValCode = `	for _, e := range val {
-		if ok := goa.ValidatePattern(` + "`" + `.*` + "`" + `, e); !ok {
-			err = goa.MergeErrors(err, goa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, e, ` + "`" + `.*` + "`" + `))
+		if ok := shogoa.ValidatePattern(` + "`" + `.*` + "`" + `, e); !ok {
+			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, e, ` + "`" + `.*` + "`" + `))
 		}
 	}`
 
 	hashKeyElemValCode = `	for k, e := range val {
-		if ok := goa.ValidatePattern(` + "`" + `.*` + "`" + `, k); !ok {
-			err = goa.MergeErrors(err, goa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, k, ` + "`" + `.*` + "`" + `))
+		if ok := shogoa.ValidatePattern(` + "`" + `.*` + "`" + `, k); !ok {
+			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, k, ` + "`" + `.*` + "`" + `))
 		}
-		if ok := goa.ValidatePattern(` + "`" + `.*` + "`" + `, e); !ok {
-			err = goa.MergeErrors(err, goa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, e, ` + "`" + `.*` + "`" + `))
+		if ok := shogoa.ValidatePattern(` + "`" + `.*` + "`" + `, e); !ok {
+			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, e, ` + "`" + `.*` + "`" + `))
 		}
 	}`
 
 	hashKeyValCode = `	for k, _ := range val {
-		if ok := goa.ValidatePattern(` + "`" + `.*` + "`" + `, k); !ok {
-			err = goa.MergeErrors(err, goa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, k, ` + "`" + `.*` + "`" + `))
+		if ok := shogoa.ValidatePattern(` + "`" + `.*` + "`" + `, k); !ok {
+			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, k, ` + "`" + `.*` + "`" + `))
 		}
 	}`
 
 	hashElemValCode = `	for _, e := range val {
-		if ok := goa.ValidatePattern(` + "`" + `.*` + "`" + `, e); !ok {
-			err = goa.MergeErrors(err, goa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, e, ` + "`" + `.*` + "`" + `))
+		if ok := shogoa.ValidatePattern(` + "`" + `.*` + "`" + `, e); !ok {
+			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, e, ` + "`" + `.*` + "`" + `))
 		}
 	}`
 
 	stringMinLengthValCode = `	if val != nil {
 		if utf8.RuneCountInString(*val) < 2 {
-			err = goa.MergeErrors(err, goa.InvalidLengthError(` + "`" + `context` + "`" + `, *val, utf8.RuneCountInString(*val), 2, true))
+			err = shogoa.MergeErrors(err, shogoa.InvalidLengthError(` + "`" + `context` + "`" + `, *val, utf8.RuneCountInString(*val), 2, true))
 		}
 	}`
 
 	embeddedValCode = `	if val.Foo != nil {
 		if val.Foo.Bar != nil {
 			if !(*val.Foo.Bar == 1 || *val.Foo.Bar == 2 || *val.Foo.Bar == 3) {
-				err = goa.MergeErrors(err, goa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.Foo.Bar, []interface{}{1, 2, 3}))
+				err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.Foo.Bar, []interface{}{1, 2, 3}))
 			}
 		}
 	}`
 
 	embeddedRequiredValCode = `	if val.Foo == nil {
-		err = goa.MergeErrors(err, goa.MissingAttributeError(` + "`context`" + `, "foo"))
+		err = shogoa.MergeErrors(err, shogoa.MissingAttributeError(` + "`context`" + `, "foo"))
 	}
 	if val.Foo != nil {
 		if val.Foo.Bar != nil {
 			if !(*val.Foo.Bar == 1 || *val.Foo.Bar == 2 || *val.Foo.Bar == 3) {
-				err = goa.MergeErrors(err, goa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.Foo.Bar, []interface{}{1, 2, 3}))
+				err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.Foo.Bar, []interface{}{1, 2, 3}))
 			}
 		}
 	}`
@@ -427,7 +427,7 @@ const (
 	tagCode = `	if val.__tag__ != nil {
 		if val.__tag__.Bar != nil {
 			if !(*val.__tag__.Bar == 1 || *val.__tag__.Bar == 2 || *val.__tag__.Bar == 3) {
-				err = goa.MergeErrors(err, goa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.__tag__.Bar, []interface{}{1, 2, 3}))
+				err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.__tag__.Bar, []interface{}{1, 2, 3}))
 			}
 		}
 	}`
@@ -435,23 +435,23 @@ const (
 	tagChildCode = `	if val.Foo != nil {
 		if val.Foo.__tag__ != nil {
 			if !(*val.Foo.__tag__ == 1 || *val.Foo.__tag__ == 2 || *val.Foo.__tag__ == 3) {
-				err = goa.MergeErrors(err, goa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.Foo.__tag__, []interface{}{1, 2, 3}))
+				err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.Foo.__tag__, []interface{}{1, 2, 3}))
 			}
 		}
 	}`
 
 	utCode = `	if val.Foo == nil {
-		err = goa.MergeErrors(err, goa.MissingAttributeError(` + "`context`" + `, "foo"))
+		err = shogoa.MergeErrors(err, shogoa.MissingAttributeError(` + "`context`" + `, "foo"))
 	}
 	if val.Foo2 != nil {
 	if err2 := val.Foo2.Validate(); err2 != nil {
-		err = goa.MergeErrors(err, err2)
+		err = shogoa.MergeErrors(err, err2)
 	}
 	}`
 
 	utRequiredCode = `	if val.Foo2 != nil {
 	if err2 := val.Foo2.Validate(); err2 != nil {
-		err = goa.MergeErrors(err, err2)
+		err = shogoa.MergeErrors(err, err2)
 	}
 	}`
 )

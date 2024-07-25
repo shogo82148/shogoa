@@ -1,8 +1,8 @@
 package apidsl
 
 import (
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // Resource implements the resource definition dsl. There is one resource definition per resource
@@ -17,8 +17,8 @@ import (
 // The resource dsl can also specify a parent resource. Parent resources have two effects.
 // First, they set the prefix of all resource action paths to the parent resource href. Note that
 // actions can override the path using an absolute path (that is a path starting with "//").
-// Second, goa uses the parent resource href coupled with the resource BasePath if any to build
-// hrefs to the resource collection or resource collection items. By default goa uses the show
+// Second, shogoa uses the parent resource href coupled with the resource BasePath if any to build
+// hrefs to the resource collection or resource collection items. By default shogoa uses the show
 // action if present to compute a resource href (basically concatenating the parent resource href
 // with the base path and show action path). The resource definition may specify a canonical action
 // via CanonicalActionName to override that default. Here is an example of a resource definition:
@@ -31,7 +31,7 @@ import (
 //		CanonicalActionName("get")	// Name of action that returns canonical representation if not "show"
 //		UseTrait("Authenticated")	// Included trait if any, can appear more than once
 //
-//		Origin("http://swagger.goa.design", func() { // Define CORS policy, may be prefixed with "*" wildcard
+//		Origin("http://swagger.shogoa.design", func() { // Define CORS policy, may be prefixed with "*" wildcard
 //			Headers("X-Shared-Secret")           // One or more authorized headers, use "*" to authorize all
 //			Methods("GET", "POST")               // One or more authorized HTTP methods
 //			Expose("X-Time")                     // One or more headers exposed to clients
@@ -73,7 +73,7 @@ func Resource(name string, dsl func()) *design.ResourceDefinition {
 //	})
 //
 //	var _ = Resource("region", func() {
-//		DefaultMedia("vnd.goa.region")
+//		DefaultMedia("vnd.shogoa.region")
 //		// ...
 //	})
 //

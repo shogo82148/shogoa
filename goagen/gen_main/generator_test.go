@@ -7,13 +7,13 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	genmain "github.com/shogo82148/goa-v1/goagen/gen_main"
-	"github.com/shogo82148/goa-v1/version"
+	"github.com/shogo82148/shogoa/design"
+	genmain "github.com/shogo82148/shogoa/goagen/gen_main"
+	"github.com/shogo82148/shogoa/version"
 )
 
 var _ = Describe("Generate", func() {
-	const testgenPackagePath = "github.com/shogo82148/goa-v1/goagen/gen_main/goatest"
+	const testgenPackagePath = "github.com/shogo82148/shogoa/goagen/gen_main/goatest"
 
 	var outDir string
 	var files []string
@@ -35,7 +35,7 @@ var _ = Describe("Generate", func() {
 		os.RemoveAll(outDir)
 	})
 
-	// FIXME: @shogo82148 https://github.com/shogo82148/goa-v1/pull/1/checks?check_run_id=382586488#step:6:80
+	// FIXME: @shogo82148 https://github.com/shogo82148/shogoa/pull/1/checks?check_run_id=382586488#step:6:80
 	// Context("with a dummy API", func() {
 	// 	BeforeEach(func() {
 	// 		design.Design = &design.APIDefinition{

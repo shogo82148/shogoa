@@ -6,8 +6,8 @@ import (
 	"github.com/inconshreveable/log15"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
-	goalog15 "github.com/shogo82148/goa-v1/logging/log15"
+	"github.com/shogo82148/shogoa"
+	goalog15 "github.com/shogo82148/shogoa/logging/log15"
 )
 
 type TestHandler struct {
@@ -21,7 +21,7 @@ func (h *TestHandler) Log(r *log15.Record) error {
 
 var _ = Describe("New", func() {
 	var logger log15.Logger
-	var adapter goa.LogAdapter
+	var adapter shogoa.LogAdapter
 	var handler *TestHandler
 
 	BeforeEach(func() {
@@ -39,7 +39,7 @@ var _ = Describe("New", func() {
 	})
 
 	It("creates an adapter that logs", func() {
-		adapter := adapter.(goa.WarningLogAdapter)
+		adapter := adapter.(shogoa.WarningLogAdapter)
 		msg := "msg"
 		adapter.Warn(msg)
 		Ω(handler.records).Should(HaveLen(1))
@@ -57,7 +57,7 @@ var _ = Describe("New", func() {
 		var ctx context.Context
 
 		BeforeEach(func() {
-			ctx = goa.WithLogger(context.Background(), adapter)
+			ctx = shogoa.WithLogger(context.Background(), adapter)
 		})
 
 		It("extracts the logger", func() {

@@ -11,8 +11,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
-	gzm "github.com/shogo82148/goa-v1/middleware/gzip"
+	"github.com/shogo82148/shogoa"
+	gzm "github.com/shogo82148/shogoa/middleware/gzip"
 )
 
 type TestResponseWriter struct {
@@ -48,13 +48,13 @@ var _ = Describe("Gzip", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = &TestResponseWriter{ParentHeader: make(http.Header)}
 
-		ctx = goa.NewContext(req.Context(), rw, req, nil)
-		goa.ContextRequest(ctx).Payload = payload
+		ctx = shogoa.NewContext(req.Context(), rw, req, nil)
+		shogoa.ContextRequest(ctx).Payload = payload
 	})
 
 	It("encodes response using gzip", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
 			resp.Write([]byte("gzip me!"))
 			return nil
@@ -62,7 +62,7 @@ var _ = Describe("Gzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
 
@@ -77,7 +77,7 @@ var _ = Describe("Gzip", func() {
 
 	It("encodes response using gzip (custom status)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusBadRequest)
 			resp.Write([]byte("gzip me!"))
 			return nil
@@ -85,7 +85,7 @@ var _ = Describe("Gzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.AddStatusCodes(http.StatusBadRequest))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusBadRequest))
 		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
 
@@ -99,7 +99,7 @@ var _ = Describe("Gzip", func() {
 
 	It("encodes response using gzip (all status)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusBadRequest)
 			resp.Write([]byte("gzip me!"))
 			return nil
@@ -107,7 +107,7 @@ var _ = Describe("Gzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.OnlyStatusCodes())(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusBadRequest))
 		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
 
@@ -121,7 +121,7 @@ var _ = Describe("Gzip", func() {
 
 	It("encodes response using gzip (custom type)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.Header().Add("Content-Type", "custom/type")
 			resp.WriteHeader(http.StatusOK)
 			resp.Write([]byte("gzip me!"))
@@ -130,7 +130,7 @@ var _ = Describe("Gzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.AddContentTypes("custom/type"))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
 
@@ -144,7 +144,7 @@ var _ = Describe("Gzip", func() {
 
 	It("encodes response using gzip (length check)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
 			// Use multiple writes.
 			for i := 0; i < 128; i++ {
@@ -158,7 +158,7 @@ var _ = Describe("Gzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(512))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
 
@@ -172,7 +172,7 @@ var _ = Describe("Gzip", func() {
 
 	It("removes Accept-Ranges header", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.Header().Add("Accept-Ranges", "some value")
 			resp.WriteHeader(http.StatusOK)
 			// Use multiple writes.
@@ -187,7 +187,7 @@ var _ = Describe("Gzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(512))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
 		Ω(resp.Header().Get("Accept-Ranges")).Should(Equal(""))
@@ -202,7 +202,7 @@ var _ = Describe("Gzip", func() {
 
 	It("should preserve status code", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusConflict)
 			// Use multiple writes.
 			for i := 0; i < 128; i++ {
@@ -216,7 +216,7 @@ var _ = Describe("Gzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(512), gzm.AddStatusCodes(http.StatusConflict))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusConflict))
 		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
 		Ω(resp.Header().Get("Accept-Ranges")).Should(Equal(""))
@@ -244,13 +244,13 @@ var _ = Describe("NotGzip", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = &TestResponseWriter{ParentHeader: make(http.Header)}
 
-		ctx = goa.NewContext(req.Context(), rw, req, nil)
-		goa.ContextRequest(ctx).Payload = payload
+		ctx = shogoa.NewContext(req.Context(), rw, req, nil)
+		shogoa.ContextRequest(ctx).Payload = payload
 	})
 
 	It("does not encode response (already gzipped)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.Header().Set("Content-Type", "gzip")
 			resp.WriteHeader(http.StatusOK)
 			resp.Write([]byte("gzip data"))
@@ -259,7 +259,7 @@ var _ = Describe("NotGzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 
@@ -271,7 +271,7 @@ var _ = Describe("NotGzip", func() {
 
 	It("does not encode response (too small)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
 			resp.Write([]byte("gzip me!"))
 			return nil
@@ -279,7 +279,7 @@ var _ = Describe("NotGzip", func() {
 		t := gzm.Middleware(gzip.BestCompression)(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 
@@ -293,7 +293,7 @@ var _ = Describe("NotGzip", func() {
 
 	It("does not encode response (wrong status code)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusBadRequest)
 			resp.Write([]byte("gzip me!"))
 			return nil
@@ -301,7 +301,7 @@ var _ = Describe("NotGzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusBadRequest))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 
@@ -313,7 +313,7 @@ var _ = Describe("NotGzip", func() {
 
 	It("does not encode response (removed status code)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
 			resp.Write([]byte("gzip me!"))
 			return nil
@@ -321,7 +321,7 @@ var _ = Describe("NotGzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.OnlyStatusCodes(http.StatusBadRequest))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 
@@ -333,7 +333,7 @@ var _ = Describe("NotGzip", func() {
 
 	It("does not encode response (unknown content type)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.Header().Add("Content-Type", "unknown/contenttype")
 			resp.WriteHeader(http.StatusOK)
 			resp.Write([]byte("gzip me!"))
@@ -342,7 +342,7 @@ var _ = Describe("NotGzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 
@@ -354,7 +354,7 @@ var _ = Describe("NotGzip", func() {
 
 	It("does not encode response (removed type)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
 			resp.Write([]byte("gzip me!"))
 			return nil
@@ -362,7 +362,7 @@ var _ = Describe("NotGzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.OnlyContentTypes("some/type"))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 
@@ -374,7 +374,7 @@ var _ = Describe("NotGzip", func() {
 
 	It("does not encode response (has Range header)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
 			resp.Write([]byte("gzip me!"))
 			return nil
@@ -382,7 +382,7 @@ var _ = Describe("NotGzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.IgnoreRange(false))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 
@@ -394,7 +394,7 @@ var _ = Describe("NotGzip", func() {
 
 	It("should preserve status code", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusConflict)
 			resp.Write([]byte("gzip me!"))
 			return nil
@@ -402,7 +402,7 @@ var _ = Describe("NotGzip", func() {
 		t := gzm.Middleware(gzip.BestCompression)(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusConflict))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 
@@ -414,14 +414,14 @@ var _ = Describe("NotGzip", func() {
 
 	It("should preserve status code with no body", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusConflict)
 			return nil
 		}
 		t := gzm.Middleware(gzip.BestCompression)(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusConflict))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 
@@ -433,14 +433,14 @@ var _ = Describe("NotGzip", func() {
 
 	It("should default to OK with no code set", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.Write([]byte("gzip me!"))
 			return nil
 		}
 		t := gzm.Middleware(gzip.BestCompression)(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 
@@ -465,13 +465,13 @@ var _ = Describe("NotGzip", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = &TestResponseWriter{ParentHeader: make(http.Header)}
 
-		ctx = goa.NewContext(req.Context(), rw, req, nil)
-		goa.ContextRequest(ctx).Payload = payload
+		ctx = shogoa.NewContext(req.Context(), rw, req, nil)
+		shogoa.ContextRequest(ctx).Payload = payload
 	})
 
 	It("does not encode response (wrong accept-encoding)", func() {
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
 			resp.Write([]byte("gzip me!"))
 			return nil
@@ -479,7 +479,7 @@ var _ = Describe("NotGzip", func() {
 		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0))(h)
 		err := t(ctx, rw, req)
 		Ω(err).ShouldNot(HaveOccurred())
-		resp := goa.ContextResponse(ctx)
+		resp := shogoa.ContextResponse(ctx)
 		Ω(resp.Status).Should(Equal(http.StatusOK))
 		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
 

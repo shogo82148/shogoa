@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 const (
@@ -44,15 +44,15 @@ func init() {
 
 // RequestIDWithHeader behaves like the middleware RequestID, but it takes the request id header
 // as the (first) argument.
-func RequestIDWithHeader(requestIDHeader string) goa.Middleware {
+func RequestIDWithHeader(requestIDHeader string) shogoa.Middleware {
 	return RequestIDWithHeaderAndLengthLimit(requestIDHeader, DefaultRequestIDLengthLimit)
 }
 
 // RequestIDWithHeaderAndLengthLimit behaves like the middleware RequestID, but it takes the
 // request id header as the (first) argument and a length limit for truncation of the request
 // header value if it exceeds a reasonable length. The limit can be negative for unlimited.
-func RequestIDWithHeaderAndLengthLimit(requestIDHeader string, lengthLimit int) goa.Middleware {
-	return func(h goa.Handler) goa.Handler {
+func RequestIDWithHeaderAndLengthLimit(requestIDHeader string, lengthLimit int) shogoa.Middleware {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			id := req.Header.Get(requestIDHeader)
 			if id == "" {
@@ -70,7 +70,7 @@ func RequestIDWithHeaderAndLengthLimit(requestIDHeader string, lengthLimit int) 
 // RequestID is a middleware that injects a request ID into the context of each request.
 // Retrieve it using ctx.Value(ReqIDKey). If the incoming request has a RequestIDHeader header then
 // that value is used else a random value is generated.
-func RequestID() goa.Middleware {
+func RequestID() shogoa.Middleware {
 	return RequestIDWithHeader(RequestIDHeader)
 }
 

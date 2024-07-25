@@ -5,10 +5,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
-	gencontroller "github.com/shogo82148/goa-v1/goagen/gen_controller"
-	"github.com/shogo82148/goa-v1/version"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/goagen/codegen"
+	gencontroller "github.com/shogo82148/shogoa/goagen/gen_controller"
+	"github.com/shogo82148/shogoa/version"
 )
 
 var _ = Describe("Generate", func() {

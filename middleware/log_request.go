@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 // LogRequest creates a request logger middleware.
 // This middleware is aware of the RequestID middleware and if registered after it leverages the
 // request ID for logging.
 // If verbose is true then the middleware logs the request and response bodies.
-func LogRequest(verbose bool, sensitiveHeaders ...string) goa.Middleware {
+func LogRequest(verbose bool, sensitiveHeaders ...string) shogoa.Middleware {
 	var suppressed map[string]struct{}
 	if len(sensitiveHeaders) > 0 {
 		suppressed = make(map[string]struct{}, len(sensitiveHeaders))
@@ -27,17 +27,17 @@ func LogRequest(verbose bool, sensitiveHeaders ...string) goa.Middleware {
 		}
 	}
 
-	return func(h goa.Handler) goa.Handler {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			reqID := ctx.Value(reqIDKey)
 			if reqID == nil {
 				reqID = shortID()
 			}
-			ctx = goa.WithLogContext(ctx, "req_id", reqID)
+			ctx = shogoa.WithLogContext(ctx, "req_id", reqID)
 			startedAt := time.Now()
-			r := goa.ContextRequest(ctx)
-			goa.LogInfo(ctx, "started", r.Method, r.URL.String(), "from", from(req),
-				"ctrl", goa.ContextController(ctx), "action", goa.ContextAction(ctx))
+			r := shogoa.ContextRequest(ctx)
+			shogoa.LogInfo(ctx, "started", r.Method, r.URL.String(), "from", from(req),
+				"ctrl", shogoa.ContextController(ctx), "action", shogoa.ContextAction(ctx))
 			if verbose {
 				if len(r.Header) > 0 {
 					logCtx := make([]interface{}, 2*len(r.Header))
@@ -59,7 +59,7 @@ func LogRequest(verbose bool, sensitiveHeaders ...string) goa.Middleware {
 						}
 						i = i + 2
 					}
-					goa.LogInfo(ctx, "headers", logCtx...)
+					shogoa.LogInfo(ctx, "headers", logCtx...)
 				}
 				if len(r.Params) > 0 {
 					logCtx := make([]interface{}, 2*len(r.Params))
@@ -69,7 +69,7 @@ func LogRequest(verbose bool, sensitiveHeaders ...string) goa.Middleware {
 						logCtx[i+1] = interface{}(strings.Join(v, ", "))
 						i = i + 2
 					}
-					goa.LogInfo(ctx, "params", logCtx...)
+					shogoa.LogInfo(ctx, "params", logCtx...)
 				}
 				if r.ContentLength > 0 {
 					if mp, ok := r.Payload.(map[string]interface{}); ok {
@@ -80,27 +80,27 @@ func LogRequest(verbose bool, sensitiveHeaders ...string) goa.Middleware {
 							logCtx[i+1] = interface{}(v)
 							i = i + 2
 						}
-						goa.LogInfo(ctx, "payload", logCtx...)
+						shogoa.LogInfo(ctx, "payload", logCtx...)
 					} else {
 						// Not the most efficient but this is used for debugging
 						js, err := json.Marshal(r.Payload)
 						if err != nil {
 							js = []byte("<invalid JSON>")
 						}
-						goa.LogInfo(ctx, "payload", "raw", string(js))
+						shogoa.LogInfo(ctx, "payload", "raw", string(js))
 					}
 				}
 			}
 			err := h(ctx, rw, req)
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 			if code := resp.ErrorCode; code != "" {
-				goa.LogInfo(ctx, "completed", "status", resp.Status, "error", code,
+				shogoa.LogInfo(ctx, "completed", "status", resp.Status, "error", code,
 					"bytes", resp.Length, "time", time.Since(startedAt).String(),
-					"ctrl", goa.ContextController(ctx), "action", goa.ContextAction(ctx))
+					"ctrl", shogoa.ContextController(ctx), "action", shogoa.ContextAction(ctx))
 			} else {
-				goa.LogInfo(ctx, "completed", "status", resp.Status,
+				shogoa.LogInfo(ctx, "completed", "status", resp.Status,
 					"bytes", resp.Length, "time", time.Since(startedAt).String(),
-					"ctrl", goa.ContextController(ctx), "action", goa.ContextAction(ctx))
+					"ctrl", shogoa.ContextController(ctx), "action", shogoa.ContextAction(ctx))
 			}
 			return err
 		}

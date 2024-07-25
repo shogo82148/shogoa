@@ -17,7 +17,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/shogo82148/goa-v1/version"
+	"github.com/shogo82148/shogoa/version"
 	"golang.org/x/tools/go/ast/astutil"
 )
 

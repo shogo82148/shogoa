@@ -3,9 +3,9 @@ package apidsl_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/design/apidsl"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/design/apidsl"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 var _ = Describe("Response", func() {
@@ -177,7 +177,7 @@ var _ = Describe("Response", func() {
 		})
 	})
 
-	Context("not from the goa default definitions", func() {
+	Context("not from the shogoa default definitions", func() {
 		BeforeEach(func() {
 			name = "foo"
 		})
@@ -187,7 +187,7 @@ var _ = Describe("Response", func() {
 		})
 	})
 
-	Context("from the goa default definitions", func() {
+	Context("from the shogoa default definitions", func() {
 		BeforeEach(func() {
 			name = "Created"
 		})

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 // These compression constants are copied from the compress/gzip package.
@@ -247,7 +247,7 @@ func IgnoreRange(b bool) Option {
 // Middleware encodes the response using Gzip encoding and sets all the
 // appropriate headers. If the Content-Type is not set, it will be set by
 // calling http.DetectContentType on the data being written.
-func Middleware(level int, o ...Option) goa.Middleware {
+func Middleware(level int, o ...Option) shogoa.Middleware {
 	opts := options{
 		ignoreRange:  true,
 		minSize:      256,
@@ -272,7 +272,7 @@ func Middleware(level int, o ...Option) goa.Middleware {
 			return gz
 		},
 	}
-	return func(h goa.Handler) goa.Handler {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (err error) {
 			// Skip compression if the client doesn't accept gzip encoding, is
 			// requesting a WebSocket or the data is already compressed.
@@ -284,7 +284,7 @@ func Middleware(level int, o ...Option) goa.Middleware {
 			}
 
 			// Set the appropriate gzip headers.
-			resp := goa.ContextResponse(ctx)
+			resp := shogoa.ContextResponse(ctx)
 
 			// Get the original http.ResponseWriter
 			w := resp.SwitchWriter(nil)

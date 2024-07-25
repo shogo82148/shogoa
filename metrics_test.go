@@ -1,4 +1,4 @@
-package goa_test
+package shogoa_test
 
 import (
 	"time"
@@ -7,16 +7,16 @@ import (
 	. "github.com/onsi/gomega"
 
 	metrics "github.com/armon/go-metrics"
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 var _ = Describe("Metrics", func() {
 	var keys = [6]string{}
 	var metriks *metrics.Metrics
-	var sink *goa.NoOpSink
+	var sink *shogoa.NoOpSink
 
 	BeforeEach(func() {
-		sink = &goa.NoOpSink{}
+		sink = &shogoa.NoOpSink{}
 
 		var err error
 		metriks, err = metrics.New(metrics.DefaultConfig("UnitTest Service"), sink)
@@ -38,8 +38,8 @@ var _ = Describe("Metrics", func() {
 	Describe("Add sample", func() {
 		Context("With invalid characters in key", func() {
 			It("should replace invalid characters with normalized characters", func() {
-				goa.SetMetrics(metriks)
-				goa.AddSample(keys[:], 3.14)
+				shogoa.SetMetrics(metriks)
+				shogoa.AddSample(keys[:], 3.14)
 				Ω(keys).Should(ConsistOf([]string{
 					"foo_bar_all",
 					"foo___baz",
@@ -55,8 +55,8 @@ var _ = Describe("Metrics", func() {
 	Describe("Emit key", func() {
 		Context("With invalid characters in key", func() {
 			It("should replace invalid characters with normalized characters", func() {
-				goa.SetMetrics(metriks)
-				goa.EmitKey(keys[:], 3.14)
+				shogoa.SetMetrics(metriks)
+				shogoa.EmitKey(keys[:], 3.14)
 				Ω(keys).Should(ConsistOf([]string{
 					"foo_bar_all",
 					"foo___baz",
@@ -72,8 +72,8 @@ var _ = Describe("Metrics", func() {
 	Describe("Increment Counter", func() {
 		Context("With invalid characters in key", func() {
 			It("should replace invalid characters with normalized characters", func() {
-				goa.SetMetrics(metriks)
-				goa.IncrCounter(keys[:], 3.14)
+				shogoa.SetMetrics(metriks)
+				shogoa.IncrCounter(keys[:], 3.14)
 				Ω(keys).Should(ConsistOf([]string{
 					"foo_bar_all",
 					"foo___baz",
@@ -89,8 +89,8 @@ var _ = Describe("Metrics", func() {
 	Describe("Measure since", func() {
 		Context("With invalid characters in key", func() {
 			It("should replace invalid characters with normalized characters", func() {
-				goa.SetMetrics(metriks)
-				goa.MeasureSince(keys[:], time.Time{})
+				shogoa.SetMetrics(metriks)
+				shogoa.MeasureSince(keys[:], time.Time{})
 				Ω(keys).Should(ConsistOf([]string{
 					"foo_bar_all",
 					"foo___baz",
@@ -106,8 +106,8 @@ var _ = Describe("Metrics", func() {
 	Describe("Set gauge", func() {
 		Context("With invalid characters in key", func() {
 			It("should replace invalid characters with normalized characters", func() {
-				goa.SetMetrics(metriks)
-				goa.SetGauge(keys[:], 3.14)
+				shogoa.SetMetrics(metriks)
+				shogoa.SetGauge(keys[:], 3.14)
 				Ω(keys).Should(ConsistOf([]string{
 					"foo_bar_all",
 					"foo___baz",

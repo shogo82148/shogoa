@@ -5,8 +5,8 @@ import (
 	"log"
 	"testing"
 
-	"github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/middleware"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/middleware"
 )
 
 // TInterface is an interface for Go's testing.T and testing.B.
@@ -23,17 +23,17 @@ func (r ResponseSetterFunc) Encode(v interface{}) error {
 	return nil
 }
 
-// Service provide a general goa.Service used for testing purposes
-func Service(logBuf io.Writer, respSetter ResponseSetterFunc) *goa.Service {
-	s := goa.New("test")
+// Service provide a general shogoa.Service used for testing purposes
+func Service(logBuf io.Writer, respSetter ResponseSetterFunc) *shogoa.Service {
+	s := shogoa.New("test")
 	logger := log.New(logBuf, "", log.Ltime)
-	s.WithLogger(goa.NewLogger(logger))
+	s.WithLogger(shogoa.NewLogger(logger))
 	s.Use(middleware.LogRequest(true))
 	s.Use(middleware.LogResponse())
-	newEncoder := func(io.Writer) goa.Encoder {
+	newEncoder := func(io.Writer) shogoa.Encoder {
 		return respSetter
 	}
-	s.Decoder.Register(goa.NewJSONDecoder, "*/*")
+	s.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
 	s.Encoder.Register(newEncoder, "*/*")
 	return s
 }

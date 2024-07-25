@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/goagen/codegen"
 )
 
 func (g *Generator) generateMain(mainFile string, clientPkg, cliPkg string, funcs template.FuncMap) (err error) {
@@ -35,8 +35,8 @@ func (g *Generator) generateMain(mainFile string, clientPkg, cliPkg string, func
 		codegen.SimpleImport(clientPkg),
 		codegen.SimpleImport(cliPkg),
 		codegen.SimpleImport("github.com/spf13/cobra"),
-		codegen.NewImport("goaclient", "github.com/shogo82148/goa-v1/client"),
-		codegen.NewImport("uuid", "github.com/shogo82148/goa-v1/uuid"),
+		codegen.NewImport("goaclient", "github.com/shogo82148/shogoa/client"),
+		codegen.NewImport("uuid", "github.com/shogo82148/shogoa/uuid"),
 	}
 	if err = file.WriteHeader("", "main", imports); err != nil {
 		return err
@@ -135,15 +135,15 @@ func (g *Generator) generateCommands(commandsFile string, clientPkg string, func
 		codegen.SimpleImport("strings"),
 		codegen.SimpleImport("strconv"),
 		codegen.SimpleImport("time"),
-		codegen.NewImport("goa", "github.com/shogo82148/goa-v1"),
+		codegen.NewImport("shogoa", "github.com/shogo82148/shogoa"),
 		codegen.SimpleImport("github.com/spf13/cobra"),
 		codegen.SimpleImport(clientPkg),
 		codegen.SimpleImport("context"),
 		codegen.SimpleImport("golang.org/x/net/websocket"),
-		codegen.NewImport("uuid", "github.com/shogo82148/goa-v1/uuid"),
+		codegen.NewImport("uuid", "github.com/shogo82148/shogoa/uuid"),
 	}
 	if len(g.API.Resources) > 0 {
-		imports = append(imports, codegen.NewImport("goaclient", "github.com/shogo82148/goa-v1/client"))
+		imports = append(imports, codegen.NewImport("goaclient", "github.com/shogo82148/shogoa/client"))
 	}
 	title := fmt.Sprintf("%s: CLI Commands", g.API.Context())
 	if err = file.WriteHeader(title, "cli", imports); err != nil {
@@ -402,12 +402,13 @@ type specialTypeResult struct {
 // custom conversion from String Flags to Rich objects in Client action
 //
 // tmp, err := uuidVal(cmd.X)
-// if err != nil {
-//        goa.LogError(ctx, "argument parse failed", "err", err)
-//        return err
-// }
-// resp, err := c.ShowX(ctx, path, tmp)
 //
+//	if err != nil {
+//	       shogoa.LogError(ctx, "argument parse failed", "err", err)
+//	       return err
+//	}
+//
+// resp, err := c.ShowX(ctx, path, tmp)
 func handleSpecialTypes(atts ...*design.AttributeDefinition) specialTypeResult {
 	result := specialTypeResult{}
 	for _, att := range atts {
@@ -474,14 +475,14 @@ func handleSpecialTypes(atts ...*design.AttributeDefinition) specialTypeResult {
 		var err error
 		%s, err = %s(%s)
 		if err != nil {
-			goa.LogError(ctx, "failed to parse flag into %s value", "flag", "--%s", "err", err)
+			shogoa.LogError(ctx, "failed to parse flag into %s value", "flag", "--%s", "err", err)
 			return err
 		}
 	}`, tmpVar, typ, field, nilVal, tmpVar, typeHandler, field, typ, n)
 				if att.IsRequired(n) {
 					result.Output += fmt.Sprintf(`
 	if %s == nil {
-		goa.LogError(ctx, "required flag is missing", "flag", "--%s")
+		shogoa.LogError(ctx, "required flag is missing", "flag", "--%s")
 		return fmt.Errorf("required flag %s is missing")
 	}`, tmpVar, n, n)
 				}
@@ -731,12 +732,12 @@ func (cmd *{{ $cmdName }}) Run(c *{{ .Package }}.Client, args []string) error {
 {{ $default := defaultPath .Action }}{{ if $default }}	path = "{{ $default }}"
 {{ else }}{{ $pparams := defaultRouteParams .Action }}	path = fmt.Sprintf({{ printf "%q" (defaultRouteTemplate .Action)}}, {{ joinRouteParams .Action $pparams }})
 {{ end }}	}
-	logger := goa.NewLogger(log.New(os.Stderr, "", log.LstdFlags))
-	ctx := goa.WithLogger(context.Background(), logger){{ $specialTypeResult := handleSpecialTypes .Action.QueryParams .Action.Headers }}{{ $specialTypeResult.Output }}
+	logger := shogoa.NewLogger(log.New(os.Stderr, "", log.LstdFlags))
+	ctx := shogoa.WithLogger(context.Background(), logger){{ $specialTypeResult := handleSpecialTypes .Action.QueryParams .Action.Headers }}{{ $specialTypeResult.Output }}
 	ws, err := c.{{ goify (printf "%s%s" .Action.Name (title .Resource.Name)) true }}(ctx, path{{/*
 	*/}}{{ $params := joinNames true .Action.QueryParams .Action.Headers }}{{ if $params }}, {{ format $params $specialTypeResult.Temps }}{{ end }})
 	if err != nil {
-		goa.LogError(ctx, "failed", "err", err)
+		shogoa.LogError(ctx, "failed", "err", err)
 		return err
 	}
 	go goaclient.WSWrite(ws)
@@ -755,8 +756,8 @@ func (cmd *DownloadCommand) Run(c *{{ .Package }}.Client, args []string) error {
 
 		rpath = args[0]
 		outfile = cmd.OutFile
-		logger = goa.NewLogger(log.New(os.Stderr, "", log.LstdFlags))
-		ctx = goa.WithLogger(context.Background(), logger)
+		logger = shogoa.NewLogger(log.New(os.Stderr, "", log.LstdFlags))
+		ctx = shogoa.WithLogger(context.Background(), logger)
 		err error
 	)
 
@@ -780,14 +781,14 @@ func (cmd *DownloadCommand) Run(c *{{ .Package }}.Client, args []string) error {
 	}
 {{ end }}{{ end }}	return fmt.Errorf("don't know how to download %s", rpath)
 found:
-	ctx = goa.WithLogContext(ctx, "file", outfile)
+	ctx = shogoa.WithLogContext(ctx, "file", outfile)
 	if fnf != nil {
 		_, err = fnf(ctx, outfile)
 	} else {
 		_, err = fnd(ctx, rpath, outfile)
 	}
 	if err != nil {
-		goa.LogError(ctx, "failed", "err", err)
+		shogoa.LogError(ctx, "failed", "err", err)
 		return err
 	}
 
@@ -830,14 +831,14 @@ func (cmd *{{ $cmdName }}) Run(c *{{ .Package }}.Client, args []string) error {
 {{ else }}			return fmt.Errorf("failed to deserialize payload: %s", err)
 {{ end }}		}
 	}
-{{ end }}	logger := goa.NewLogger(log.New(os.Stderr, "", log.LstdFlags))
-	ctx := goa.WithLogger(context.Background(), logger){{ $specialTypeResult := handleSpecialTypes .Action.QueryParams .Action.Headers }}{{ $specialTypeResult.Output }}
+{{ end }}	logger := shogoa.NewLogger(log.New(os.Stderr, "", log.LstdFlags))
+	ctx := shogoa.WithLogger(context.Background(), logger){{ $specialTypeResult := handleSpecialTypes .Action.QueryParams .Action.Headers }}{{ $specialTypeResult.Output }}
 	resp, err := c.{{ goify (printf "%s%s" .Action.Name (title .Resource.Name)) true }}(ctx, path{{ if .Action.Payload }}, {{/*
 	*/}}{{ if or .Action.Payload.Type.IsObject .Action.Payload.IsPrimitive }}&{{ end }}payload{{ else }}{{ end }}{{/*
 	*/}}{{ $params := joinNames true .Action.QueryParams .Action.Headers }}{{ if $params }}, {{ format $params $specialTypeResult.Temps }}{{ end }}{{/*
 	*/}}{{ if and .Action.Payload .HasMultiContent }}, cmd.ContentType{{ end }})
 	if err != nil {
-		goa.LogError(ctx, "failed", "err", err)
+		shogoa.LogError(ctx, "failed", "err", err)
 		return err
 	}
 

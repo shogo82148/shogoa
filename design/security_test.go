@@ -5,7 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
+	"github.com/shogo82148/shogoa/design"
 )
 
 var _ = Describe("SecuritySchemeDefinition", func() {

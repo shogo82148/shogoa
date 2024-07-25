@@ -1,8 +1,8 @@
 package apidsl
 
 import (
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // Type implements the type definition dsl. A type definition describes a data structure consisting
@@ -120,20 +120,19 @@ func ArrayOf(v interface{}, dsl ...func()) *design.Array {
 // HashOf accepts optional DSLs as third and fourth argument which allows
 // providing validations for the keys and values of the hash respectively:
 //
-//	var RatedBottles = HashOf(String, Bottle, func() {
-//          Pattern("[a-zA-Z]+") // Validate bottle names
-//      })
+//		var RatedBottles = HashOf(String, Bottle, func() {
+//	         Pattern("[a-zA-Z]+") // Validate bottle names
+//	     })
 //
-//      func ValidateKey() {
-//          Pattern("^foo")
-//      }
+//	     func ValidateKey() {
+//	         Pattern("^foo")
+//	     }
 //
-//      func TypeValue() {
-//          Metadata("struct:field:type", "json.RawMessage", "encoding/json")
-//      }
+//	     func TypeValue() {
+//	         Metadata("struct:field:type", "json.RawMessage", "encoding/json")
+//	     }
 //
-//	var Mappings = HashOf(String, String, ValidateKey, TypeValue)
-//
+//		var Mappings = HashOf(String, String, ValidateKey, TypeValue)
 func HashOf(k, v interface{}, dsls ...func()) *design.Hash {
 	tk := resolveType(k)
 	tv := resolveType(v)

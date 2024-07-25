@@ -5,8 +5,8 @@ import (
 	"mime"
 	"strings"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // Counter used to create unique media type names for identifier-less media types.
@@ -34,34 +34,34 @@ var mediaTypeCount int
 // special "link" view. Media types that are linked to must define that view. Here is an example
 // showing all the possible media type sub-definitions:
 //
-//    MediaType("application/vnd.goa.example.bottle", func() {
-//        Description("A bottle of wine")
-//        TypeName("BottleMedia")         // Override default generated name
-//        ContentType("application/json") // Override default Content-Type header value
-//        Attributes(func() {
-//            Attribute("id", Integer, "ID of bottle")
-//            Attribute("href", String, "API href of bottle")
-//            Attribute("account", Account, "Owner account")
-//            Attribute("origin", Origin, "Details on wine origin")
-//            Links(func() {
-//                Link("account")         // Defines link to Account media type
-//                Link("origin", "tiny")  // Set view used to render link if not "link"
-//            })
-//            Required("id", "href")
-//        })
-//        View("default", func() {
-//            Attribute("id")
-//            Attribute("href")
-//            Attribute("links")          // Renders links
-//        })
-//        View("extended", func() {
-//            Attribute("id")
-//            Attribute("href")
-//            Attribute("account")        // Renders account inline
-//            Attribute("origin")         // Renders origin inline
-//            Attribute("links")          // Renders links
-//        })
-//     })
+//	MediaType("application/vnd.shogoa.example.bottle", func() {
+//	    Description("A bottle of wine")
+//	    TypeName("BottleMedia")         // Override default generated name
+//	    ContentType("application/json") // Override default Content-Type header value
+//	    Attributes(func() {
+//	        Attribute("id", Integer, "ID of bottle")
+//	        Attribute("href", String, "API href of bottle")
+//	        Attribute("account", Account, "Owner account")
+//	        Attribute("origin", Origin, "Details on wine origin")
+//	        Links(func() {
+//	            Link("account")         // Defines link to Account media type
+//	            Link("origin", "tiny")  // Set view used to render link if not "link"
+//	        })
+//	        Required("id", "href")
+//	    })
+//	    View("default", func() {
+//	        Attribute("id")
+//	        Attribute("href")
+//	        Attribute("links")          // Renders links
+//	    })
+//	    View("extended", func() {
+//	        Attribute("id")
+//	        Attribute("href")
+//	        Attribute("account")        // Renders account inline
+//	        Attribute("origin")         // Renders origin inline
+//	        Attribute("links")          // Renders links
+//	    })
+//	 })
 //
 // This function returns the media type definition so it can be referred to throughout the apidsl.
 func MediaType(identifier string, apidsl func()) *design.MediaTypeDefinition {
@@ -167,7 +167,7 @@ func Media(val interface{}, viewName ...string) {
 //
 // Declaring the following media type:
 //
-//	var BottleMedia = MediaType("vnd.goa.bottle", func() {
+//	var BottleMedia = MediaType("vnd.shogoa.bottle", func() {
 //		Reference(Bottle)
 //		Attributes(func() {
 //			Attribute("id", Integer)
@@ -207,8 +207,7 @@ func TypeName(name string) {
 // ContentType sets the value of the Content-Type response header. By default the ID of the media
 // type is used.
 //
-//    ContentType("application/json")
-//
+//	ContentType("application/json")
 func ContentType(typ string) {
 	if mt, ok := mediaTypeDefinition(); ok {
 		mt.ContentType = typ
@@ -369,20 +368,20 @@ func Link(name string, view ...string) {
 //
 // Examples:
 //
-//   // Define a collection media type using the default generated identifier
-//   // (e.g. "vnd.goa.bottle; type=collection" assuming the identifier of BottleMedia
-//   // is "vnd.goa.bottle") and the default views (i.e. inherited from the BottleMedia
-//   // views).
-//   var col = CollectionOf(BottleMedia)
+//	// Define a collection media type using the default generated identifier
+//	// (e.g. "vnd.shogoa.bottle; type=collection" assuming the identifier of BottleMedia
+//	// is "vnd.shogoa.bottle") and the default views (i.e. inherited from the BottleMedia
+//	// views).
+//	var col = CollectionOf(BottleMedia)
 //
-//   // Another collection media type using the same element media type but defining a
-//   // different default view.
-//   var col2 = CollectionOf(BottleMedia, "vnd.goa.bottle.alternate; type=collection;", func() {
-//       View("default", func() {
-//           Attribute("id")
-//           Attribute("name")
-//       })
-//   })
+//	// Another collection media type using the same element media type but defining a
+//	// different default view.
+//	var col2 = CollectionOf(BottleMedia, "vnd.shogoa.bottle.alternate; type=collection;", func() {
+//	    View("default", func() {
+//	        Attribute("id")
+//	        Attribute("name")
+//	    })
+//	})
 func CollectionOf(v interface{}, paramAndDSL ...interface{}) *design.MediaTypeDefinition {
 	var m *design.MediaTypeDefinition
 	var ok bool

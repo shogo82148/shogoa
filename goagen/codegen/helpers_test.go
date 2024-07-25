@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/shogo82148/goa-v1/goagen/codegen"
+	"github.com/shogo82148/shogoa/goagen/codegen"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

@@ -1,4 +1,4 @@
-package goa_test
+package shogoa_test
 
 import (
 	"context"
@@ -7,23 +7,23 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 var _ = Describe("NewMiddleware", func() {
 	var input interface{}
-	var middleware goa.Middleware
+	var middleware shogoa.Middleware
 	var mErr error
 
 	JustBeforeEach(func() {
-		middleware, mErr = goa.NewMiddleware(input)
+		middleware, mErr = shogoa.NewMiddleware(input)
 	})
 
-	Context("using a goa Middleware", func() {
-		var goaMiddleware goa.Middleware
+	Context("using a shogoa Middleware", func() {
+		var goaMiddleware shogoa.Middleware
 
 		BeforeEach(func() {
-			goaMiddleware = func(h goa.Handler) goa.Handler { return h }
+			goaMiddleware = func(h shogoa.Handler) shogoa.Handler { return h }
 			input = goaMiddleware
 		})
 
@@ -33,40 +33,40 @@ var _ = Describe("NewMiddleware", func() {
 		})
 	})
 
-	Context("using a goa middleware func", func() {
-		var goaMiddlewareFunc func(goa.Handler) goa.Handler
+	Context("using a shogoa middleware func", func() {
+		var goaMiddlewareFunc func(shogoa.Handler) shogoa.Handler
 
 		BeforeEach(func() {
-			goaMiddlewareFunc = func(h goa.Handler) goa.Handler { return h }
+			goaMiddlewareFunc = func(h shogoa.Handler) shogoa.Handler { return h }
 			input = goaMiddlewareFunc
 		})
 
 		It("returns the middleware", func() {
-			Ω(fmt.Sprintf("%#v", middleware)).Should(Equal(fmt.Sprintf("%#v", goa.Middleware(goaMiddlewareFunc))))
+			Ω(fmt.Sprintf("%#v", middleware)).Should(Equal(fmt.Sprintf("%#v", shogoa.Middleware(goaMiddlewareFunc))))
 			Ω(mErr).ShouldNot(HaveOccurred())
 		})
 	})
 
 	Context("with a context", func() {
-		var service *goa.Service
+		var service *shogoa.Service
 		var req *http.Request
 		var rw http.ResponseWriter
 		var ctx context.Context
 
 		BeforeEach(func() {
-			service = goa.New("test")
+			service = shogoa.New("test")
 			ctrl := service.NewController("foo")
 			var err error
 			req, err = http.NewRequest("GET", "/goo", nil)
 			Ω(err).ShouldNot(HaveOccurred())
 			rw = new(TestResponseWriter)
-			ctx = goa.NewContext(ctrl.Context, rw, req, nil)
-			Ω(goa.ContextResponse(ctx).Status).Should(Equal(0))
+			ctx = shogoa.NewContext(ctrl.Context, rw, req, nil)
+			Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(0))
 		})
 
-		Context("using a goa handler", func() {
+		Context("using a shogoa handler", func() {
 			BeforeEach(func() {
-				var goaHandler goa.Handler = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+				var goaHandler shogoa.Handler = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 					service.Send(ctx, 200, "ok")
 					return nil
 				}
@@ -77,11 +77,11 @@ var _ = Describe("NewMiddleware", func() {
 				Ω(mErr).ShouldNot(HaveOccurred())
 				h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error { return nil }
 				Ω(middleware(h)(ctx, rw, req)).ShouldNot(HaveOccurred())
-				Ω(goa.ContextResponse(ctx).Status).Should(Equal(200))
+				Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(200))
 			})
 		})
 
-		Context("using a goa handler func", func() {
+		Context("using a shogoa handler func", func() {
 			BeforeEach(func() {
 				input = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 					service.Send(ctx, 200, "ok")
@@ -93,7 +93,7 @@ var _ = Describe("NewMiddleware", func() {
 				Ω(mErr).ShouldNot(HaveOccurred())
 				h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error { return nil }
 				Ω(middleware(h)(ctx, rw, req)).ShouldNot(HaveOccurred())
-				Ω(goa.ContextResponse(ctx).Status).Should(Equal(200))
+				Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(200))
 			})
 		})
 
@@ -109,7 +109,7 @@ var _ = Describe("NewMiddleware", func() {
 					return nil
 				}
 				Ω(middleware(h)(ctx, rw, req)).ShouldNot(HaveOccurred())
-				Ω(goa.ContextResponse(ctx).Status).Should(Equal(200))
+				Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(200))
 			})
 		})
 

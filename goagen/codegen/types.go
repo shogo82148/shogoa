@@ -8,8 +8,8 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // TransformMapKey is the name of the metadata used to specify the key for mapping fields when
@@ -53,7 +53,8 @@ func init() {
 // line is never indented.
 // jsonTags controls whether to produce json tags.
 // private controls whether the field is a pointer or not. All fields in the struct are
-//   pointers for a private struct.
+//
+//	pointers for a private struct.
 func GoTypeDef(ds design.DataStructure, tabs int, jsonTags, private bool) string {
 	def := ds.Definition()
 	if tname, ok := def.Metadata["struct:field:type"]; ok {
@@ -88,7 +89,7 @@ func GoTypeDef(ds design.DataStructure, tabs int, jsonTags, private bool) string
 	case *design.MediaTypeDefinition:
 		return GoTypeName(actual, actual.AllRequired(), tabs, private)
 	default:
-		panic("goa bug: unknown data structure type")
+		panic("shogoa bug: unknown data structure type")
 	}
 }
 
@@ -210,7 +211,7 @@ func GoTypeName(t design.DataType, required []string, tabs int, private bool) st
 		}
 		return Goify(actual.TypeName, !private)
 	default:
-		panic(fmt.Sprintf("goa bug: unknown type %#v", actual))
+		panic(fmt.Sprintf("shogoa bug: unknown type %#v", actual))
 	}
 }
 
@@ -236,7 +237,7 @@ func GoNativeType(t design.DataType) string {
 		case design.FileKind:
 			return "multipart.FileHeader"
 		default:
-			panic(fmt.Sprintf("goa bug: unknown primitive type %#v", actual))
+			panic(fmt.Sprintf("shogoa bug: unknown primitive type %#v", actual))
 		}
 	case *design.Array:
 		return "[]" + GoNativeType(actual.ElemType.Type)
@@ -249,7 +250,7 @@ func GoNativeType(t design.DataType) string {
 	case *design.UserTypeDefinition:
 		return GoNativeType(actual.Type)
 	default:
-		panic(fmt.Sprintf("goa bug: unknown type %#v", actual))
+		panic(fmt.Sprintf("shogoa bug: unknown type %#v", actual))
 	}
 }
 
@@ -473,7 +474,7 @@ var Reserved = map[string]bool{
 	"type":        true,
 	"var":         true,
 
-	// stdlib and goa packages used by generated code
+	// stdlib and shogoa packages used by generated code
 	"fmt":  true,
 	"http": true,
 	"json": true,

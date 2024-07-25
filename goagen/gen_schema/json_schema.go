@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/shogo82148/goa-v1/design"
+	"github.com/shogo82148/shogoa/design"
 )
 
 type (

@@ -3,9 +3,9 @@ package codegen_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
+	"github.com/shogo82148/shogoa/goagen/codegen"
 )
 
 var _ = Describe("Struct finalize code generation", func() {
@@ -169,7 +169,7 @@ var _ = Describe("Struct finalize code generation", func() {
 					"foo": &design.AttributeDefinition{
 						Type: design.String,
 						Metadata: dslengine.MetadataDefinition{
-							"struct:field:type": []string{"UserDefinitionType", "github.com/shogo82148/goa-v1/goagen/codegen_test"},
+							"struct:field:type": []string{"UserDefinitionType", "github.com/shogo82148/shogoa/goagen/codegen_test"},
 						},
 						DefaultValue: UserDefinitionType("bar"),
 					},

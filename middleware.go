@@ -1,4 +1,4 @@
-package goa
+package shogoa
 
 import (
 	"context"
@@ -7,16 +7,16 @@ import (
 )
 
 type (
-	// Middleware represents the canonical goa middleware signature.
+	// Middleware represents the canonical shogoa middleware signature.
 	Middleware func(Handler) Handler
 )
 
 // NewMiddleware creates a middleware from the given argument. The allowed types for the
 // argument are:
 //
-// - a goa middleware: goa.Middleware or func(goa.Handler) goa.Handler
+// - a shogoa middleware: shogoa.Middleware or func(shogoa.Handler) shogoa.Handler
 //
-// - a goa handler: goa.Handler or func(context.Context, http.ResponseWriter, *http.Request) error
+// - a shogoa handler: shogoa.Handler or func(context.Context, http.ResponseWriter, *http.Request) error
 //
 // - an http middleware: func(http.Handler) http.Handler
 //

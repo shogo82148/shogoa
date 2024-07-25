@@ -1,8 +1,8 @@
 package genclient_test
 
-// FIXME: @shogo82148 https://github.com/shogo82148/goa-v1/pull/1/checks?check_run_id=382590498
+// FIXME: @shogo82148 https://github.com/shogo82148/shogoa/pull/1/checks?check_run_id=382590498
 // var _ = Describe("Generate", func() {
-// 	var testgenPackagePath = filepath.FromSlash("github.com/shogo82148/goa-v1/goagen/gen_client/test_")
+// 	var testgenPackagePath = filepath.FromSlash("github.com/shogo82148/shogoa/goagen/gen_client/test_")
 
 // 	var outDir string
 // 	var files []string

@@ -10,7 +10,7 @@ import (
 	"net/http/httputil"
 	"time"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 type (
@@ -19,7 +19,7 @@ type (
 		Do(context.Context, *http.Request) (*http.Response, error)
 	}
 
-	// Client is the common client data structure for all goa service clients.
+	// Client is the common client data structure for all shogoa service clients.
 	Client struct {
 		// Doer is the underlying http client.
 		Doer
@@ -71,16 +71,16 @@ func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, err
 	}
 	startedAt := time.Now()
 	ctx, id := ContextWithRequestID(ctx)
-	goa.LogInfo(ctx, "started", "id", id, req.Method, req.URL.String())
+	shogoa.LogInfo(ctx, "started", "id", id, req.Method, req.URL.String())
 	if c.Dump {
 		c.dumpRequest(ctx, req)
 	}
 	resp, err := c.Doer.Do(ctx, req)
 	if err != nil {
-		goa.LogError(ctx, "failed", "err", err)
+		shogoa.LogError(ctx, "failed", "err", err)
 		return nil, err
 	}
-	goa.LogInfo(ctx, "completed", "id", id, "status", resp.StatusCode, "time", time.Since(startedAt).String())
+	shogoa.LogInfo(ctx, "completed", "id", id, "status", resp.StatusCode, "time", time.Since(startedAt).String())
 	if c.Dump {
 		c.dumpResponse(ctx, resp)
 	}
@@ -91,20 +91,20 @@ func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, err
 func (c *Client) dumpRequest(ctx context.Context, req *http.Request) {
 	reqBody, err := dumpReqBody(req)
 	if err != nil {
-		goa.LogError(ctx, "Failed to load request body for dump", "err", err.Error())
+		shogoa.LogError(ctx, "Failed to load request body for dump", "err", err.Error())
 	}
-	goa.LogInfo(ctx, "request headers", headersToSlice(req.Header)...)
+	shogoa.LogInfo(ctx, "request headers", headersToSlice(req.Header)...)
 	if reqBody != nil {
-		goa.LogInfo(ctx, "request", "body", string(reqBody))
+		shogoa.LogInfo(ctx, "request", "body", string(reqBody))
 	}
 }
 
 // dumpResponse dumps the response and the request.
 func (c *Client) dumpResponse(ctx context.Context, resp *http.Response) {
 	respBody, _ := dumpRespBody(resp)
-	goa.LogInfo(ctx, "response headers", headersToSlice(resp.Header)...)
+	shogoa.LogInfo(ctx, "response headers", headersToSlice(resp.Header)...)
 	if respBody != nil {
-		goa.LogInfo(ctx, "response", "body", string(respBody))
+		shogoa.LogInfo(ctx, "response", "body", string(respBody))
 	}
 }
 
