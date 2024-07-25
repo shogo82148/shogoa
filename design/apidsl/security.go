@@ -1,8 +1,8 @@
 package apidsl
 
 import (
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // Security defines an authentication requirements to access a goa Action.  When defined on a
@@ -13,12 +13,11 @@ import (
 // APIKeySecurity or JWTSecurity.  It can be a string, corresponding to the first parameter of
 // those definitions, or a SecuritySchemeDefinition, returned by those same functions. Examples:
 //
-//    Security(BasicAuth)
+//	Security(BasicAuth)
 //
-//    Security("oauth2", func() {
-//        Scope("api:read")  // Requires "api:read" oauth2 scope
-//    })
-//
+//	Security("oauth2", func() {
+//	    Scope("api:read")  // Requires "api:read" oauth2 scope
+//	})
 func Security(scheme interface{}, dsl ...func()) {
 	var def *design.SecurityDefinition
 	switch val := scheme.(type) {
@@ -87,10 +86,9 @@ func NoSecurity() {
 //
 // Example:
 //
-//     BasicAuthSecurity("password", func() {
-//         Description("Use your own password!")
-//     })
-//
+//	BasicAuthSecurity("password", func() {
+//	    Description("Use your own password!")
+//	})
 func BasicAuthSecurity(name string, dsl ...func()) *design.SecuritySchemeDefinition {
 	switch dslengine.CurrentDefinition().(type) {
 	case *design.APIDefinition, *dslengine.TopLevelDefinition:
@@ -132,11 +130,10 @@ func securitySchemeRedefined(name string) bool {
 //
 // Example:
 //
-//     APIKeySecurity("key", func() {
-//          Description("Shared secret")
-//          Header("Authorization")
-//    })
-//
+//	 APIKeySecurity("key", func() {
+//	      Description("Shared secret")
+//	      Header("Authorization")
+//	})
 func APIKeySecurity(name string, dsl ...func()) *design.SecuritySchemeDefinition {
 	switch dslengine.CurrentDefinition().(type) {
 	case *design.APIDefinition, *dslengine.TopLevelDefinition:
@@ -177,16 +174,15 @@ func APIKeySecurity(name string, dsl ...func()) *design.SecuritySchemeDefinition
 //
 // Example:
 //
-//    OAuth2Security("googAuth", func() {
-//        AccessCodeFlow("/authorization", "/token")
-//     // ImplicitFlow("/authorization")
-//     // PasswordFlow("/token"...)
-//     // ApplicationFlow("/token")
+//	OAuth2Security("googAuth", func() {
+//	    AccessCodeFlow("/authorization", "/token")
+//	 // ImplicitFlow("/authorization")
+//	 // PasswordFlow("/token"...)
+//	 // ApplicationFlow("/token")
 //
-//        Scope("my_system:write", "Write to the system")
-//        Scope("my_system:read", "Read anything in there")
-//    })
-//
+//	    Scope("my_system:write", "Write to the system")
+//	    Scope("my_system:read", "Read anything in there")
+//	})
 func OAuth2Security(name string, dsl ...func()) *design.SecuritySchemeDefinition {
 	switch dslengine.CurrentDefinition().(type) {
 	case *design.APIDefinition, *dslengine.TopLevelDefinition:
@@ -222,13 +218,12 @@ func OAuth2Security(name string, dsl ...func()) *design.SecuritySchemeDefinition
 //
 // Example:
 //
-//    JWTSecurity("jwt", func() {
-//        Header("Authorization")
-//        TokenURL("https://example.com/token")
-//        Scope("my_system:write", "Write to the system")
-//        Scope("my_system:read", "Read anything in there")
-//    })
-//
+//	JWTSecurity("jwt", func() {
+//	    Header("Authorization")
+//	    TokenURL("https://example.com/token")
+//	    Scope("my_system:write", "Write to the system")
+//	    Scope("my_system:read", "Read anything in there")
+//	})
 func JWTSecurity(name string, dsl ...func()) *design.SecuritySchemeDefinition {
 	switch dslengine.CurrentDefinition().(type) {
 	case *design.APIDefinition, *dslengine.TopLevelDefinition:

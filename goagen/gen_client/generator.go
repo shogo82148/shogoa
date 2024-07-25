@@ -10,17 +10,17 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
-	genapp "github.com/shogo82148/goa-v1/goagen/gen_app"
-	"github.com/shogo82148/goa-v1/goagen/utils"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
+	"github.com/shogo82148/shogoa/goagen/codegen"
+	genapp "github.com/shogo82148/shogoa/goagen/gen_app"
+	"github.com/shogo82148/shogoa/goagen/utils"
 )
 
 // Filename used to generate all data types (without the ".go" extension)
 const typesFileName = "datatypes"
 
-//NewGenerator returns an initialized instance of a Go Client Generator
+// NewGenerator returns an initialized instance of a Go Client Generator
 func NewGenerator(options ...Option) *Generator {
 	g := &Generator{}
 
@@ -256,7 +256,7 @@ func (g *Generator) generateClient(clientFile string, clientPkg string, funcs te
 	}
 	var packagePaths []string
 	for packagePath := range im {
-		if packagePath != "github.com/shogo82148/goa-v1" {
+		if packagePath != "github.com/shogo82148/shogoa" {
 			packagePaths = append(packagePaths, packagePath)
 		}
 	}
@@ -265,9 +265,9 @@ func (g *Generator) generateClient(clientFile string, clientPkg string, funcs te
 	// Setup codegen
 	imports := []*codegen.ImportSpec{
 		codegen.SimpleImport("net/http"),
-		codegen.NewImport("goa", "github.com/shogo82148/goa-v1"),
-		codegen.NewImport("goaclient", "github.com/shogo82148/goa-v1/client"),
-		codegen.NewImport("uuid", "github.com/shogo82148/goa-v1/uuid"),
+		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
+		codegen.NewImport("goaclient", "github.com/shogo82148/shogoa/client"),
+		codegen.NewImport("uuid", "github.com/shogo82148/shogoa/uuid"),
 	}
 	for _, packagePath := range packagePaths {
 		imports = append(imports, codegen.SimpleImport(packagePath))
@@ -344,7 +344,7 @@ func (g *Generator) generateResourceClient(pkgDir string, res *design.ResourceDe
 		codegen.SimpleImport("time"),
 		codegen.SimpleImport("context"),
 		codegen.SimpleImport("golang.org/x/net/websocket"),
-		codegen.NewImport("uuid", "github.com/shogo82148/goa-v1/uuid"),
+		codegen.NewImport("uuid", "github.com/shogo82148/shogoa/uuid"),
 	}
 	title := fmt.Sprintf("%s: %s Resource Client", g.API.Context(), res.Name)
 	if err = file.WriteHeader(title, g.Target, imports); err != nil {
@@ -587,12 +587,12 @@ func (g *Generator) generateMediaTypes(pkgDir string, funcs template.FuncMap) (e
 	}()
 	title := fmt.Sprintf("%s: Application Media Types", g.API.Context())
 	imports := []*codegen.ImportSpec{
-		codegen.NewImport("goa", "github.com/shogo82148/goa-v1"),
+		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
 		codegen.SimpleImport("fmt"),
 		codegen.SimpleImport("net/http"),
 		codegen.SimpleImport("time"),
 		codegen.SimpleImport("unicode/utf8"),
-		codegen.NewImport("uuid", "github.com/shogo82148/goa-v1/uuid"),
+		codegen.NewImport("uuid", "github.com/shogo82148/shogoa/uuid"),
 	}
 	for _, v := range g.API.MediaTypes {
 		imports = codegen.AttributeImports(v.AttributeDefinition, imports, nil)
@@ -641,11 +641,11 @@ func (g *Generator) generateUserTypes(pkgDir string) (err error) {
 	}()
 	title := fmt.Sprintf("%s: Application User Types", g.API.Context())
 	imports := []*codegen.ImportSpec{
-		codegen.NewImport("goa", "github.com/shogo82148/goa-v1"),
+		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
 		codegen.SimpleImport("fmt"),
 		codegen.SimpleImport("time"),
 		codegen.SimpleImport("unicode/utf8"),
-		codegen.NewImport("uuid", "github.com/shogo82148/goa-v1/uuid"),
+		codegen.NewImport("uuid", "github.com/shogo82148/shogoa/uuid"),
 	}
 	for _, v := range g.API.Types {
 		imports = codegen.AttributeImports(v.AttributeDefinition, imports, nil)
@@ -728,7 +728,7 @@ func goTypeRefExt(t design.DataType, tabs int, pkg string) string {
 func decodeGoTypeRef(t design.DataType, required []string, tabs int, private bool) string {
 	mt, ok := t.(*design.MediaTypeDefinition)
 	if ok && mt.IsError() {
-		return "*goa.ErrorResponse"
+		return "*shogoa.ErrorResponse"
 	}
 	return codegen.GoTypeRef(t, required, tabs, private)
 }
@@ -737,7 +737,7 @@ func decodeGoTypeRef(t design.DataType, required []string, tabs int, private boo
 func decodeGoTypeName(t design.DataType, required []string, tabs int, private bool) string {
 	mt, ok := t.(*design.MediaTypeDefinition)
 	if ok && mt.IsError() {
-		return "goa.ErrorResponse"
+		return "shogoa.ErrorResponse"
 	}
 	return codegen.GoTypeName(t, required, tabs, private)
 }
@@ -1174,16 +1174,16 @@ func (c *Client) {{ $funcName }}(ctx context.Context, path string{{ if .Params }
 type Client struct {
 	*goaclient.Client{{range $security := .API.SecuritySchemes }}{{ $signer := signerType $security }}{{ if $signer }}
 	{{ goify $security.SchemeName true }}Signer goaclient.Signer{{ end }}{{ end }}
-	Encoder *goa.HTTPEncoder
-	Decoder *goa.HTTPDecoder
+	Encoder *shogoa.HTTPEncoder
+	Decoder *shogoa.HTTPDecoder
 }
 
 // New instantiates the client.
 func New(c goaclient.Doer) *Client {
 	client := &Client{
 		Client: goaclient.New(c),
-		Encoder: goa.NewHTTPEncoder(),
-		Decoder: goa.NewHTTPDecoder(),
+		Encoder: shogoa.NewHTTPEncoder(),
+		Decoder: shogoa.NewHTTPDecoder(),
 	}
 
 {{ if .Encoders }}	// Setup encoders and decoders

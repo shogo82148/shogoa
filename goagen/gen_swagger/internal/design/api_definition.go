@@ -1,8 +1,8 @@
 package design
 
 import (
-	. "github.com/shogo82148/goa-v1/design"
-	. "github.com/shogo82148/goa-v1/design/apidsl"
+	. "github.com/shogo82148/shogoa/design"
+	. "github.com/shogo82148/shogoa/design/apidsl"
 )
 
 // This is the cellar application API design used by goa to generate
@@ -12,22 +12,22 @@ var _ = API("cellar", func() {
 	Description("A basic example of a CRUD API implemented with goa")
 	Contact(func() {
 		Name("goa team")
-		Email("admin@goa.design")
-		URL("http://goa.design")
+		Email("admin@shogoa.design")
+		URL("http://shogoa.design")
 	})
 	License(func() {
 		Name("MIT")
-		URL("https://github.com/shogo82148/goa-v1/blob/master/LICENSE")
+		URL("https://github.com/shogo82148/shogoa/blob/master/LICENSE")
 	})
 	Docs(func() {
 		Description("goa guide")
-		URL("http://goa.design/getting-started.html")
+		URL("http://shogoa.design/getting-started.html")
 	})
 	Host("localhost:8081")
 	Scheme("http")
 	BasePath("/cellar")
 
-	Origin("http://swagger.goa.design", func() {
+	Origin("http://swagger.shogoa.design", func() {
 		Methods("GET", "POST", "PUT", "PATCH", "DELETE")
 		MaxAge(600)
 		Credentials()

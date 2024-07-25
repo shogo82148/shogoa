@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // Attribute can be used in: View, Type, Attribute, Attributes

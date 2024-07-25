@@ -1,8 +1,8 @@
 package apidsl
 
 import (
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // Resource implements the resource definition dsl. There is one resource definition per resource
@@ -31,7 +31,7 @@ import (
 //		CanonicalActionName("get")	// Name of action that returns canonical representation if not "show"
 //		UseTrait("Authenticated")	// Included trait if any, can appear more than once
 //
-//		Origin("http://swagger.goa.design", func() { // Define CORS policy, may be prefixed with "*" wildcard
+//		Origin("http://swagger.shogoa.design", func() { // Define CORS policy, may be prefixed with "*" wildcard
 //			Headers("X-Shared-Secret")           // One or more authorized headers, use "*" to authorize all
 //			Methods("GET", "POST")               // One or more authorized HTTP methods
 //			Expose("X-Time")                     // One or more headers exposed to clients
@@ -73,7 +73,7 @@ func Resource(name string, dsl func()) *design.ResourceDefinition {
 //	})
 //
 //	var _ = Resource("region", func() {
-//		DefaultMedia("vnd.goa.region")
+//		DefaultMedia("vnd.shogoa.region")
 //		// ...
 //	})
 //

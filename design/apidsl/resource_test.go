@@ -3,9 +3,9 @@ package apidsl_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/design/apidsl"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/design/apidsl"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 var _ = Describe("Resource", func() {
@@ -260,7 +260,7 @@ var _ = Describe("Resource", func() {
 
 	Context("with a valid media type", func() {
 		const typeName = "typeName"
-		const identifier = "application/vnd.raphael.goa.test"
+		const identifier = "application/vnd.raphael.shogoa.test"
 
 		var mediaType = &design.MediaTypeDefinition{
 			UserTypeDefinition: &design.UserTypeDefinition{
@@ -285,7 +285,7 @@ var _ = Describe("Resource", func() {
 
 	Context("with a valid media type using a modifier", func() {
 		const typeName = "typeName"
-		const identifier = "application/vnd.raphael.goa.test+json"
+		const identifier = "application/vnd.raphael.shogoa.test+json"
 
 		var mediaType = &design.MediaTypeDefinition{
 			UserTypeDefinition: &design.UserTypeDefinition{

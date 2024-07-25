@@ -15,12 +15,12 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
-	"github.com/shogo82148/goa-v1/goagen/utils"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/goagen/codegen"
+	"github.com/shogo82148/shogoa/goagen/utils"
 )
 
-//NewGenerator returns an initialized instance of a JavaScript Client Generator
+// NewGenerator returns an initialized instance of a JavaScript Client Generator
 func NewGenerator(options ...Option) *Generator {
 	g := &Generator{OutDir: "."}
 
@@ -168,7 +168,7 @@ func GenerateController(force, regen bool, appPkg, outDir, pkg, name string, r *
 
 	imports := []*codegen.ImportSpec{
 		codegen.SimpleImport("io"),
-		codegen.NewImport("goa", "github.com/shogo82148/goa-v1"),
+		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
 		codegen.SimpleImport(imp),
 		codegen.SimpleImport("golang.org/x/net/websocket"),
 	}
@@ -290,8 +290,8 @@ func (g *Generator) createMainFile(mainFile string, funcs template.FuncMap) (err
 	appPkg := path.Join(outPkg, "app")
 	imports := []*codegen.ImportSpec{
 		codegen.SimpleImport("time"),
-		codegen.NewImport("goa", "github.com/shogo82148/goa-v1"),
-		codegen.SimpleImport("github.com/shogo82148/goa-v1/middleware"),
+		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
+		codegen.SimpleImport("github.com/shogo82148/shogoa/middleware"),
 		codegen.SimpleImport(appPkg),
 	}
 	file.Write([]byte("//go:generate goagen bootstrap -d " + g.DesignPkg + "\n\n"))
@@ -344,7 +344,7 @@ func okResp(a *design.ActionDefinition, appPkg string) map[string]interface{} {
 	}
 	var typeref string
 	if pmt.IsError() {
-		typeref = `goa.ErrInternal("not implemented")`
+		typeref = `shogoa.ErrInternal("not implemented")`
 	} else {
 		name := codegen.GoTypeRef(pmt, pmt.AllRequired(), 1, false)
 		var pointer string
@@ -395,11 +395,11 @@ const defaultActionBody = `// Put your logic here`
 
 const ctrlT = `// {{ $ctrlName := printf "%s%s" (goify .Name true) "Controller" }}{{ $ctrlName }} implements the {{ .Name }} resource.
 type {{ $ctrlName }} struct {
-	*goa.Controller
+	*shogoa.Controller
 }
 
 // New{{ $ctrlName }} creates a {{ .Name }} controller.
-func New{{ $ctrlName }}(service *goa.Service) *{{ $ctrlName }} {
+func New{{ $ctrlName }}(service *shogoa.Service) *{{ $ctrlName }} {
 	return &{{ $ctrlName }}{Controller: service.NewController("{{ $ctrlName }}")}
 }
 `
@@ -446,7 +446,7 @@ func (c *{{ $ctrlName }}) {{ goify .Name true }}WSHandler(ctx *{{ targetPkg }}.{
 const mainT = `
 func main() {
 	// Create service
-	service := goa.New({{ printf "%q" .Name }})
+	service := shogoa.New({{ printf "%q" .Name }})
 
 	// Mount middleware
 	service.Use(middleware.RequestID())

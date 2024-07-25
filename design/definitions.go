@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/dimfeld/httppath"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 type (
@@ -173,7 +173,7 @@ type (
 		// PackagePath is the path to the Go package that implements the encoder/decoder.
 		// The package must expose a `EncoderFactory` or `DecoderFactory` function
 		// that the generated code calls. The methods must return objects that implement
-		// the goa.EncoderFactory or goa.DecoderFactory interface respectively.
+		// the shogoa.EncoderFactory or shogoa.DecoderFactory interface respectively.
 		PackagePath string
 		// Function is the name of the Go function used to instantiate the encoder/decoder.
 		// Defaults to NewEncoder and NewDecoder respectively.

@@ -8,8 +8,8 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // TransformMapKey is the name of the metadata used to specify the key for mapping fields when
@@ -53,7 +53,8 @@ func init() {
 // line is never indented.
 // jsonTags controls whether to produce json tags.
 // private controls whether the field is a pointer or not. All fields in the struct are
-//   pointers for a private struct.
+//
+//	pointers for a private struct.
 func GoTypeDef(ds design.DataStructure, tabs int, jsonTags, private bool) string {
 	def := ds.Definition()
 	if tname, ok := def.Metadata["struct:field:type"]; ok {

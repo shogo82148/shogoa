@@ -1,4 +1,4 @@
-package goa
+package shogoa
 
 import (
 	"context"
@@ -14,9 +14,9 @@ type (
 // NewMiddleware creates a middleware from the given argument. The allowed types for the
 // argument are:
 //
-// - a goa middleware: goa.Middleware or func(goa.Handler) goa.Handler
+// - a goa middleware: shogoa.Middleware or func(shogoa.Handler) shogoa.Handler
 //
-// - a goa handler: goa.Handler or func(context.Context, http.ResponseWriter, *http.Request) error
+// - a goa handler: shogoa.Handler or func(context.Context, http.ResponseWriter, *http.Request) error
 //
 // - an http middleware: func(http.Handler) http.Handler
 //

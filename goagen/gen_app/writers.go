@@ -9,8 +9,8 @@ import (
 
 	"sort"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/goagen/codegen"
 )
 
 // WildcardRegex is the regex used to capture path parameters.
@@ -506,8 +506,8 @@ const (
 	ctxT = `// {{ .Name }} provides the {{ .ResourceName }} {{ .ActionName }} action context.
 type {{ .Name }} struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 {{ if .Headers }}{{ range $name, $att := .Headers.Type.ToObject }}{{ if not ($.HasParamAndHeader $name) }}{{/*
 */}}	{{ goifyatt $att $name true }} {{ if and $att.Type.IsPrimitive ($.Headers.IsPrimitivePointer $name) }}*{{ end }}{{ gotyperef .Type nil 0 false }}
 {{ end }}{{ end }}{{ end }}{{ if .Params }}{{ range $name, $att := .Params.Type.ToObject }}{{/*
@@ -526,7 +526,7 @@ type {{ .Name }} struct {
 {{ if .Pointer }}{{ tabs .Depth }}	{{ $varName }} := &{{ .VarName }}
 {{ end }}{{ tabs .Depth }}	{{ .Pkg }} = {{ $varName }}
 {{ tabs .Depth }}} else {
-{{ tabs .Depth }}	err = goa.MergeErrors(err, goa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "boolean"))
+{{ tabs .Depth }}	err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "boolean"))
 {{ tabs .Depth }}}
 {{ else if eq .Attribute.Type.Kind 2 }}{{/*
 
@@ -538,7 +538,7 @@ type {{ .Name }} struct {
 {{ tabs .Depth }}	{{ .Pkg }} = {{ $tmp }}
 {{ else }}{{ tabs .Depth }}	{{ .Pkg }} = {{ .VarName }}
 {{ end }}{{ tabs .Depth }}} else {
-{{ tabs .Depth }}	err = goa.MergeErrors(err, goa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "integer"))
+{{ tabs .Depth }}	err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "integer"))
 {{ tabs .Depth }}}
 {{ else if eq .Attribute.Type.Kind 3 }}{{/*
 
@@ -548,7 +548,7 @@ type {{ .Name }} struct {
 {{ if .Pointer }}{{ tabs .Depth }}	{{ $varName }} := &{{ .VarName }}
 {{ end }}{{ tabs .Depth }}	{{ .Pkg }} = {{ $varName }}
 {{ tabs .Depth }}} else {
-{{ tabs .Depth }}	err = goa.MergeErrors(err, goa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "number"))
+{{ tabs .Depth }}	err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "number"))
 {{ tabs .Depth }}}
 {{ else if eq .Attribute.Type.Kind 4 }}{{/*
 
@@ -562,7 +562,7 @@ type {{ .Name }} struct {
 {{ if .Pointer }}{{ tabs .Depth }}	{{ $varName }} := &{{ .VarName }}
 {{ end }}{{ tabs .Depth }}	{{ .Pkg }} = {{ $varName }}
 {{ tabs .Depth }}} else {
-{{ tabs .Depth }}	err = goa.MergeErrors(err, goa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "datetime"))
+{{ tabs .Depth }}	err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "datetime"))
 {{ tabs .Depth }}}
 {{ else if eq .Attribute.Type.Kind 6 }}{{/*
 
@@ -572,7 +572,7 @@ type {{ .Name }} struct {
 {{ if .Pointer }}{{ tabs .Depth }}	{{ $varName }} := &{{ .VarName }}
 {{ end }}{{ tabs .Depth }}	{{ .Pkg }} = {{ $varName }}
 {{ tabs .Depth }}} else {
-{{ tabs .Depth }}	err = goa.MergeErrors(err, goa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "uuid"))
+{{ tabs .Depth }}	err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "uuid"))
 {{ tabs .Depth }}}
 {{ else if eq .Attribute.Type.Kind 7 }}{{/*
 
@@ -589,7 +589,7 @@ type {{ .Name }} struct {
 {{ if eq (arrayAttribute .Attribute).Type.Kind 4 }}{{ tabs .Depth}}	tmp := raw{{ goifyatt .Attribute .Name true }}[i]{{ else }}{{/*
 */}}{{ tabs .Depth }}	tmp, err2 := {{ fromString (arrayAttribute .Attribute) (printf "raw%s[i]" (goifyatt .Attribute .Name true)) }}
 {{ tabs .Depth }}	if err2 != nil {
-{{ tabs .Depth }}		err = goa.MergeErrors(err, goa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "{{ valueTypeOf "" .Attribute }}"))
+{{ tabs .Depth }}		err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("{{ .Name }}", raw{{ goifyatt .Attribute .Name true }}, "{{ valueTypeOf "" .Attribute }}"))
 {{ tabs .Depth }}		break
 {{ tabs .Depth }}	}{{ end }}
 {{ tabs .Depth}}	tmp{{ goifyatt .Attribute .Name true }}[i] = tmp
@@ -602,7 +602,7 @@ type {{ .Name }} struct {
 */}}{{ tabs .Depth }}if err2 == nil {
 {{ tabs .Depth }}	{{ .Pkg }} = {{ printf "raw%s" (goifyatt .Attribute .Name true) }}
 {{ tabs .Depth }}} else if !errors.Is(err2, http.ErrMissingFile) {
-{{ tabs .Depth }}	err = goa.MergeErrors(err, goa.InvalidParamTypeError("{{ .Name }}", "{{ .Name }}", "file"))
+{{ tabs .Depth }}	err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("{{ .Name }}", "{{ .Name }}", "file"))
 {{ tabs .Depth }}}
 {{ end }}`
 
@@ -611,17 +611,17 @@ type {{ .Name }} struct {
 	ctxNewT = `{{ define "Coerce" }}` + coerceT + `{{ end }}` + `
 // New{{ goify .Name true }} parses the incoming request URL and body, performs validations and creates the
 // context used by the {{ .ResourceName }} controller {{ .ActionName }} action.
-func New{{ .Name }}(ctx context.Context, r *http.Request, service *goa.Service) (*{{ .Name }}, error) {
+func New{{ .Name }}(ctx context.Context, r *http.Request, service *shogoa.Service) (*{{ .Name }}, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := {{ .Name }}{Context: ctx, ResponseData: resp, RequestData: req}{{/*
 */}}
 {{ if .Headers }}{{ range $name, $att := .Headers.Type.ToObject }}	header{{ goifyatt $att $name true }} := req.Header["{{ canonicalHeaderKey $name }}"]
 {{ $mustValidate := $.Headers.IsRequired $name }}{{ if $mustValidate }}	if len(header{{ goifyatt $att $name true }}) == 0 {
-		err = goa.MergeErrors(err, goa.MissingHeaderError("{{ $name }}"))
+		err = shogoa.MergeErrors(err, shogoa.MissingHeaderError("{{ $name }}"))
 	} else {
 {{ else }}	if len(header{{ goifyatt $att $name true }}) > 0 {
 {{ end }}{{/* if $mustValidate */}}{{ if $att.Type.IsArray }}		req.Params["{{ $name }}"] = header{{ goifyatt $att $name true }}
@@ -643,7 +643,7 @@ func New{{ .Name }}(ctx context.Context, r *http.Request, service *goa.Service) 
 */}}	param{{ goifyatt $att $name true }} := req.Params["{{ $name }}"]
 {{ $mustValidate := $.MustValidate $name }}{{ if $mustValidate }}	if len(param{{ goifyatt $att $name true }}) == 0 {
 		{{ if $.Params.HasDefaultValue $name }}{{printf "rctx.%s" (goifyatt $att $name true) }} = {{ printVal $att.Type $att.DefaultValue }}{{else}}{{/*
-*/}}err = goa.MergeErrors(err, goa.MissingParamError("{{ $name }}")){{end}}
+*/}}err = shogoa.MergeErrors(err, shogoa.MissingParamError("{{ $name }}")){{end}}
 	} else {
 {{ else }}{{ if $.Params.HasDefaultValue $name }}	if len(param{{ goifyatt $att $name true }}) == 0 {
 {{ if eq (valueTypeOf "" $att ) "time.Time" }}		{{printf "rctx.%s, err" (goifyatt $att $name true)}} = {{ printVal $att.Type $att.DefaultValue }}{{ else }}		{{printf "rctx.%s" (goifyatt $att $name true) }} = {{ printVal $att.Type $att.DefaultValue }}{{ end }}
@@ -744,8 +744,8 @@ func (payload {{ gotyperef .Payload .Payload.AllRequired 0 false }}) Validate() 
 	// template input: *ControllerTemplateData
 	ctrlT = `// {{ .Resource }}Controller is the controller interface for the {{ .Resource }} actions.
 type {{ .Resource }}Controller interface {
-	goa.Muxer
-{{ if .FileServers }}	goa.FileServer
+	shogoa.Muxer
+{{ if .FileServers }}	shogoa.FileServer
 {{ end }}{{ range .Actions }}	{{ .Name }}(*{{ .Context }}) error
 {{ end }}}
 `
@@ -754,7 +754,7 @@ type {{ .Resource }}Controller interface {
 	// template input: *ControllerTemplateData
 	serviceT = `
 // initService sets up the service encoders, decoders and mux.
-func initService(service *goa.Service) {
+func initService(service *shogoa.Service) {
 	// Setup encoders and decoders
 {{ range .Encoders }}{{/*
 */}}	service.Encoder.Register({{ .PackageName }}.{{ .Function }}, "{{ join .MIMETypes "\", \"" }}")
@@ -774,15 +774,15 @@ func initService(service *goa.Service) {
 	// template input: *ControllerTemplateData
 	mountT = `
 // Mount{{ .Resource }}Controller "mounts" a {{ .Resource }} resource controller on the given service.
-func Mount{{ .Resource }}Controller(service *goa.Service, ctrl {{ .Resource }}Controller) {
+func Mount{{ .Resource }}Controller(service *shogoa.Service, ctrl {{ .Resource }}Controller) {
 	initService(service)
-	var h goa.Handler
+	var h shogoa.Handler
 {{ $res := .Resource }}{{ if .Origins }}{{ range .PreflightPaths }}{{/*
 */}}	service.Mux.Handle("OPTIONS", {{ printf "%q" . }}, ctrl.MuxHandler("preflight", handle{{ $res }}Origin(cors.HandlePreflight()), nil))
 {{ end }}{{ end }}{{ range .Actions }}{{ $action := . }}
 	h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		// Check if there was an error loading the request
-		if err := goa.ContextError(ctx); err != nil {
+		if err := shogoa.ContextError(ctx); err != nil {
 			return err
 		}
 		// Build the context
@@ -791,10 +791,10 @@ func Mount{{ .Resource }}Controller(service *goa.Service, ctrl {{ .Resource }}Co
 			return err
 		}
 {{ if .Payload }}		// Build the payload
-		if rawPayload := goa.ContextRequest(ctx).Payload; rawPayload != nil {
+		if rawPayload := shogoa.ContextRequest(ctx).Payload; rawPayload != nil {
 			rctx.Payload = rawPayload.({{ gotyperef .Payload nil 1 false }})
 {{ if not .PayloadOptional }}		} else {
-			return goa.MissingPayloadError()
+			return shogoa.MissingPayloadError()
 {{ end }}		}
 {{ end }}		return ctrl.{{ .Name }}(rctx)
 	}
@@ -814,7 +814,7 @@ func Mount{{ .Resource }}Controller(service *goa.Service, ctrl {{ .Resource }}Co
 	// handleCORST generates the code that checks whether a CORS request is authorized
 	// template input: *ControllerTemplateData
 	handleCORST = `// handle{{ .Resource }}Origin applies the CORS response headers corresponding to the origin.
-func handle{{ .Resource }}Origin(h goa.Handler) goa.Handler {
+func handle{{ .Resource }}Origin(h shogoa.Handler) shogoa.Handler {
 {{ range $i, $policy := .Origins }}{{ if $policy.Regexp }}	spec{{$i}} := regexp.MustCompile({{ printf "%q" $policy.Origin }})
 {{ end }}{{ end }}
 	return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
@@ -824,7 +824,7 @@ func handle{{ .Resource }}Origin(h goa.Handler) goa.Handler {
 			return h(ctx, rw, req)
 		}
 {{ range $i, $policy := .Origins }}		{{ if $policy.Regexp }}if cors.MatchOriginRegexp(origin, spec{{$i}}){{else}}if cors.MatchOrigin(origin, {{ printf "%q" $policy.Origin }}){{end}} {
-			ctx = goa.WithLogContext(ctx, "origin", origin)
+			ctx = shogoa.WithLogContext(ctx, "origin", origin)
 			rw.Header().Set("Access-Control-Allow-Origin", origin)
 {{ if not (eq $policy.Origin "*") }}			rw.Header().Set("Vary", "Origin")
 {{ end }}{{ if $policy.Exposed }}			rw.Header().Set("Access-Control-Expose-Headers", "{{ join $policy.Exposed ", " }}")
@@ -847,7 +847,7 @@ func handle{{ .Resource }}Origin(h goa.Handler) goa.Handler {
 	// template input: *ControllerTemplateData
 	unmarshalT = `{{ define "Coerce" }}` + coerceT + `{{ end }}` + `{{ range .Actions }}{{ if .Payload }}
 // {{ .Unmarshal }} unmarshals the request body into the context request data Payload field.
-func {{ .Unmarshal }}(ctx context.Context, service *goa.Service, req *http.Request) error {
+func {{ .Unmarshal }}(ctx context.Context, service *shogoa.Service, req *http.Request) error {
 	{{ if .PayloadMultipart}}var err error
 	var payload {{ gotypename .Payload nil 1 true }}
 {{ $o := .Payload.ToObject }}{{ range $name, $att := $o -}}
@@ -867,10 +867,10 @@ func {{ .Unmarshal }}(ctx context.Context, service *goa.Service, req *http.Reque
 	}{{ end }}{{ $validation := validationCode .Payload.AttributeDefinition false false false "payload" "raw" 1 true }}{{ if $validation }}
 	if err := payload.Validate(); err != nil {
 		// Initialize payload with private data structure so it can be logged
-		goa.ContextRequest(ctx).Payload = payload
+		shogoa.ContextRequest(ctx).Payload = payload
 		return err
 	}{{ end }}
-	goa.ContextRequest(ctx).Payload = payload{{ if .Payload.IsObject }}.Publicize(){{ end }}
+	shogoa.ContextRequest(ctx).Payload = payload{{ if .Payload.IsObject }}.Publicize(){{ end }}
 	return nil
 }
 {{ end }}
@@ -955,15 +955,15 @@ type (
 
 {{ range . }}
 {{ $funcName := printf "Use%sMiddleware" (goify .SchemeName true) }}// {{ $funcName }} mounts the {{ .SchemeName }} auth middleware onto the service.
-func {{ $funcName }}(service *goa.Service, middleware goa.Middleware) {
+func {{ $funcName }}(service *shogoa.Service, middleware shogoa.Middleware) {
 	service.Context = context.WithValue(service.Context, authMiddlewareKey({{ printf "%q" .SchemeName }}), middleware)
 }
 
 {{ $funcName := printf "New%sSecurity" (goify .SchemeName true) }}// {{ $funcName }} creates a {{ .SchemeName }} security definition.
-func {{ $funcName }}() *goa.{{ .Context }} {
-	def := goa.{{ .Context }}{
+func {{ $funcName }}() *shogoa.{{ .Context }} {
+	def := shogoa.{{ .Context }}{
 {{ if eq .Context "APIKeySecurity" }}{{/*
-*/}}		In:   {{ if eq .In "header" }}goa.LocHeader{{ else }}goa.LocQuery{{ end }},
+*/}}		In:   {{ if eq .In "header" }}shogoa.LocHeader{{ else }}shogoa.LocQuery{{ end }},
 		Name: {{ printf "%q" .Name }},
 {{ else if eq .Context "OAuth2Security" }}{{/*
 */}}		Flow:             {{ printf "%q" .Flow }},
@@ -975,7 +975,7 @@ func {{ $funcName }}() *goa.{{ .Context }} {
 */}}		},{{ end }}{{/*
 */}}{{ else if eq .Context "BasicAuthSecurity" }}{{/*
 */}}{{ else if eq .Context "JWTSecurity" }}{{/*
-*/}}		In:   {{ if eq .In "header" }}goa.LocHeader{{ else }}goa.LocQuery{{ end }},
+*/}}		In:   {{ if eq .In "header" }}shogoa.LocHeader{{ else }}shogoa.LocQuery{{ end }},
 		Name:             {{ printf "%q" .Name }},
 		TokenURL:         {{ printf "%q" .TokenURL }},{{ with .Scopes }}
 		Scopes: map[string]string{
@@ -989,14 +989,14 @@ func {{ $funcName }}() *goa.{{ .Context }} {
 }
 
 {{ end }}// handleSecurity creates a handler that runs the auth middleware for the security scheme.
-func handleSecurity(schemeName string, h goa.Handler, scopes ...string) goa.Handler {
+func handleSecurity(schemeName string, h shogoa.Handler, scopes ...string) shogoa.Handler {
 	return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		scheme := ctx.Value(authMiddlewareKey(schemeName))
-		am, ok := scheme.(goa.Middleware)
+		am, ok := scheme.(shogoa.Middleware)
 		if !ok {
-			return goa.NoAuthMiddleware(schemeName)
+			return shogoa.NoAuthMiddleware(schemeName)
 		}
-		ctx = goa.WithRequiredScopes(ctx, scopes)
+		ctx = shogoa.WithRequiredScopes(ctx, scopes)
 		return am(h)(ctx, rw, req)
 	}
 }

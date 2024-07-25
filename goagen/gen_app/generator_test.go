@@ -9,11 +9,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
-	genapp "github.com/shogo82148/goa-v1/goagen/gen_app"
-	"github.com/shogo82148/goa-v1/version"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
+	"github.com/shogo82148/shogoa/goagen/codegen"
+	genapp "github.com/shogo82148/shogoa/goagen/gen_app"
+	"github.com/shogo82148/shogoa/version"
 )
 
 var _ = Describe("Generate", func() {
@@ -329,25 +329,25 @@ package app
 
 import (
 	"context"
-	goa "github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 	"net/http"
 )
 
 // GetWidgetContext provides the Widget get action context.
 type GetWidgetContext struct {
 	context.Context
-	*goa.ResponseData
-	*goa.RequestData
+	*shogoa.ResponseData
+	*shogoa.RequestData
 	ID string
 }
 
 // NewGetWidgetContext parses the incoming request URL and body, performs validations and creates the
 // context used by the Widget controller get action.
-func NewGetWidgetContext(ctx context.Context, r *http.Request, service *goa.Service) (*GetWidgetContext, error) {
+func NewGetWidgetContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*GetWidgetContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := GetWidgetContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramID := req.Params["id"]
@@ -381,12 +381,12 @@ package app
 
 import (
 	"context"
-	goa "github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 	"net/http"
 )
 
 // initService sets up the service encoders, decoders and mux.
-func initService(service *goa.Service) {
+func initService(service *shogoa.Service) {
 	// Setup encoders and decoders
 
 	// Setup default encoder and decoder
@@ -394,18 +394,18 @@ func initService(service *goa.Service) {
 
 // WidgetController is the controller interface for the Widget actions.
 type WidgetController interface {
-	goa.Muxer
+	shogoa.Muxer
 	Get(*GetWidgetContext) error
 }
 
 // MountWidgetController "mounts" a Widget resource controller on the given service.
-func MountWidgetController(service *goa.Service, ctrl WidgetController) {
+func MountWidgetController(service *shogoa.Service, ctrl WidgetController) {
 	initService(service)
-	var h goa.Handler
+	var h shogoa.Handler
 
 	h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		// Check if there was an error loading the request
-		if err := goa.ContextError(ctx); err != nil {
+		if err := shogoa.ContextError(ctx); err != nil {
 			return err
 		}
 		// Build the context
@@ -459,13 +459,13 @@ package app
 
 const controllersSlicePayloadCode = `
 // MountWidgetController "mounts" a Widget resource controller on the given service.
-func MountWidgetController(service *goa.Service, ctrl WidgetController) {
+func MountWidgetController(service *shogoa.Service, ctrl WidgetController) {
 	initService(service)
-	var h goa.Handler
+	var h shogoa.Handler
 
 	h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		// Check if there was an error loading the request
-		if err := goa.ContextError(ctx); err != nil {
+		if err := shogoa.ContextError(ctx); err != nil {
 			return err
 		}
 		// Build the context
@@ -474,10 +474,10 @@ func MountWidgetController(service *goa.Service, ctrl WidgetController) {
 			return err
 		}
 		// Build the payload
-		if rawPayload := goa.ContextRequest(ctx).Payload; rawPayload != nil {
+		if rawPayload := shogoa.ContextRequest(ctx).Payload; rawPayload != nil {
 			rctx.Payload = rawPayload.(Collection)
 		} else {
-			return goa.MissingPayloadError()
+			return shogoa.MissingPayloadError()
 		}
 		return ctrl.Get(rctx)
 	}
@@ -486,25 +486,25 @@ func MountWidgetController(service *goa.Service, ctrl WidgetController) {
 }
 
 // unmarshalGetWidgetPayload unmarshals the request body into the context request data Payload field.
-func unmarshalGetWidgetPayload(ctx context.Context, service *goa.Service, req *http.Request) error {
+func unmarshalGetWidgetPayload(ctx context.Context, service *shogoa.Service, req *http.Request) error {
 	var payload Collection
 	if err := service.DecodeRequest(req, &payload); err != nil {
 		return err
 	}
-	goa.ContextRequest(ctx).Payload = payload
+	shogoa.ContextRequest(ctx).Payload = payload
 	return nil
 }
 `
 
 const controllersOptionalPayloadCode = `
 // MountWidgetController "mounts" a Widget resource controller on the given service.
-func MountWidgetController(service *goa.Service, ctrl WidgetController) {
+func MountWidgetController(service *shogoa.Service, ctrl WidgetController) {
 	initService(service)
-	var h goa.Handler
+	var h shogoa.Handler
 
 	h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		// Check if there was an error loading the request
-		if err := goa.ContextError(ctx); err != nil {
+		if err := shogoa.ContextError(ctx); err != nil {
 			return err
 		}
 		// Build the context
@@ -513,7 +513,7 @@ func MountWidgetController(service *goa.Service, ctrl WidgetController) {
 			return err
 		}
 		// Build the payload
-		if rawPayload := goa.ContextRequest(ctx).Payload; rawPayload != nil {
+		if rawPayload := shogoa.ContextRequest(ctx).Payload; rawPayload != nil {
 			rctx.Payload = rawPayload.(Collection)
 		}
 		return ctrl.Get(rctx)
@@ -523,25 +523,25 @@ func MountWidgetController(service *goa.Service, ctrl WidgetController) {
 }
 
 // unmarshalGetWidgetPayload unmarshals the request body into the context request data Payload field.
-func unmarshalGetWidgetPayload(ctx context.Context, service *goa.Service, req *http.Request) error {
+func unmarshalGetWidgetPayload(ctx context.Context, service *shogoa.Service, req *http.Request) error {
 	var payload Collection
 	if err := service.DecodeRequest(req, &payload); err != nil {
 		return err
 	}
-	goa.ContextRequest(ctx).Payload = payload
+	shogoa.ContextRequest(ctx).Payload = payload
 	return nil
 }
 `
 
 const controllersMultipartPayloadCode = `
 // MountWidgetController "mounts" a Widget resource controller on the given service.
-func MountWidgetController(service *goa.Service, ctrl WidgetController) {
+func MountWidgetController(service *shogoa.Service, ctrl WidgetController) {
 	initService(service)
-	var h goa.Handler
+	var h shogoa.Handler
 
 	h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		// Check if there was an error loading the request
-		if err := goa.ContextError(ctx); err != nil {
+		if err := shogoa.ContextError(ctx); err != nil {
 			return err
 		}
 		// Build the context
@@ -550,10 +550,10 @@ func MountWidgetController(service *goa.Service, ctrl WidgetController) {
 			return err
 		}
 		// Build the payload
-		if rawPayload := goa.ContextRequest(ctx).Payload; rawPayload != nil {
+		if rawPayload := shogoa.ContextRequest(ctx).Payload; rawPayload != nil {
 			rctx.Payload = rawPayload.(*Collection)
 		} else {
-			return goa.MissingPayloadError()
+			return shogoa.MissingPayloadError()
 		}
 		return ctrl.Get(rctx)
 	}
@@ -562,14 +562,14 @@ func MountWidgetController(service *goa.Service, ctrl WidgetController) {
 }
 
 // unmarshalGetWidgetPayload unmarshals the request body into the context request data Payload field.
-func unmarshalGetWidgetPayload(ctx context.Context, service *goa.Service, req *http.Request) error {
+func unmarshalGetWidgetPayload(ctx context.Context, service *shogoa.Service, req *http.Request) error {
 	var err error
 	var payload collection
 	_, rawFile, err2 := req.FormFile("file")
 	if err2 == nil {
 		payload.File = rawFile
 	} else if !errors.Is(err2, http.ErrMissingFile) {
-		err = goa.MergeErrors(err, goa.InvalidParamTypeError("file", "file", "file"))
+		err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("file", "file", "file"))
 	}
 	rawInt := req.FormValue("int")
 	if int_, err2 := strconv.Atoi(rawInt); err2 == nil {
@@ -577,12 +577,12 @@ func unmarshalGetWidgetPayload(ctx context.Context, service *goa.Service, req *h
 		tmp1 := &tmp2
 		payload.Int = tmp1
 	} else {
-		err = goa.MergeErrors(err, goa.InvalidParamTypeError("int", rawInt, "integer"))
+		err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("int", rawInt, "integer"))
 	}
 	if err != nil {
 		return err
 	}
-	goa.ContextRequest(ctx).Payload = payload.Publicize()
+	shogoa.ContextRequest(ctx).Payload = payload.Publicize()
 	return nil
 }
 `

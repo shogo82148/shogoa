@@ -6,70 +6,69 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // API implements the top level API DSL. It defines the API name, default description and other
 // default global property values. Here is an example showing all the possible API sub-definitions:
 //
-//	API("API name", func() {
-//		Title("title")				// API title used in documentation
-//		Description("description")		// API description used in documentation
-//		Version("2.0")				// API version being described
-//		TermsOfService("terms")
-//		Contact(func() {			// API Contact information
-//			Name("contact name")
-//			Email("contact email")
-//			URL("contact URL")
-//		})
-//		License(func() {			// API Licensing information
-//			Name("license name")
-//			URL("license URL")
-//		})
-//	 	Docs(func() {
-//			Description("doc description")
-//			URL("doc URL")
-//		})
-//		Host("goa.design")			// API hostname
-//		Scheme("http")
-//		BasePath("/base/:param")		// Common base path to all API actions
-//		Params(func() {				// Common parameters to all API actions
-//			Param("param")
-//		})
-//		Security("JWT")
-//		Origin("http://swagger.goa.design", func() { // Define CORS policy, may be prefixed with "*" wildcard
-//			Headers("X-Shared-Secret")           // One or more authorized headers, use "*" to authorize all
-//			Methods("GET", "POST")               // One or more authorized HTTP methods
-//			Expose("X-Time")                     // One or more headers exposed to clients
-//			MaxAge(600)                          // How long to cache a prefligh request response
-//			Credentials()                        // Sets Access-Control-Allow-Credentials header
-//		})
-//		Consumes("application/xml") // Built-in encoders and decoders
-//		Consumes("application/json")
-//		Produces("application/gob")
-//		Produces("application/json", func() {   // Custom encoder
-//			Package("github.com/shogo82148/goa-v1/encoding/json")
-//		})
-//		ResponseTemplate("static", func() {	// Response template for use by actions
-//			Description("description")
-//			Status(404)
-//			MediaType("application/json")
-//		})
-//		ResponseTemplate("dynamic", func(arg1, arg2 string) {
-//			Description(arg1)
-//			Status(200)
-//			MediaType(arg2)
-//		})
-//              NoExample()                             // Prevent automatic generation of examples
-//		Trait("Authenticated", func() {		// Traits define DSL that can be run anywhere
-//			Headers(func() {
-//				Header("header")
-//				Required("header")
+//		API("API name", func() {
+//			Title("title")				// API title used in documentation
+//			Description("description")		// API description used in documentation
+//			Version("2.0")				// API version being described
+//			TermsOfService("terms")
+//			Contact(func() {			// API Contact information
+//				Name("contact name")
+//				Email("contact email")
+//				URL("contact URL")
 //			})
-//		})
-//	}
-//
+//			License(func() {			// API Licensing information
+//				Name("license name")
+//				URL("license URL")
+//			})
+//		 	Docs(func() {
+//				Description("doc description")
+//				URL("doc URL")
+//			})
+//			Host("shogoa.design")			// API hostname
+//			Scheme("http")
+//			BasePath("/base/:param")		// Common base path to all API actions
+//			Params(func() {				// Common parameters to all API actions
+//				Param("param")
+//			})
+//			Security("JWT")
+//			Origin("http://swagger.shogoa.design", func() { // Define CORS policy, may be prefixed with "*" wildcard
+//				Headers("X-Shared-Secret")           // One or more authorized headers, use "*" to authorize all
+//				Methods("GET", "POST")               // One or more authorized HTTP methods
+//				Expose("X-Time")                     // One or more headers exposed to clients
+//				MaxAge(600)                          // How long to cache a prefligh request response
+//				Credentials()                        // Sets Access-Control-Allow-Credentials header
+//			})
+//			Consumes("application/xml") // Built-in encoders and decoders
+//			Consumes("application/json")
+//			Produces("application/gob")
+//			Produces("application/json", func() {   // Custom encoder
+//				Package("github.com/shogo82148/shogoa/encoding/json")
+//			})
+//			ResponseTemplate("static", func() {	// Response template for use by actions
+//				Description("description")
+//				Status(404)
+//				MediaType("application/json")
+//			})
+//			ResponseTemplate("dynamic", func(arg1, arg2 string) {
+//				Description(arg1)
+//				Status(200)
+//				MediaType(arg2)
+//			})
+//	             NoExample()                             // Prevent automatic generation of examples
+//			Trait("Authenticated", func() {		// Traits define DSL that can be run anywhere
+//				Headers(func() {
+//					Header("header")
+//					Required("header")
+//				})
+//			})
+//		}
 func API(name string, dsl func()) *design.APIDefinition {
 	if design.Design.Name != "" {
 		dslengine.ReportError("multiple API definitions, only one is allowed")
@@ -154,15 +153,15 @@ func BasePath(val string) {
 // The origin can also be a regular expression wrapped into "/".
 // Example:
 //
-//        Origin("http://swagger.goa.design", func() { // Define CORS policy, may be prefixed with "*" wildcard
-//                Headers("X-Shared-Secret")           // One or more authorized headers, use "*" to authorize all
-//                Methods("GET", "POST")               // One or more authorized HTTP methods
-//                Expose("X-Time")                     // One or more headers exposed to clients
-//                MaxAge(600)                          // How long to cache a prefligh request response
-//                Credentials()                        // Sets Access-Control-Allow-Credentials header
-//        })
+//	Origin("http://swagger.shogoa.design", func() { // Define CORS policy, may be prefixed with "*" wildcard
+//	        Headers("X-Shared-Secret")           // One or more authorized headers, use "*" to authorize all
+//	        Methods("GET", "POST")               // One or more authorized HTTP methods
+//	        Expose("X-Time")                     // One or more headers exposed to clients
+//	        MaxAge(600)                          // How long to cache a prefligh request response
+//	        Credentials()                        // Sets Access-Control-Allow-Credentials header
+//	})
 //
-//        Origin("/(api|swagger)[.]goa[.]design/", func() {}) // Define CORS policy with a regular expression
+//	Origin("/(api|swagger)[.]goa[.]design/", func() {}) // Define CORS policy with a regular expression
 func Origin(origin string, dsl func()) {
 	cors := &design.CORSDefinition{Origin: origin}
 
@@ -349,7 +348,7 @@ func URL(url string) {
 // Consumes adds a MIME type to the list of MIME types the APIs supports when accepting requests.
 // Consumes may also specify the path of the decoding package.
 // The package must expose a DecoderFactory method that returns an object which implements
-// goa.DecoderFactory.
+// shogoa.DecoderFactory.
 func Consumes(args ...interface{}) {
 	if a, ok := apiDefinition(); ok {
 		if def := buildEncodingDefinition(false, args...); def != nil {
@@ -361,7 +360,7 @@ func Consumes(args ...interface{}) {
 // Produces adds a MIME type to the list of MIME types the APIs can encode responses with.
 // Produces may also specify the path of the encoding package.
 // The package must expose a EncoderFactory method that returns an object which implements
-// goa.EncoderFactory.
+// shogoa.EncoderFactory.
 func Produces(args ...interface{}) {
 	if a, ok := apiDefinition(); ok {
 		if def := buildEncodingDefinition(true, args...); def != nil {
@@ -443,7 +442,7 @@ func Function(fn string) {
 //
 // This template can the be used by actions to define the OK response as follows:
 //
-//	Response(OK, "vnd.goa.example")
+//	Response(OK, "vnd.shogoa.example")
 //
 // goa comes with a set of predefined response templates (one per standard HTTP status code). The
 // OK template is the only one that accepts an argument. It is used as shown in the example above to

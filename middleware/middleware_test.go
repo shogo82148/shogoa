@@ -5,22 +5,22 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 // Helper that sets up a "working" service
-func newService(logger goa.LogAdapter) *goa.Service {
-	service := goa.New("test")
-	service.Encoder.Register(goa.NewJSONEncoder, "*/*")
-	service.Decoder.Register(goa.NewJSONDecoder, "*/*")
+func newService(logger shogoa.LogAdapter) *shogoa.Service {
+	service := shogoa.New("test")
+	service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+	service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
 	service.WithLogger(logger)
 	return service
 }
 
 // Creates a test context
-func newContext(service *goa.Service, rw http.ResponseWriter, req *http.Request, params url.Values) context.Context {
+func newContext(service *shogoa.Service, rw http.ResponseWriter, req *http.Request, params url.Values) context.Context {
 	ctrl := service.NewController("test")
-	return goa.NewContext(ctrl.Context, rw, req, params)
+	return shogoa.NewContext(ctrl.Context, rw, req, params)
 }
 
 type logEntry struct {
@@ -50,7 +50,7 @@ func (t *testLogger) Error(msg string, data ...interface{}) {
 	t.ErrorEntries = append(t.ErrorEntries, e)
 }
 
-func (t *testLogger) New(data ...interface{}) goa.LogAdapter {
+func (t *testLogger) New(data ...interface{}) shogoa.LogAdapter {
 	t.Context = append(t.Context, data...)
 	return t
 }

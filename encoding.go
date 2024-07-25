@@ -1,4 +1,4 @@
-package goa
+package shogoa
 
 import (
 	"encoding/gob"

@@ -1,7 +1,7 @@
 //go:build js
 // +build js
 
-package goa
+package shogoa
 
 import (
 	"time"

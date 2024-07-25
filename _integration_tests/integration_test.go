@@ -13,7 +13,7 @@ import (
 
 func TestBootstrapReadme(t *testing.T) {
 	defer cleanup("./readme/*")
-	if err := goagen("./readme", "bootstrap", "-d", "github.com/shogo82148/goa-v1/_integration_tests/readme/design"); err != nil {
+	if err := goagen("./readme", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/readme/design"); err != nil {
 		t.Error(err.Error())
 	}
 	if err := gobuild("./readme"); err != nil {
@@ -23,7 +23,7 @@ func TestBootstrapReadme(t *testing.T) {
 
 func TestDefaultMedia(t *testing.T) {
 	defer cleanup("./media/*")
-	if err := goagen("./media", "bootstrap", "-d", "github.com/shogo82148/goa-v1/_integration_tests/media/design"); err != nil {
+	if err := goagen("./media", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/media/design"); err != nil {
 		t.Error(err.Error())
 	}
 	if err := gobuild("./media"); err != nil {
@@ -48,7 +48,7 @@ type CreateGreetingPayload struct {
 
 func TestDefaultTime(t *testing.T) {
 	defer cleanup("./default-value/*")
-	if err := goagen("./default-value", "bootstrap", "-d", "github.com/shogo82148/goa-v1/_integration_tests/default-value/design"); err != nil {
+	if err := goagen("./default-value", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/default-value/design"); err != nil {
 		t.Error(err.Error())
 	}
 	if err := gobuild("./default-value"); err != nil {
@@ -58,11 +58,11 @@ func TestDefaultTime(t *testing.T) {
 	if err != nil {
 		t.Fatal("failed to load contexts.go")
 	}
-	expected := `func NewCheckTimetestContext(ctx context.Context, r *http.Request, service *goa.Service) (*CheckTimetestContext, error) {
+	expected := `func NewCheckTimetestContext(ctx context.Context, r *http.Request, service *shogoa.Service) (*CheckTimetestContext, error) {
 	var err error
-	resp := goa.ContextResponse(ctx)
+	resp := shogoa.ContextResponse(ctx)
 	resp.Service = service
-	req := goa.ContextRequest(ctx)
+	req := shogoa.ContextRequest(ctx)
 	req.Request = r
 	rctx := CheckTimetestContext{Context: ctx, ResponseData: resp, RequestData: req}
 	paramTimes := req.Params["times"]
@@ -73,7 +73,7 @@ func TestDefaultTime(t *testing.T) {
 		if times, err2 := time.Parse(time.RFC3339, rawTimes); err2 == nil {
 			rctx.Times = times
 		} else {
-			err = goa.MergeErrors(err, goa.InvalidParamTypeError("times", rawTimes, "datetime"))
+			err = shogoa.MergeErrors(err, shogoa.InvalidParamTypeError("times", rawTimes, "datetime"))
 		}
 	}
 	return &rctx, err
@@ -85,7 +85,7 @@ func TestDefaultTime(t *testing.T) {
 
 func TestCellar(t *testing.T) {
 	defer cleanup("./goa-cellar/*")
-	if err := goagen("./goa-cellar", "bootstrap", "-d", "github.com/shogo82148/goa-v1/_integration_tests/goa-cellar/design"); err != nil {
+	if err := goagen("./goa-cellar", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/goa-cellar/design"); err != nil {
 		t.Error(err.Error())
 	}
 	if err := gobuild("./goa-cellar"); err != nil {
@@ -98,7 +98,7 @@ func TestCellar(t *testing.T) {
 
 func TestCustomFieldName(t *testing.T) {
 	defer cleanup("./field/*")
-	if err := goagen("./field", "bootstrap", "-d", "github.com/shogo82148/goa-v1/_integration_tests/field/design"); err != nil {
+	if err := goagen("./field", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/field/design"); err != nil {
 		t.Error(err.Error())
 	}
 	if err := gobuild("./field"); err != nil {
@@ -159,7 +159,7 @@ type Multimedialist struct {
 
 func TestIssue161(t *testing.T) {
 	defer cleanup("./issue161/*")
-	if err := goagen("./issue161", "bootstrap", "-d", "github.com/shogo82148/goa-v1/_integration_tests/issue161/design"); err != nil {
+	if err := goagen("./issue161", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/issue161/design"); err != nil {
 		t.Error(err.Error())
 	}
 	if err := gobuild("./issue161"); err != nil {
@@ -169,7 +169,7 @@ func TestIssue161(t *testing.T) {
 
 func TestIssue301(t *testing.T) {
 	defer cleanup("./issue301/*")
-	if err := goagen("./issue301", "bootstrap", "-d", "github.com/shogo82148/goa-v1/_integration_tests/issue301/design"); err != nil {
+	if err := goagen("./issue301", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/issue301/design"); err != nil {
 		t.Error(err.Error())
 	}
 	if err := gobuild("./issue301"); err != nil {
@@ -180,10 +180,10 @@ func TestIssue301(t *testing.T) {
 		t.Fatal("failed to load user_types.go")
 	}
 
-	// include user definition type: "github.com/shogo82148/goa-v1/design"
+	// include user definition type: "github.com/shogo82148/shogoa/design"
 	expectedImport := `import (
-	goa "github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/design"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/design"
 	"time"
 )`
 
@@ -211,7 +211,7 @@ func TestIssue301(t *testing.T) {
 }
 
 func goagen(dir, command string, args ...string) error {
-	pkg, err := build.Import("github.com/shogo82148/goa-v1/goagen", "", 0)
+	pkg, err := build.Import("github.com/shogo82148/shogoa/goagen", "", 0)
 	if err != nil {
 		return err
 	}

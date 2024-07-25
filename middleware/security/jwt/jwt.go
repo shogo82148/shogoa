@@ -10,30 +10,30 @@ import (
 	"strings"
 
 	jwt "github.com/golang-jwt/jwt/v4"
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
-// New returns a middleware to be used with the JWTSecurity DSL definitions of goa.  It supports the
+// New returns a middleware to be used with the JWTSecurity DSL definitions of shogoa.  It supports the
 // scopes claim in the JWT and ensures goa-defined Security DSLs are properly validated.
 //
 // The steps taken by the middleware are:
 //
-//     1. Extract the "Bearer" token from the Authorization header or query parameter
-//     2. Validate the "Bearer" token against the key(s)
-//        given to New
-//     3. If scopes are defined in the design for the action, validate them
-//        against the scopes presented by the JWT in the claim "scope", or if
-//        that's not defined, "scopes".
+//  1. Extract the "Bearer" token from the Authorization header or query parameter
+//  2. Validate the "Bearer" token against the key(s)
+//     given to New
+//  3. If scopes are defined in the design for the action, validate them
+//     against the scopes presented by the JWT in the claim "scope", or if
+//     that's not defined, "scopes".
 //
 // The `exp` (expiration) and `nbf` (not before) date checks are validated by the JWT library.
 //
 // validationKeys can be one of these:
 //
-//     * a string (for HMAC)
-//     * a []byte (for HMAC)
-//     * an rsa.PublicKey
-//     * an ecdsa.PublicKey
-//     * a slice of any of the above
+//   - a string (for HMAC)
+//   - a []byte (for HMAC)
+//   - an rsa.PublicKey
+//   - an ecdsa.PublicKey
+//   - a slice of any of the above
 //
 // The type of the keys determine the algorithm that will be used to do the check.  The goal of
 // having lists of keys is to allow for key rotation, still check the previous keys until rotation
@@ -42,36 +42,35 @@ import (
 // You can define an optional function to do additional validations on the token once the signature
 // and the claims requirements are proven to be valid.  Example:
 //
-//    validationHandler, _ := goa.NewMiddleware(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-//        token := jwt.ContextJWT(ctx)
-//        if val, ok := token.Claims["is_uncle"].(string); !ok || val != "ben" {
-//            return jwt.ErrJWTError("you are not uncle ben's")
-//        }
-//    })
+//	validationHandler, _ := shogoa.NewMiddleware(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+//	    token := jwt.ContextJWT(ctx)
+//	    if val, ok := token.Claims["is_uncle"].(string); !ok || val != "ben" {
+//	        return jwt.ErrJWTError("you are not uncle ben's")
+//	    }
+//	})
 //
 // Mount the middleware with the generated UseXX function where XX is the name of the scheme as
 // defined in the design, e.g.:
 //
-//    app.UseJWT(jwt.New("secret", validationHandler, app.NewJWTSecurity()))
-//
-func New(validationKeys interface{}, validationFunc goa.Middleware, scheme *goa.JWTSecurity) goa.Middleware {
+//	app.UseJWT(jwt.New("secret", validationHandler, app.NewJWTSecurity()))
+func New(validationKeys interface{}, validationFunc shogoa.Middleware, scheme *shogoa.JWTSecurity) shogoa.Middleware {
 	var rsaKeys []*rsa.PublicKey
 	var hmacKeys [][]byte
 
 	rsaKeys, ecdsaKeys, hmacKeys := partitionKeys(validationKeys)
 
-	return func(nextHandler goa.Handler) goa.Handler {
+	return func(nextHandler shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			var (
 				incomingToken string
 				err           error
 			)
 
-			if scheme.In == goa.LocHeader {
+			if scheme.In == shogoa.LocHeader {
 				if incomingToken, err = extractTokenFromHeader(scheme.Name, req); err != nil {
 					return err
 				}
-			} else if scheme.In == goa.LocQuery {
+			} else if scheme.In == shogoa.LocQuery {
 				if incomingToken, err = extractTokenFromQueryParam(scheme.Name, req); err != nil {
 					return err
 				}
@@ -105,11 +104,11 @@ func New(validationKeys interface{}, validationFunc goa.Middleware, scheme *goa.
 
 			scopesInClaim, scopesInClaimList, err := parseClaimScopes(token)
 			if err != nil {
-				goa.LogError(ctx, err.Error())
+				shogoa.LogError(ctx, err.Error())
 				return ErrJWTError(err)
 			}
 
-			requiredScopes := goa.ContextRequiredScopes(ctx)
+			requiredScopes := shogoa.ContextRequiredScopes(ctx)
 
 			for _, scope := range requiredScopes {
 				if !scopesInClaim[scope] {
@@ -196,7 +195,7 @@ func parseClaimScopes(token *jwt.Token) (map[string]bool, []string, error) {
 
 // ErrJWTError is the error returned by this middleware when any sort of validation or assertion
 // fails during processing.
-var ErrJWTError = goa.NewErrorClass("jwt_security_error", 401)
+var ErrJWTError = shogoa.NewErrorClass("jwt_security_error", 401)
 
 type contextKey int
 

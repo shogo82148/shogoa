@@ -6,20 +6,22 @@ package.
 Once instantiated adapters can be used by setting the goa service logger with WithLogger:
 
 ```go
-  func main() {
-    // ...
 
-    // Setup logger adapter
-    logger := log15.New()
+	  func main() {
+	    // ...
 
-    // Create service
-    service := goa.New("my service")
-    service.WithLogger(goalog15.New(logger))
+	    // Setup logger adapter
+	    logger := log15.New()
 
-    // ...
-}
+	    // Create service
+	    service := shogoa.New("my service")
+	    service.WithLogger(goalog15.New(logger))
+
+	    // ...
+	}
+
 ```
 
-See http://goa.design/implement/logging/ for details.
+See http://shogoa.design/implement/logging/ for details.
 */
 package logging

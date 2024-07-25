@@ -10,7 +10,7 @@ contains a message specific to the error occurrence. The metadata contains key/v
 provide contextual information (name of parameters, value of invalid parameter etc.).
 
 Instances of Error can be created via Error Class functions.
-See http://goa.design/implement/error_handling.html
+See http://shogoa.design/implement/error_handling.html
 All instance of errors created via a error class implement the ServiceError interface. This
 interface is leveraged by the error handler middleware to produce the error responses.
 
@@ -27,7 +27,7 @@ error class then the corresponding content including the HTTP status is used oth
 error is returned. Errors that bubble up all the way to the top (i.e. not handled by the error
 middleware) also generate an internal error response.
 */
-package goa
+package shogoa
 
 import (
 	"crypto/rand"
@@ -38,7 +38,7 @@ import (
 
 var (
 	// ErrorMediaIdentifier is the media type identifier used for error responses.
-	ErrorMediaIdentifier = "application/vnd.goa.error"
+	ErrorMediaIdentifier = "application/vnd.shogoa.error"
 
 	// ErrBadRequest is a generic bad request error.
 	ErrBadRequest = NewErrorClass("bad_request", 400)

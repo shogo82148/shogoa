@@ -3,9 +3,9 @@ package apidsl_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/design/apidsl"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/design/apidsl"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 var _ = Describe("Response", func() {

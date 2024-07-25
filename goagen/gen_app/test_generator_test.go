@@ -7,15 +7,15 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/dslengine"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
-	genapp "github.com/shogo82148/goa-v1/goagen/gen_app"
-	"github.com/shogo82148/goa-v1/version"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/dslengine"
+	"github.com/shogo82148/shogoa/goagen/codegen"
+	genapp "github.com/shogo82148/shogoa/goagen/gen_app"
+	"github.com/shogo82148/shogoa/version"
 )
 
 var _ = Describe("Generate", func() {
-	const testgenPackagePath = "github.com/shogo82148/goa-v1/goagen/gen_app/test_"
+	const testgenPackagePath = "github.com/shogo82148/shogoa/goagen/gen_app/test_"
 
 	var outDir string
 	var files []string
@@ -67,7 +67,7 @@ var _ = Describe("Generate", func() {
 			}
 
 			intMedia := &design.MediaTypeDefinition{
-				Identifier: "application/vnd.goa.test.int",
+				Identifier: "application/vnd.shogoa.test.int",
 				UserTypeDefinition: &design.UserTypeDefinition{
 					AttributeDefinition: intAttr,
 					TypeName:            "IntContainer",
@@ -167,7 +167,7 @@ var _ = Describe("Generate", func() {
 									"ok": {
 										Name:      "ok",
 										Type:      design.ErrorMedia,
-										MediaType: "application/vnd.goa.error",
+										MediaType: "application/vnd.shogoa.error",
 									},
 								},
 							},
@@ -201,7 +201,7 @@ var _ = Describe("Generate", func() {
 			// Multiple Routes
 			Ω(content).Should(ContainSubstring("ShowFooOK1("))
 			// Get returns an error media type
-			Ω(content).Should(ContainSubstring("GetFooOK(t testing.TB, ctx context.Context, service *goa.Service, ctrl app.FooController, optionalResourceHeader *int, requiredResourceHeader string, payload app.CustomName) (http.ResponseWriter, error)"))
+			Ω(content).Should(ContainSubstring("GetFooOK(t testing.TB, ctx context.Context, service *shogoa.Service, ctrl app.FooController, optionalResourceHeader *int, requiredResourceHeader string, payload app.CustomName) (http.ResponseWriter, error)"))
 		})
 
 		It("generates the route path parameters", func() {

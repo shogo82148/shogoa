@@ -1,4 +1,4 @@
-package goa_test
+package shogoa_test
 
 import (
 	"bytes"
@@ -11,17 +11,17 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 var _ = Describe("Service", func() {
 	const appName = "foo"
-	var s *goa.Service
+	var s *shogoa.Service
 
 	BeforeEach(func() {
-		s = goa.New(appName)
-		s.Decoder.Register(goa.NewJSONDecoder, "*/*")
-		s.Encoder.Register(goa.NewJSONEncoder, "*/*")
+		s = shogoa.New(appName)
+		s.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+		s.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
 	})
 
 	Describe("New", func() {
@@ -109,7 +109,7 @@ var _ = Describe("Service", func() {
 	Describe("MaxRequestBodyLength", func() {
 		var rw *TestResponseWriter
 		var req *http.Request
-		var muxHandler goa.MuxHandler
+		var muxHandler shogoa.MuxHandler
 
 		BeforeEach(func() {
 			body := bytes.NewBuffer([]byte{'"', '2', '3', '4', '"'})
@@ -117,13 +117,13 @@ var _ = Describe("Service", func() {
 			rw = &TestResponseWriter{ParentHeader: make(http.Header)}
 			ctrl := s.NewController("test")
 			ctrl.MaxRequestBodyLength = 4
-			unmarshaler := func(ctx context.Context, service *goa.Service, req *http.Request) error {
+			unmarshaler := func(ctx context.Context, service *shogoa.Service, req *http.Request) error {
 				_, err := io.ReadAll(req.Body)
 				return err
 			}
 			handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 				rw.WriteHeader(400)
-				rw.Write([]byte(goa.ContextError(ctx).Error()))
+				rw.Write([]byte(shogoa.ContextError(ctx).Error()))
 				return nil
 			}
 			muxHandler = ctrl.MuxHandler("testMax", handler, unmarshaler)
@@ -139,12 +139,12 @@ var _ = Describe("Service", func() {
 	})
 
 	Describe("MuxHandler", func() {
-		var handler goa.Handler
-		var unmarshaler goa.Unmarshaler
+		var handler shogoa.Handler
+		var unmarshaler shogoa.Unmarshaler
 		const respStatus = 200
 		var respContent = []byte("response")
 
-		var muxHandler goa.MuxHandler
+		var muxHandler shogoa.MuxHandler
 		var ctx context.Context
 
 		JustBeforeEach(func() {
@@ -154,18 +154,18 @@ var _ = Describe("Service", func() {
 
 		BeforeEach(func() {
 			handler = func(c context.Context, rw http.ResponseWriter, req *http.Request) error {
-				if err := goa.ContextError(c); err != nil {
+				if err := shogoa.ContextError(c); err != nil {
 					rw.WriteHeader(400)
 					rw.Write([]byte(err.Error()))
 					return nil
 				}
-				goa.ContextRequest(c).Request = req
+				shogoa.ContextRequest(c).Request = req
 				ctx = c
 				rw.WriteHeader(respStatus)
 				rw.Write(respContent)
 				return nil
 			}
-			unmarshaler = func(c context.Context, service *goa.Service, req *http.Request) error {
+			unmarshaler = func(c context.Context, service *shogoa.Service, req *http.Request) error {
 				ctx = c
 				if req != nil {
 					var payload interface{}
@@ -173,7 +173,7 @@ var _ = Describe("Service", func() {
 					if err != nil {
 						return err
 					}
-					goa.ContextRequest(ctx).Payload = payload
+					shogoa.ContextRequest(ctx).Payload = payload
 				}
 				return nil
 			}
@@ -184,8 +184,8 @@ var _ = Describe("Service", func() {
 		})
 
 		Context("with multiple instances and middlewares", func() {
-			var ctrl *goa.Controller
-			var handlers []goa.MuxHandler
+			var ctrl *shogoa.Controller
+			var handlers []shogoa.MuxHandler
 			var rws []*TestResponseWriter
 			var reqs []*http.Request
 			var p url.Values
@@ -197,11 +197,11 @@ var _ = Describe("Service", func() {
 				}
 				ctrl = s.NewController("test")
 				for i := 0; i < 5; i++ {
-					ctrl.Service.Use(func(goa.Handler) goa.Handler {
+					ctrl.Service.Use(func(shogoa.Handler) shogoa.Handler {
 						return nopHandler
 					})
 				}
-				ctrl.Use(func(goa.Handler) goa.Handler { return nopHandler })
+				ctrl.Use(func(shogoa.Handler) shogoa.Handler { return nopHandler })
 				for i := 0; i < 10; i++ {
 					tmp := ctrl.MuxHandler("test", nopHandler, nil)
 					handlers = append(handlers, tmp)
@@ -243,9 +243,9 @@ var _ = Describe("Service", func() {
 			})
 
 			It("creates a handle that handles the request", func() {
-				i := goa.ContextRequest(ctx).Params.Get("id")
+				i := shogoa.ContextRequest(ctx).Params.Get("id")
 				Ω(i).Should(Equal("42"))
-				s := goa.ContextRequest(ctx).Params.Get("sort")
+				s := shogoa.ContextRequest(ctx).Params.Get("sort")
 				Ω(s).Should(Equal("asc"))
 				tw := rw.(*TestResponseWriter)
 				Ω(tw.Status).Should(Equal(respStatus))
@@ -334,7 +334,7 @@ var _ = Describe("Service", func() {
 				})
 
 				It("should work with application/json and load properly", func() {
-					Ω(goa.ContextRequest(ctx).Payload).Should(Equal(decodedContent))
+					Ω(shogoa.ContextRequest(ctx).Payload).Should(Equal(decodedContent))
 				})
 
 				Context("with an empty Content-Type", func() {
@@ -343,47 +343,47 @@ var _ = Describe("Service", func() {
 					})
 
 					It("defaults to application/json and loads properly for JSON bodies", func() {
-						Ω(goa.ContextRequest(ctx).Payload).Should(Equal(decodedContent))
+						Ω(shogoa.ContextRequest(ctx).Payload).Should(Equal(decodedContent))
 					})
 				})
 
 				Context("with a Content-Type of 'application/octet-stream' or any other", func() {
 					BeforeEach(func() {
-						s.Decoder.Register(goa.NewJSONDecoder, "*/*")
+						s.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
 						r.Header.Set("Content-Type", "application/octet-stream")
 					})
 
 					It("should use the default decoder", func() {
-						Ω(goa.ContextRequest(ctx).Payload).Should(Equal(decodedContent))
+						Ω(shogoa.ContextRequest(ctx).Payload).Should(Equal(decodedContent))
 					})
 				})
 
 				Context("with a Content-Type of 'application/octet-stream' or any other and no default decoder", func() {
 					BeforeEach(func() {
-						s = goa.New("test")
-						s.Decoder.Register(goa.NewJSONDecoder, "application/json")
+						s = shogoa.New("test")
+						s.Decoder.Register(shogoa.NewJSONDecoder, "application/json")
 						r.Header.Set("Content-Type", "application/octet-stream")
 					})
 
 					It("should bypass decoding", func() {
-						Ω(goa.ContextRequest(ctx).Payload).Should(BeNil())
+						Ω(shogoa.ContextRequest(ctx).Payload).Should(BeNil())
 					})
 				})
 			})
 		})
 	})
 
-	// FIXME: @shogo82148 https://github.com/shogo82148/goa-v1/pull/1/checks?check_run_id=382581692#step:6:27
+	// FIXME: @shogo82148 https://github.com/shogo82148/shogoa/pull/1/checks?check_run_id=382581692#step:6:27
 	// Describe("FileHandler", func() {
-	// 	const publicPath = "github.com/shogo82148/goa-v1/public"
+	// 	const publicPath = "github.com/shogo82148/shogoa/public"
 
 	// 	var outDir string
 
-	// 	var handler goa.Handler
+	// 	var handler shogoa.Handler
 	// 	const respStatus = 200
 	// 	var respContent = []byte(`{"foo":"bar"}`)
 
-	// 	var muxHandler goa.MuxHandler
+	// 	var muxHandler shogoa.MuxHandler
 
 	// 	JustBeforeEach(func() {
 	// 		gopath := filepath.SplitList(build.Default.GOPATH)[0]
@@ -434,8 +434,8 @@ var _ = Describe("Service", func() {
 	// })
 })
 
-func TErrorHandler(witness *bool) goa.Middleware {
-	return func(h goa.Handler) goa.Handler {
+func TErrorHandler(witness *bool) shogoa.Middleware {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			err := h(ctx, rw, req)
 			if err != nil {
@@ -446,8 +446,8 @@ func TErrorHandler(witness *bool) goa.Middleware {
 	}
 }
 
-func TMiddleware(witness *bool) goa.Middleware {
-	return func(h goa.Handler) goa.Handler {
+func TMiddleware(witness *bool) shogoa.Middleware {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			*witness = true
 			return h(ctx, rw, req)
@@ -455,8 +455,8 @@ func TMiddleware(witness *bool) goa.Middleware {
 	}
 }
 
-func CMiddleware(witness *int) goa.Middleware {
-	return func(h goa.Handler) goa.Handler {
+func CMiddleware(witness *int) shogoa.Middleware {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			*witness++
 			return h(ctx, rw, req)
@@ -464,8 +464,8 @@ func CMiddleware(witness *int) goa.Middleware {
 	}
 }
 
-func SecondMiddleware(witness1, witness2 *bool) goa.Middleware {
-	return func(h goa.Handler) goa.Handler {
+func SecondMiddleware(witness1, witness2 *bool) shogoa.Middleware {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			if !*witness1 {
 				panic("middleware called in wrong order")

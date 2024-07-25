@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // DefaultView is the name of the default view.

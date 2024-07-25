@@ -1,4 +1,4 @@
-package goa_test
+package shogoa_test
 
 import (
 	"bytes"
@@ -8,17 +8,17 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 var _ = Describe("Mux", func() {
-	var mux goa.ServeMux
+	var mux shogoa.ServeMux
 
 	var req *http.Request
 	var rw *TestResponseWriter
 
 	BeforeEach(func() {
-		mux = goa.NewMux()
+		mux = shogoa.NewMux()
 	})
 
 	JustBeforeEach(func() {

@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 // key is the private type used to key context values.
@@ -22,8 +22,8 @@ const OriginKey key = "origin"
 // MatchOrigin returns true if the given Origin header value matches the
 // origin specification.
 // Spec can be one of:
-// - a plain string identifying an origin. eg http://swagger.goa.design
-// - a plain string containing a wildcard. eg *.goa.design
+// - a plain string identifying an origin. eg http://swagger.shogoa.design
+// - a plain string containing a wildcard. eg *.shogoa.design
 // - the special string * that matches every host
 func MatchOrigin(origin, spec string) bool {
 	if spec == "*" {
@@ -58,7 +58,7 @@ func MatchOriginRegexp(origin string, spec *regexp.Regexp) bool {
 }
 
 // HandlePreflight returns a simple 200 response. The middleware takes care of handling CORS.
-func HandlePreflight() goa.Handler {
+func HandlePreflight() shogoa.Handler {
 	return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		rw.WriteHeader(200)
 		return nil

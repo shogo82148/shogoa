@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/shogo82148/goa-v1/design"
+	"github.com/shogo82148/shogoa/design"
 )
 
 var (
@@ -382,29 +382,29 @@ func oneof(target string, vals []interface{}) string {
 func constant(formatName string) string {
 	switch formatName {
 	case "date":
-		return "goa.FormatDate"
+		return "shogoa.FormatDate"
 	case "date-time":
-		return "goa.FormatDateTime"
+		return "shogoa.FormatDateTime"
 	case "email":
-		return "goa.FormatEmail"
+		return "shogoa.FormatEmail"
 	case "hostname":
-		return "goa.FormatHostname"
+		return "shogoa.FormatHostname"
 	case "ipv4":
-		return "goa.FormatIPv4"
+		return "shogoa.FormatIPv4"
 	case "ipv6":
-		return "goa.FormatIPv6"
+		return "shogoa.FormatIPv6"
 	case "ip":
-		return "goa.FormatIP"
+		return "shogoa.FormatIP"
 	case "uri":
-		return "goa.FormatURI"
+		return "shogoa.FormatURI"
 	case "mac":
-		return "goa.FormatMAC"
+		return "shogoa.FormatMAC"
 	case "cidr":
-		return "goa.FormatCIDR"
+		return "shogoa.FormatCIDR"
 	case "regexp":
-		return "goa.FormatRegexp"
+		return "shogoa.FormatRegexp"
 	case "rfc1123":
-		return "goa.FormatRFC1123"
+		return "shogoa.FormatRFC1123"
 	}
 	panic("unknown format") // bug
 }
@@ -421,34 +421,34 @@ const (
 {{ tabs .depth }}}`
 
 	userValTmpl = `{{ tabs .depth }}if err2 := {{ .target }}.Validate(); err2 != nil {
-{{ tabs .depth }}	err = goa.MergeErrors(err, err2)
+{{ tabs .depth }}	err = shogoa.MergeErrors(err, err2)
 {{ tabs .depth }}}`
 
 	enumValTmpl = `{{ $depth := or (and .isPointer (add .depth 1)) .depth }}{{/*
 */}}{{ if .isPointer }}{{ tabs .depth }}if {{ .target }} != nil {
 {{ end }}{{ tabs $depth }}if !({{ oneof .targetVal .values }}) {
-{{ tabs $depth }}	err = goa.MergeErrors(err, goa.InvalidEnumValueError(` + "`" + `{{ .context }}` + "`" + `, {{ .targetVal }}, {{ slice .values }}))
+{{ tabs $depth }}	err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`" + `{{ .context }}` + "`" + `, {{ .targetVal }}, {{ slice .values }}))
 {{ if .isPointer }}{{ tabs $depth }}}
 {{ end }}{{ tabs .depth }}}`
 
 	patternValTmpl = `{{ $depth := or (and .isPointer (add .depth 1)) .depth }}{{/*
 */}}{{ if .isPointer }}{{ tabs .depth }}if {{ .target }} != nil {
-{{ end }}{{ tabs $depth }}if ok := goa.ValidatePattern(` + "`{{ .pattern }}`" + `, {{ .targetVal }}); !ok {
-{{ tabs $depth }}	err = goa.MergeErrors(err, goa.InvalidPatternError(` + "`" + `{{ .context }}` + "`" + `, {{ .targetVal }}, ` + "`{{ .pattern }}`" + `))
+{{ end }}{{ tabs $depth }}if ok := shogoa.ValidatePattern(` + "`{{ .pattern }}`" + `, {{ .targetVal }}); !ok {
+{{ tabs $depth }}	err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `{{ .context }}` + "`" + `, {{ .targetVal }}, ` + "`{{ .pattern }}`" + `))
 {{ tabs $depth }}}{{ if .isPointer }}
 {{ tabs .depth }}}{{ end }}`
 
 	formatValTmpl = `{{ $depth := or (and .isPointer (add .depth 1)) .depth }}{{/*
 */}}{{ if .isPointer }}{{ tabs .depth }}if {{ .target }} != nil {
-{{ end }}{{ tabs $depth }}if err2 := goa.ValidateFormat({{ constant .format }}, {{ .targetVal }}); err2 != nil {
-{{ tabs $depth }}		err = goa.MergeErrors(err, goa.InvalidFormatError(` + "`" + `{{ .context }}` + "`" + `, {{ .targetVal }}, {{ constant .format }}, err2))
+{{ end }}{{ tabs $depth }}if err2 := shogoa.ValidateFormat({{ constant .format }}, {{ .targetVal }}); err2 != nil {
+{{ tabs $depth }}		err = shogoa.MergeErrors(err, shogoa.InvalidFormatError(` + "`" + `{{ .context }}` + "`" + `, {{ .targetVal }}, {{ constant .format }}, err2))
 {{ if .isPointer }}{{ tabs $depth }}}
 {{ end }}{{ tabs .depth }}}`
 
 	minMaxValTmpl = `{{ $depth := or (and .isPointer (add .depth 1)) .depth }}{{/*
 */}}{{ if .isPointer }}{{ tabs .depth }}if {{ .target }} != nil {
 {{ end }}{{ tabs .depth }}	if {{ .targetVal }} {{ if .isMin }}<{{ else }}>{{ end }} {{ if .isMin }}{{ .min }}{{ else }}{{ .max }}{{ end }} {
-{{ tabs $depth }}	err = goa.MergeErrors(err, goa.InvalidRangeError(` + "`" + `{{ .context }}` + "`" + `, {{ .targetVal }}, {{ if .isMin }}{{ .min }}, true{{ else }}{{ .max }}, false{{ end }}))
+{{ tabs $depth }}	err = shogoa.MergeErrors(err, shogoa.InvalidRangeError(` + "`" + `{{ .context }}` + "`" + `, {{ .targetVal }}, {{ if .isMin }}{{ .min }}, true{{ else }}{{ .max }}, false{{ end }}))
 {{ if .isPointer }}{{ tabs $depth }}}
 {{ end }}{{ tabs .depth }}}`
 
@@ -456,12 +456,12 @@ const (
 */}}{{$target := or (and (or (or .array .hash) .nonzero) .target) .targetVal}}{{/*
 */}}{{if .isPointer}}{{tabs .depth}}if {{.target}} != nil {
 {{end}}{{tabs .depth}}	if {{if .string}}utf8.RuneCountInString({{$target}}){{else}}len({{$target}}){{end}} {{if .isMinLength}}<{{else}}>{{end}} {{if .isMinLength}}{{.minLength}}{{else}}{{.maxLength}}{{end}} {
-{{tabs $depth}}	err = goa.MergeErrors(err, goa.InvalidLengthError(` + "`" + `{{.context}}` + "`" + `, {{$target}}, {{if .string}}utf8.RuneCountInString({{$target}}){{else}}len({{$target}}){{end}}, {{if .isMinLength}}{{.minLength}}, true{{else}}{{.maxLength}}, false{{end}}))
+{{tabs $depth}}	err = shogoa.MergeErrors(err, shogoa.InvalidLengthError(` + "`" + `{{.context}}` + "`" + `, {{$target}}, {{if .string}}utf8.RuneCountInString({{$target}}){{else}}len({{$target}}){{end}}, {{if .isMinLength}}{{.minLength}}, true{{else}}{{.maxLength}}, false{{end}}))
 {{if .isPointer}}{{tabs $depth}}}
 {{end}}{{tabs .depth}}}`
 
 	requiredValTmpl = `{{ $att := index $.attribute.Type.ToObject .required }}{{/*
 */}}{{ if or $.private (not $att.Type.IsPrimitive) }}{{ tabs $.depth }}if {{ $.target }}.{{ goifyAtt $att .required true }} == nil {
-{{ tabs $.depth }}	err = goa.MergeErrors(err, goa.MissingAttributeError(` + "`" + `{{ $.context }}` + "`" + `, "{{ .required }}"))
+{{ tabs $.depth }}	err = shogoa.MergeErrors(err, shogoa.MissingAttributeError(` + "`" + `{{ $.context }}` + "`" + `, "{{ .required }}"))
 {{ tabs $.depth }}}{{ end }}`
 )

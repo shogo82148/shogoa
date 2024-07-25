@@ -3,13 +3,13 @@ Package goalogrus contains an adapter that makes it possible to configure goa so
 as logger backend.
 Usage:
 
-    logger := logrus.New()
-    // Initialize logger handler using logrus package
-    service.WithLogger(goalogrus.New(logger))
-    // ... Proceed with configuring and starting the goa service
+	logger := logrus.New()
+	// Initialize logger handler using logrus package
+	service.WithLogger(goalogrus.New(logger))
+	// ... Proceed with configuring and starting the goa service
 
-    // In handlers:
-    goalogrus.Entry(ctx).Info("foo", "bar")
+	// In handlers:
+	goalogrus.Entry(ctx).Info("foo", "bar")
 */
 package goalogrus
 
@@ -17,7 +17,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,18 +27,18 @@ type adapter struct {
 }
 
 // New wraps a logrus logger into a goa logger.
-func New(logger *logrus.Logger) goa.LogAdapter {
+func New(logger *logrus.Logger) shogoa.LogAdapter {
 	return FromEntry(logrus.NewEntry(logger))
 }
 
 // FromEntry wraps a logrus log entry into a goa logger.
-func FromEntry(entry *logrus.Entry) goa.LogAdapter {
+func FromEntry(entry *logrus.Entry) shogoa.LogAdapter {
 	return &adapter{Entry: entry}
 }
 
 // Entry returns the logrus log entry stored in the given context if any, nil otherwise.
 func Entry(ctx context.Context) *logrus.Entry {
-	logger := goa.ContextLogger(ctx)
+	logger := shogoa.ContextLogger(ctx)
 	if a, ok := logger.(*adapter); ok {
 		return a.Entry
 	}
@@ -61,7 +61,7 @@ func (a *adapter) Error(msg string, data ...interface{}) {
 }
 
 // New creates a new logger given a context.
-func (a *adapter) New(data ...interface{}) goa.LogAdapter {
+func (a *adapter) New(data ...interface{}) shogoa.LogAdapter {
 	return &adapter{Entry: a.Entry.WithFields(data2rus(data))}
 }
 
@@ -70,7 +70,7 @@ func data2rus(keyvals []interface{}) logrus.Fields {
 	res := make(logrus.Fields, n)
 	for i := 0; i < len(keyvals); i += 2 {
 		k := keyvals[i]
-		var v interface{} = goa.ErrMissingLogValue
+		var v interface{} = shogoa.ErrMissingLogValue
 		if i+1 < len(keyvals) {
 			v = keyvals[i+1]
 		}

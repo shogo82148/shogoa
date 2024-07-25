@@ -9,8 +9,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/version"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/version"
 )
 
 // CheckVersion returns an error if the ver is empty, contains an incorrect value or

@@ -9,13 +9,13 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
-	goaslog "github.com/shogo82148/goa-v1/logging/slog"
+	"github.com/shogo82148/shogoa"
+	goaslog "github.com/shogo82148/shogoa/logging/slog"
 )
 
 var _ = Describe("goaslog", func() {
 	var handler slog.Handler
-	var adapter goa.LogAdapter
+	var adapter shogoa.LogAdapter
 	var buf bytes.Buffer
 
 	BeforeEach(func() {
@@ -30,7 +30,7 @@ var _ = Describe("goaslog", func() {
 	})
 
 	It("adapts warn messages", func() {
-		adapter := adapter.(goa.WarningLogAdapter)
+		adapter := adapter.(shogoa.WarningLogAdapter)
 		msg := "msg"
 		adapter.Warn(msg)
 		Ω(buf.String()).Should(ContainSubstring(msg))

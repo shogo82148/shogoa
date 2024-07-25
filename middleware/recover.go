@@ -7,12 +7,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 // Recover is a middleware that recovers panics and maps them to errors.
-func Recover() goa.Middleware {
-	return func(h goa.Handler) goa.Handler {
+func Recover() shogoa.Middleware {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (err error) {
 			defer func() {
 				if r := recover(); r != nil {

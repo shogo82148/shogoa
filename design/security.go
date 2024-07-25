@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 // SecuritySchemeKind is a type of security scheme, according to the

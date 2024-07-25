@@ -6,13 +6,13 @@ import (
 	"io"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
-// Enforce that codec.Decoder satisfies goa.ResettableDecoder at compile time
+// Enforce that codec.Decoder satisfies shogoa.ResettableDecoder at compile time
 var (
-	_ goa.ResettableDecoder = (*ProtoDecoder)(nil)
-	_ goa.ResettableEncoder = (*ProtoEncoder)(nil)
+	_ shogoa.ResettableDecoder = (*ProtoDecoder)(nil)
+	_ shogoa.ResettableEncoder = (*ProtoEncoder)(nil)
 )
 
 type (
@@ -30,8 +30,8 @@ type (
 	}
 )
 
-// NewDecoder returns a new proto.Decoder that satisfies goa.Decoder
-func NewDecoder(r io.Reader) goa.Decoder {
+// NewDecoder returns a new proto.Decoder that satisfies shogoa.Decoder
+func NewDecoder(r io.Reader) shogoa.Decoder {
 	return &ProtoDecoder{
 		pBuf: proto.NewBuffer(nil),
 		bBuf: &bytes.Buffer{},
@@ -64,8 +64,8 @@ func (dec *ProtoDecoder) Reset(r io.Reader) {
 	dec.r = r
 }
 
-// NewEncoder returns a new proto.Encoder that satisfies goa.Encoder
-func NewEncoder(w io.Writer) goa.Encoder {
+// NewEncoder returns a new proto.Encoder that satisfies shogoa.Encoder
+func NewEncoder(w io.Writer) shogoa.Encoder {
 	return &ProtoEncoder{
 		pBuf: proto.NewBuffer(nil),
 		w:    w,

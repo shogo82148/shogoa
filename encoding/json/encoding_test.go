@@ -7,7 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/uuid"
+	"github.com/shogo82148/shogoa/uuid"
 )
 
 var _ = Describe("JsonEncoding", func() {

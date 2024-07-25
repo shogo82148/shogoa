@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 // RequireHeader requires a request header to match a value pattern. If the
@@ -14,13 +14,13 @@ import (
 // included. If requiredHeaderValue is nil then any value is accepted so long as
 // the header is non-empty.
 func RequireHeader(
-	service *goa.Service,
+	service *shogoa.Service,
 	pathPattern *regexp.Regexp,
 	requiredHeaderName string,
 	requiredHeaderValue *regexp.Regexp,
-	failureStatus int) goa.Middleware {
+	failureStatus int) shogoa.Middleware {
 
-	return func(h goa.Handler) goa.Handler {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (err error) {
 			if pathPattern == nil || pathPattern.MatchString(req.URL.Path) {
 				matched := false

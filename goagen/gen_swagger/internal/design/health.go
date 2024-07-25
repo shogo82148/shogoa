@@ -1,8 +1,8 @@
 package design
 
 import (
-	. "github.com/shogo82148/goa-v1/design"
-	. "github.com/shogo82148/goa-v1/design/apidsl"
+	. "github.com/shogo82148/shogoa/design"
+	. "github.com/shogo82148/shogoa/design/apidsl"
 )
 
 var _ = Resource("health", func() {

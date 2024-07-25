@@ -10,12 +10,12 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
-	"github.com/shogo82148/goa-v1/goagen/utils"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/goagen/codegen"
+	"github.com/shogo82148/shogoa/goagen/utils"
 )
 
-//NewGenerator returns an initialized instance of a JavaScript Client Generator
+// NewGenerator returns an initialized instance of a JavaScript Client Generator
 func NewGenerator(options ...Option) *Generator {
 	g := &Generator{}
 
@@ -259,7 +259,7 @@ func (g *Generator) generateExample() error {
 	imports := []*codegen.ImportSpec{
 		codegen.SimpleImport("net/http"),
 		codegen.SimpleImport("github.com/dimfeld/httptreemux"),
-		codegen.NewImport("goa", "github.com/shogo82148/goa-v1"),
+		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
 	}
 	if err := file.WriteHeader(fmt.Sprintf("%s JavaScript Client Example", g.API.Name), "js", imports); err != nil {
 		return err
@@ -380,7 +380,7 @@ const exampleCtrlT = `// MountController mounts the JavaScript example controlle
 // This is just an example, not the best way to do this. A better way would be to specify a file
 // server using the Files DSL in the design.
 // Use --noexample to prevent this file from being generated.
-func MountController(service *goa.Service) {
+func MountController(service *shogoa.Service) {
 	// Serve static files under js
 	service.ServeFiles("/js/*filepath", {{printf "%q" .ServeDir}})
 	service.LogInfo("mount", "ctrl", "JS", "action", "ServeFiles", "route", "GET /js/*")

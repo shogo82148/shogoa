@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/goagen/codegen"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/goagen/codegen"
 )
 
 func makeTestDir(g *Generator, apiName string) (outDir string, err error) {
@@ -94,8 +94,8 @@ func (g *Generator) generateResourceTest() error {
 		codegen.SimpleImport("testing"),
 		codegen.SimpleImport("time"),
 		codegen.SimpleImport(appPkg),
-		codegen.NewImport("goa", "github.com/shogo82148/goa-v1"),
-		codegen.SimpleImport("github.com/shogo82148/goa-v1/goatest"),
+		codegen.NewImport("goa", "github.com/shogo82148/shogoa"),
+		codegen.SimpleImport("github.com/shogo82148/shogoa/goatest"),
 		codegen.SimpleImport("context"),
 		codegen.NewImport("uuid", "github.com/gofrs/uuid"),
 	}
@@ -361,7 +361,7 @@ var testTmpl = `{{ define "convertParam" }}` + convertParamTmpl + `{{ end }}` + 
 // {{ $test.Name }} {{ $test.Comment }}
 // If ctx is nil then context.Background() is used.
 // If service is nil then a default service is created.
-func {{ $test.Name }}(t testing.TB, ctx context.Context, service *goa.Service, ctrl {{ $test.ControllerName}}{{/*
+func {{ $test.Name }}(t testing.TB, ctx context.Context, service *shogoa.Service, ctrl {{ $test.ControllerName}}{{/*
 */}}{{ range $param := $test.Params }}, {{ $param.Name }} {{ $param.Pointer }}{{ $param.Type }}{{ end }}{{/*
 */}}{{ range $param := $test.QueryParams }}, {{ $param.Name }} {{ $param.Pointer }}{{ $param.Type }}{{ end }}{{/*
 */}}{{ range $header := $test.Headers }}, {{ $header.Name }} {{ $header.Pointer }}{{ $header.Type }}{{ end }}{{/*
@@ -380,16 +380,16 @@ func {{ $test.Name }}(t testing.TB, ctx context.Context, service *goa.Service, c
 		service = goatest.Service(&{{ $logBuf }}, {{ $respSetter }})
 	} else {
 		{{ $logger := $test.Escape "logger" }}{{ $logger }} := log.New(&{{ $logBuf }}, "", log.Ltime)
-		service.WithLogger(goa.NewLogger({{ $logger }}))
-		{{ $newEncoder := $test.Escape "newEncoder" }}{{ $newEncoder }} := func(io.Writer) goa.Encoder { return  {{ $respSetter }} }
-		service.Encoder = goa.NewHTTPEncoder() // Make sure the code ends up using this decoder
+		service.WithLogger(shogoa.NewLogger({{ $logger }}))
+		{{ $newEncoder := $test.Escape "newEncoder" }}{{ $newEncoder }} := func(io.Writer) shogoa.Encoder { return  {{ $respSetter }} }
+		service.Encoder = shogoa.NewHTTPEncoder() // Make sure the code ends up using this decoder
 		service.Encoder.Register({{ $newEncoder }}, "*/*")
 	}
 {{ if $test.Payload }}{{ if $test.Payload.Validatable }}
 	// Validate payload
 	{{ $err := $test.Escape "err" }}{{ $err }} := {{ $test.Payload.Name }}.Validate()
 	if {{ $err }} != nil {
-		{{ $e := $test.Escape "e" }}{{ $e }}, {{ $ok := $test.Escape "ok" }}{{ $ok }} := {{ $err }}.(goa.ServiceError)
+		{{ $e := $test.Escape "e" }}{{ $e }}, {{ $ok := $test.Escape "ok" }}{{ $ok }} := {{ $err }}.(shogoa.ServiceError)
 		if !{{ $ok }} {
 			panic({{ $err }}) // bug
 		}
@@ -424,10 +424,10 @@ func {{ $test.Name }}(t testing.TB, ctx context.Context, service *goa.Service, c
 		{{ $prms }}[{{ printf "%q" $param.Label }}] = sliceVal
 	}
 {{ end }}
-	{{ $goaCtx := $test.Escape "goaCtx" }}{{ $goaCtx }} := goa.NewContext(goa.WithAction(ctx, "{{ $test.ResourceName }}Test"), {{ $rw }}, {{ $req }}, {{ $prms }})
+	{{ $goaCtx := $test.Escape "goaCtx" }}{{ $goaCtx }} := shogoa.NewContext(shogoa.WithAction(ctx, "{{ $test.ResourceName }}Test"), {{ $rw }}, {{ $req }}, {{ $prms }})
 	{{ $test.ContextVarName }}, {{ $err := $test.Escape "err" }}{{ $err }} := {{ $test.ContextType }}({{ $goaCtx }}, {{ $req }}, service)
 	if {{ $err }} != nil {
-		{{ $e := $test.Escape "e" }}{{ $e }}, {{ $ok := $test.Escape "ok" }}{{ $ok }} := {{ $err }}.(goa.ServiceError)
+		{{ $e := $test.Escape "e" }}{{ $e }}, {{ $ok := $test.Escape "ok" }}{{ $ok }} := {{ $err }}.(shogoa.ServiceError)
 		if !{{ $ok }} {
 			panic("invalid test data " + {{ $err }}.Error()) // bug
 		}

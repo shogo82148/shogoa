@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/shogo82148/goa-v1/goagen/codegen"
-	"github.com/shogo82148/goa-v1/version"
+	"github.com/shogo82148/shogoa/goagen/codegen"
+	"github.com/shogo82148/shogoa/version"
 )
 
 // Generator generates the code of, compiles and runs generators.
@@ -151,7 +151,7 @@ func (m *Generator) generateToolSourceCode(pkg *codegen.Package) {
 	imports := append(m.Imports,
 		codegen.SimpleImport("fmt"),
 		codegen.SimpleImport("strings"),
-		codegen.SimpleImport("github.com/shogo82148/goa-v1/dslengine"),
+		codegen.SimpleImport("github.com/shogo82148/shogoa/dslengine"),
 		codegen.NewImport("_", filepath.ToSlash(m.DesignPkgPath)),
 	)
 	file.WriteHeader("Code Generator", "main", imports)

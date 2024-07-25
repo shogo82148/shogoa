@@ -12,8 +12,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	pErrors "github.com/pkg/errors"
-	"github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/middleware"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/middleware"
 )
 
 // errorResponse contains the details of a error response. It implements ServiceError.
@@ -40,8 +40,8 @@ func (e *errorResponse) Error() string {
 }
 
 var _ = Describe("ErrorHandler", func() {
-	var service *goa.Service
-	var h goa.Handler
+	var service *shogoa.Service
+	var h shogoa.Handler
 	var verbose bool
 
 	var rw *testResponseWriter
@@ -86,10 +86,10 @@ var _ = Describe("ErrorHandler", func() {
 			It("hides the error details", func() {
 				var decoded errorResponse
 				Ω(rw.Status).Should(Equal(500))
-				Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{goa.ErrorMediaIdentifier}))
+				Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
 				err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
 				Ω(err).ShouldNot(HaveOccurred())
-				msg := goa.ErrInternal(`Internal Server Error [zzz]`).Error()
+				msg := shogoa.ErrInternal(`Internal Server Error [zzz]`).Error()
 				msg = regexp.QuoteMeta(msg)
 				msg = strings.Replace(msg, "zzz", ".+", 1)
 				endIDidx := strings.Index(msg, "]")
@@ -102,8 +102,8 @@ var _ = Describe("ErrorHandler", func() {
 
 				BeforeEach(func() {
 					h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-						e := goa.ErrInternal("goa-500-boom")
-						origID = e.(goa.ServiceError).Token()
+						e := shogoa.ErrInternal("goa-500-boom")
+						origID = e.(shogoa.ServiceError).Token()
 						return e
 					}
 				})
@@ -112,7 +112,7 @@ var _ = Describe("ErrorHandler", func() {
 					var decoded errorResponse
 					Ω(origID).ShouldNot(Equal(""))
 					Ω(rw.Status).Should(Equal(500))
-					Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{goa.ErrorMediaIdentifier}))
+					Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
 					err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(decoded.ID).Should(Equal(origID))
@@ -121,7 +121,7 @@ var _ = Describe("ErrorHandler", func() {
 
 			Context("and goa 504 error", func() {
 				BeforeEach(func() {
-					meaningful := goa.NewErrorClass("goa-504-with-info", http.StatusGatewayTimeout)
+					meaningful := shogoa.NewErrorClass("goa-504-with-info", http.StatusGatewayTimeout)
 					h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 						return meaningful("gatekeeper says no")
 					}
@@ -130,7 +130,7 @@ var _ = Describe("ErrorHandler", func() {
 				It("passes the response", func() {
 					var decoded errorResponse
 					Ω(rw.Status).Should(Equal(http.StatusGatewayTimeout))
-					Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{goa.ErrorMediaIdentifier}))
+					Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
 					err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(decoded.Code).Should(Equal("goa-504-with-info"))
@@ -145,7 +145,7 @@ var _ = Describe("ErrorHandler", func() {
 
 		BeforeEach(func() {
 			service = newService(nil)
-			gerr = goa.NewErrorClass("code", 418)("teapot", "foobar", 42)
+			gerr = shogoa.NewErrorClass("code", 418)("teapot", "foobar", 42)
 			h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 				return gerr
 			}
@@ -153,8 +153,8 @@ var _ = Describe("ErrorHandler", func() {
 
 		It("maps goa errors to HTTP responses", func() {
 			var decoded errorResponse
-			Ω(rw.Status).Should(Equal(gerr.(goa.ServiceError).ResponseStatus()))
-			Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{goa.ErrorMediaIdentifier}))
+			Ω(rw.Status).Should(Equal(gerr.(shogoa.ServiceError).ResponseStatus()))
+			Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
 			err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(decoded.Error()).Should(Equal(gerr.Error()))
@@ -168,7 +168,7 @@ var _ = Describe("ErrorHandler", func() {
 		BeforeEach(func() {
 			logger = new(testLogger)
 			service = newService(logger)
-			wrappedError = pErrors.Wrap(goa.ErrInternal("something crazy happened"), "an error")
+			wrappedError = pErrors.Wrap(shogoa.ErrInternal("something crazy happened"), "an error")
 			h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 				return wrappedError
 			}
@@ -177,8 +177,8 @@ var _ = Describe("ErrorHandler", func() {
 		It("maps pkg errors to HTTP responses", func() {
 			var decoded errorResponse
 			cause := pErrors.Cause(wrappedError)
-			Ω(rw.Status).Should(Equal(cause.(goa.ServiceError).ResponseStatus()))
-			Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{goa.ErrorMediaIdentifier}))
+			Ω(rw.Status).Should(Equal(cause.(shogoa.ServiceError).ResponseStatus()))
+			Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
 			err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(decoded.Error()).Should(Equal(cause.Error()))

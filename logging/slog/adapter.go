@@ -22,11 +22,11 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
-var _ goa.LogAdapter = (*adapter)(nil)
-var _ goa.ContextLogAdapter = (*adapter)(nil)
+var _ shogoa.LogAdapter = (*adapter)(nil)
+var _ shogoa.ContextLogAdapter = (*adapter)(nil)
 
 // adapter is the slog goa logger adapter.
 type adapter struct {
@@ -34,7 +34,7 @@ type adapter struct {
 }
 
 // New wraps a [log/slog.Handler] into a goa logger.
-func New(handler slog.Handler) goa.LogAdapter {
+func New(handler slog.Handler) shogoa.LogAdapter {
 	return &adapter{handler: handler}
 }
 
@@ -69,7 +69,7 @@ func (a *adapter) ErrorContext(ctx context.Context, msg string, data ...any) {
 }
 
 // New creates a new logger given a context.
-func (a *adapter) New(data ...any) goa.LogAdapter {
+func (a *adapter) New(data ...any) shogoa.LogAdapter {
 	r := slog.NewRecord(time.Now(), slog.LevelInfo, "", 0)
 	r.Add(data...)
 

@@ -1,13 +1,13 @@
-package goa_test
+package shogoa_test
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 var _ = Describe("ValidateFormat", func() {
-	var f goa.Format
+	var f shogoa.Format
 	var val string
 	var valErr error
 
@@ -16,12 +16,12 @@ var _ = Describe("ValidateFormat", func() {
 	})
 
 	JustBeforeEach(func() {
-		valErr = goa.ValidateFormat(f, val)
+		valErr = shogoa.ValidateFormat(f, val)
 	})
 
 	Context("Date", func() {
 		BeforeEach(func() {
-			f = goa.FormatDate
+			f = shogoa.FormatDate
 		})
 
 		Context("with an invalid value", func() {
@@ -47,7 +47,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("DateTime", func() {
 		BeforeEach(func() {
-			f = goa.FormatDateTime
+			f = shogoa.FormatDateTime
 		})
 
 		Context("with an invalid value", func() {
@@ -73,7 +73,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("UUID", func() {
 		BeforeEach(func() {
-			f = goa.FormatUUID
+			f = shogoa.FormatUUID
 		})
 
 		Context("with an invalid value", func() {
@@ -99,7 +99,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("Email", func() {
 		BeforeEach(func() {
-			f = goa.FormatEmail
+			f = shogoa.FormatEmail
 		})
 
 		Context("with an invalid value", func() {
@@ -114,7 +114,7 @@ var _ = Describe("ValidateFormat", func() {
 
 		Context("with a valid value", func() {
 			BeforeEach(func() {
-				val = "raphael@goa.design"
+				val = "raphael@shogoa.design"
 			})
 
 			It("validates", func() {
@@ -126,7 +126,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("Hostname", func() {
 		BeforeEach(func() {
-			f = goa.FormatHostname
+			f = shogoa.FormatHostname
 		})
 
 		Context("with an invalid value", func() {
@@ -141,7 +141,7 @@ var _ = Describe("ValidateFormat", func() {
 
 		Context("with a valid value", func() {
 			BeforeEach(func() {
-				val = "goa.design"
+				val = "shogoa.design"
 			})
 
 			It("validates", func() {
@@ -153,7 +153,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("IPv4", func() {
 		BeforeEach(func() {
-			f = goa.FormatIPv4
+			f = shogoa.FormatIPv4
 		})
 
 		Context("with an invalid value", func() {
@@ -190,7 +190,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("IPv6", func() {
 		BeforeEach(func() {
-			f = goa.FormatIPv6
+			f = shogoa.FormatIPv6
 		})
 
 		Context("with an invalid value", func() {
@@ -227,7 +227,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("IP", func() {
 		BeforeEach(func() {
-			f = goa.FormatIP
+			f = shogoa.FormatIP
 		})
 
 		Context("with an invalid value", func() {
@@ -263,7 +263,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("URI", func() {
 		BeforeEach(func() {
-			f = goa.FormatURI
+			f = shogoa.FormatURI
 		})
 
 		Context("with an invalid value", func() {
@@ -278,7 +278,7 @@ var _ = Describe("ValidateFormat", func() {
 
 		Context("with a valid value", func() {
 			BeforeEach(func() {
-				val = "hhp://goa.design/contact"
+				val = "hhp://shogoa.design/contact"
 			})
 
 			It("validates", func() {
@@ -290,7 +290,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("MAC", func() {
 		BeforeEach(func() {
-			f = goa.FormatMAC
+			f = shogoa.FormatMAC
 		})
 
 		Context("with an invalid value", func() {
@@ -317,7 +317,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("CIDR", func() {
 		BeforeEach(func() {
-			f = goa.FormatCIDR
+			f = shogoa.FormatCIDR
 		})
 
 		Context("with an invalid value", func() {
@@ -344,7 +344,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("Regexp", func() {
 		BeforeEach(func() {
-			f = goa.FormatRegexp
+			f = shogoa.FormatRegexp
 		})
 
 		Context("with an invalid value", func() {
@@ -371,7 +371,7 @@ var _ = Describe("ValidateFormat", func() {
 
 	Context("RFC1123", func() {
 		BeforeEach(func() {
-			f = goa.FormatRFC1123
+			f = shogoa.FormatRFC1123
 		})
 
 		Context("with an invalid value", func() {

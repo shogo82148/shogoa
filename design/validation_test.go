@@ -7,9 +7,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1/design"
-	"github.com/shogo82148/goa-v1/design/apidsl"
-	"github.com/shogo82148/goa-v1/dslengine"
+	"github.com/shogo82148/shogoa/design"
+	"github.com/shogo82148/shogoa/design/apidsl"
+	"github.com/shogo82148/shogoa/dslengine"
 )
 
 var _ = Describe("Validation", func() {
@@ -394,7 +394,7 @@ var _ = Describe("Validation", func() {
 		Context("which has a response contains a file", func() {
 			BeforeEach(func() {
 				dslengine.Reset()
-				var response = apidsl.MediaType("application/vnd.goa.example", func() {
+				var response = apidsl.MediaType("application/vnd.shogoa.example", func() {
 					apidsl.TypeName("quux")
 					apidsl.Attributes(func() {
 						apidsl.Attribute("file", design.File)
@@ -427,14 +427,14 @@ var _ = Describe("Validation", func() {
 		)
 
 		BeforeEach(func() {
-			enc = &design.EncodingDefinition{MIMETypes: []string{"application/foo"}, Encoder: true, PackagePath: "github.com/shogo82148/goa-v1/encoding/foo"}
+			enc = &design.EncodingDefinition{MIMETypes: []string{"application/foo"}, Encoder: true, PackagePath: "github.com/shogo82148/shogoa/encoding/foo"}
 			oldGoPath = build.Default.GOPATH
 
 			var err error
 			oldWorkingDir, err = os.Getwd()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			cellarPath = path.Join(oldWorkingDir, "tmp_gopath/src/github.com/shogo82148/goa-v1_fake_cellar")
+			cellarPath = path.Join(oldWorkingDir, "tmp_gopath/src/github.com/shogo82148/shogoa_fake_cellar")
 			Ω(os.MkdirAll(cellarPath, 0777)).ShouldNot(HaveOccurred())
 		})
 
@@ -472,7 +472,7 @@ var _ = Describe("Validation", func() {
 
 		// Context("with package in vendor", func() {
 		// 	BeforeEach(func() {
-		// 		packagePath := path.Join(cellarPath, "vendor/github.com/shogo82148/goa-v1/encoding/foo")
+		// 		packagePath := path.Join(cellarPath, "vendor/github.com/shogo82148/shogoa/encoding/foo")
 
 		// 		Ω(os.MkdirAll(packagePath, 0777)).ShouldNot(HaveOccurred())
 		// 		Ω(ioutil.WriteFile(path.Join(packagePath, "encoding.go"), []byte("package foo"), 0777)).ShouldNot(HaveOccurred())

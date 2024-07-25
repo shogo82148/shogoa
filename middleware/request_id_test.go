@@ -7,8 +7,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/middleware"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/middleware"
 )
 
 var _ = Describe("RequestID", func() {
@@ -17,7 +17,7 @@ var _ = Describe("RequestID", func() {
 	var rw http.ResponseWriter
 	var req *http.Request
 	var params url.Values
-	var service *goa.Service
+	var service *shogoa.Service
 
 	BeforeEach(func() {
 		service = newService(nil)
@@ -28,7 +28,7 @@ var _ = Describe("RequestID", func() {
 		req.Header.Set(middleware.RequestIDHeader, reqID)
 		rw = new(testResponseWriter)
 		params = url.Values{"query": []string{"value"}}
-		service.Encoder.Register(goa.NewJSONEncoder, "*/*")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
 		ctx = newContext(service, rw, req, params)
 	})
 

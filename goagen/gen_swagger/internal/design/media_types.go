@@ -1,8 +1,8 @@
 package design
 
 import (
-	. "github.com/shogo82148/goa-v1/design"
-	. "github.com/shogo82148/goa-v1/design/apidsl"
+	. "github.com/shogo82148/shogoa/design"
+	. "github.com/shogo82148/shogoa/design/apidsl"
 )
 
 // Account is the account resource media type.
@@ -21,7 +21,7 @@ var Account = MediaType("application/vnd.account+json", func() {
 		Attribute("created_at", DateTime, "Date of creation")
 		Attribute("created_by", String, "Email of account owner", func() {
 			Format("email")
-			Example("me@goa.design")
+			Example("me@shogoa.design")
 		})
 
 		Required("id", "href", "name", "created_at", "created_by")

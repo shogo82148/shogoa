@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/shogo82148/goa-v1"
+	"github.com/shogo82148/shogoa"
 )
 
 // Timeout sets a global timeout for all controller actions.
 // The timeout notification is made through the context, it is the responsibility of the request
 // handler to handle it. For example:
 //
-// 	func (ctrl *Controller) DoLongRunningAction(ctx *DoLongRunningActionContext) error {
-// 		action := NewLongRunning()      // setup long running action
+//	func (ctrl *Controller) DoLongRunningAction(ctx *DoLongRunningActionContext) error {
+//		action := NewLongRunning()      // setup long running action
 //		c := make(chan error, 1)        // create return channel
 //		go func() { c <- action.Run() } // Launch long running action goroutine
 //		select {
@@ -27,8 +27,8 @@ import (
 //	}
 //
 // Controller actions can check if a timeout is set by calling the context Deadline method.
-func Timeout(timeout time.Duration) goa.Middleware {
-	return func(h goa.Handler) goa.Handler {
+func Timeout(timeout time.Duration) shogoa.Middleware {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			nctx, cancel := context.WithTimeout(ctx, timeout)
 			defer cancel()

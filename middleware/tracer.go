@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/shogo82148/goa-v1"
-	"github.com/shogo82148/goa-v1/client"
+	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/client"
 )
 
 var (
@@ -118,7 +118,7 @@ func SampleSize(s int) TracerOption {
 // IDs respectively. This is configurable so that the created IDs are compatible
 // with the various backend tracing systems. The xray package provides
 // implementations that produce AWS X-Ray compatible IDs.
-func NewTracer(opts ...TracerOption) goa.Middleware {
+func NewTracer(opts ...TracerOption) shogoa.Middleware {
 	o := &tracerOptions{
 		traceIDFunc:     shortID,
 		spanIDFunc:      shortID,
@@ -134,7 +134,7 @@ func NewTracer(opts ...TracerOption) goa.Middleware {
 	} else {
 		sampler = NewFixedSampler(o.samplingPercent)
 	}
-	return func(h goa.Handler) goa.Handler {
+	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			// insert a new trace ID only if not already being traced.
 			traceID := req.Header.Get(TraceIDHeader)
@@ -157,7 +157,7 @@ func NewTracer(opts ...TracerOption) goa.Middleware {
 }
 
 // Tracer is deprecated in favor of NewTracer.
-func Tracer(sampleRate int, spanIDFunc, traceIDFunc IDFunc) goa.Middleware {
+func Tracer(sampleRate int, spanIDFunc, traceIDFunc IDFunc) shogoa.Middleware {
 	return NewTracer(SamplingPercent(sampleRate), SpanIDFunc(spanIDFunc), TraceIDFunc(traceIDFunc))
 }
 
