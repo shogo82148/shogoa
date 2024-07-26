@@ -31,6 +31,7 @@ func NewMiddleware(m any) (Middleware, error) {
 	case func(http.Handler) http.Handler:
 		return func(h Handler) Handler {
 			return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (err error) {
+				req = req.WithContext(ctx)
 				m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					err = h(ctx, w, r)
 				})).ServeHTTP(rw, req)
@@ -66,6 +67,7 @@ func handlerToMiddleware(m Handler) Middleware {
 func httpHandlerToMiddleware(m http.HandlerFunc) Middleware {
 	return func(h Handler) Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			req = req.WithContext(ctx)
 			m.ServeHTTP(rw, req)
 			return h(ctx, rw, req)
 		}
