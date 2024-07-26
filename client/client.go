@@ -13,26 +13,24 @@ import (
 	"github.com/shogo82148/shogoa"
 )
 
-type (
-	// Doer defines the Do method of the http client.
-	Doer interface {
-		Do(context.Context, *http.Request) (*http.Response, error)
-	}
+// Doer defines the Do method of the http client.
+type Doer interface {
+	Do(context.Context, *http.Request) (*http.Response, error)
+}
 
-	// Client is the common client data structure for all shogoa service clients.
-	Client struct {
-		// Doer is the underlying http client.
-		Doer
-		// Scheme overrides the default action scheme.
-		Scheme string
-		// Host is the service hostname.
-		Host string
-		// UserAgent is the user agent set in requests made by the client.
-		UserAgent string
-		// Dump indicates whether to dump request response.
-		Dump bool
-	}
-)
+// Client is the common client data structure for all shogoa service clients.
+type Client struct {
+	// Doer is the underlying http client.
+	Doer
+	// Scheme overrides the default action scheme.
+	Scheme string
+	// Host is the service hostname.
+	Host string
+	// UserAgent is the user agent set in requests made by the client.
+	UserAgent string
+	// Dump indicates whether to dump request response.
+	Dump bool
+}
 
 // New creates a new API client that wraps c.
 // If c is nil, the returned client wraps http.DefaultClient.
