@@ -5,7 +5,6 @@ vendor
 
 # Executables and test outputs
 goagen/goagen
-_integration_tests/*/**/*.*
 
 # Editor / IDEs cruft
 .idea/
