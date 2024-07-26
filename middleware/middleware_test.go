@@ -18,9 +18,8 @@ func newService(logger shogoa.LogAdapter) *shogoa.Service {
 }
 
 // Creates a test context
-func newContext(service *shogoa.Service, rw http.ResponseWriter, req *http.Request, params url.Values) context.Context {
-	ctrl := service.NewController("test")
-	return shogoa.NewContext(ctrl.Context, rw, req, params)
+func newContext(_ *shogoa.Service, rw http.ResponseWriter, req *http.Request, params url.Values) context.Context {
+	return shogoa.NewContext(rw, req, params)
 }
 
 type testResponseWriter struct {

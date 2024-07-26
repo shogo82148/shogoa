@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 // Keys used to store data in context.
@@ -31,7 +30,7 @@ type RequestData struct {
 	*http.Request
 
 	// Payload returns the decoded request body.
-	Payload interface{}
+	Payload any
 	// Params contains the raw values for the parameters defined in the design including
 	// path parameters, query string parameters and header parameters.
 	Params url.Values
@@ -52,79 +51,13 @@ type ResponseData struct {
 }
 
 // NewContext builds a new shogoa request context.
-// If ctx is nil then req.Context() is used.
-func NewContext(ctx context.Context, rw http.ResponseWriter, req *http.Request, params url.Values) context.Context {
-	if ctx == nil {
-		ctx = req.Context()
-	} else {
-		// The parent of req.Context() should be ctx,
-		// but actually they are not because of compatibility.
-		// So, we emulates the context whose parent is ctx.
-		ctx = mergeContext(ctx, req.Context())
-	}
+func NewContext(rw http.ResponseWriter, req *http.Request, params url.Values) context.Context {
+	ctx := req.Context()
 	request := &RequestData{Request: req, Params: params}
 	response := &ResponseData{ResponseWriter: rw}
 	ctx = context.WithValue(ctx, respKey, response)
 	ctx = context.WithValue(ctx, reqKey, request)
-
 	return ctx
-}
-
-type mergedContext struct {
-	parent, child context.Context
-	cancel        context.CancelFunc
-}
-
-func mergeContext(parent, child context.Context) context.Context {
-	ctx := &mergedContext{
-		parent: parent,
-		child:  child,
-	}
-	if parent.Done() != nil {
-		// propagate cancellation from the parent to the child.
-		ctx.child, ctx.cancel = context.WithCancel(child)
-		go ctx.watchCancel()
-	}
-	return ctx
-}
-
-func (ctx *mergedContext) watchCancel() {
-	select {
-	case <-ctx.parent.Done():
-		ctx.cancel()
-	case <-ctx.child.Done():
-	}
-}
-
-func (ctx *mergedContext) Deadline() (deadline time.Time, ok bool) {
-	parent, ok := ctx.parent.Deadline()
-	if !ok {
-		return ctx.child.Deadline()
-	}
-	child, ok := ctx.child.Deadline()
-	if !ok {
-		return parent, true
-	}
-
-	if parent.After(child) {
-		return child, true
-	}
-	return parent, true
-}
-
-func (ctx *mergedContext) Done() <-chan struct{} {
-	return ctx.child.Done()
-}
-
-func (ctx *mergedContext) Err() error {
-	return ctx.child.Err()
-}
-
-func (ctx *mergedContext) Value(key interface{}) interface{} {
-	if v := ctx.child.Value(key); v != nil {
-		return v
-	}
-	return ctx.parent.Value(key)
 }
 
 // WithAction creates a context with the given action name.

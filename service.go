@@ -50,8 +50,8 @@ type (
 		Name string
 		// Service that exposes the controller
 		Service *Service
-		// Controller root context
-		Context context.Context
+		// BaseContext is the controller base context.
+		BaseContext func(req *http.Request) context.Context
 		// MaxRequestBodyLength is the maximum length read from request bodies.
 		// Set to 0 to remove the limit altogether. Defaults to 1GB.
 		MaxRequestBodyLength int64
@@ -90,26 +90,27 @@ type (
 
 // New instantiates a service with the given name.
 func New(name string) *Service {
-	var (
-		logHandler   = slog.NewJSONHandler(os.Stderr, nil)
-		ctx          = WithLogger(context.Background(), NewLogger(logHandler))
-		cctx, cancel = context.WithCancel(ctx)
-		mux          = NewMux()
-		service      = &Service{
-			Name:    name,
-			Context: cctx,
-			Mux:     mux,
-			Server: &http.Server{
-				Handler: mux,
-			},
-			Decoder: NewHTTPDecoder(),
-			Encoder: NewHTTPEncoder(),
+	logHandler := slog.NewJSONHandler(os.Stderr, nil)
+	ctx := WithLogger(context.Background(), NewLogger(logHandler))
+	cctx, cancel := context.WithCancel(ctx)
+	mux := NewMux()
+	service := &Service{
+		Name:    name,
+		Context: cctx,
+		Mux:     mux,
+		Server: &http.Server{
+			Handler: mux,
+		},
+		Decoder: NewHTTPDecoder(),
+		Encoder: NewHTTPEncoder(),
 
-			cancel: cancel,
-		}
-		notFoundHandler         Handler
-		methodNotAllowedHandler Handler
-	)
+		cancel: cancel,
+	}
+	service.Server.BaseContext = func(_ net.Listener) context.Context {
+		return service.Context
+	}
+	var notFoundHandler Handler
+	var methodNotAllowedHandler Handler
 
 	// Setup default NotFound handler
 	mux.HandleNotFound(func(rw http.ResponseWriter, req *http.Request, params url.Values) {
@@ -128,7 +129,7 @@ func New(name string) *Service {
 				notFoundHandler = chain[ml-i-1](notFoundHandler)
 			}
 		}
-		ctx := NewContext(service.Context, rw, req, params)
+		ctx := NewContext(rw, req, params)
 		err := notFoundHandler(ctx, ContextResponse(ctx), req)
 		if !ContextResponse(ctx).Written() {
 			service.Send(ctx, 404, err)
@@ -159,7 +160,7 @@ func New(name string) *Service {
 				methodNotAllowedHandler = chain[ml-i-1](methodNotAllowedHandler)
 			}
 		}
-		ctx := NewContext(service.Context, rw, req, params)
+		ctx := NewContext(rw, req, params)
 		err := methodNotAllowedHandler(ctx, ContextResponse(ctx), req)
 		if !ContextResponse(ctx).Written() {
 			service.Send(ctx, 405, err)
@@ -240,9 +241,13 @@ func (service *Service) Serve(l net.Listener) error {
 // use by the generated code. User code shouldn't have to call it directly.
 func (service *Service) NewController(name string) *Controller {
 	return &Controller{
-		Name:                 name,
-		Service:              service,
-		Context:              context.WithValue(service.Context, ctrlKey, name),
+		Name:    name,
+		Service: service,
+		BaseContext: func(req *http.Request) context.Context {
+			ctx := req.Context()
+			ctx = WithAction(ctx, name)
+			return ctx
+		},
 		MaxRequestBodyLength: 1073741824, // 1 GB
 		FileSystem: func(dir string) http.FileSystem {
 			return http.Dir(dir)
@@ -290,10 +295,11 @@ func (service *Service) EncodeResponse(ctx context.Context, v interface{}) error
 // ServeFiles replies to the request with the contents of the named file or directory. See
 // FileHandler for details.
 func (ctrl *Controller) ServeFiles(path, filename string) error {
+	ctx := context.TODO()
 	if strings.Contains(path, ":") {
 		return fmt.Errorf("path may only include wildcards that match the entire end of the URL (e.g. *filepath)")
 	}
-	LogInfo(ctrl.Context, "mount file", "name", filename, "route", fmt.Sprintf("GET %s", path))
+	LogInfo(ctx, "mount file", "name", filename, "route", fmt.Sprintf("GET %s", path))
 	handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		if !ContextResponse(ctx).Written() {
 			return ctrl.FileHandler(path, filename)(ctx, rw, req)
@@ -339,7 +345,10 @@ func (ctrl *Controller) MuxHandler(name string, hdlr Handler, unm Unmarshaler) M
 		})
 
 		// Build context
-		ctx := NewContext(WithAction(ctrl.Context, name), rw, req, params)
+		ctx := NewContext(rw, req, params)
+		req = req.WithContext(ctx)
+		ctx = ctrl.BaseContext(req)
+		ctx = WithAction(ctx, name)
 
 		// Protect against request bodies with unreasonable length
 		if ctrl.MaxRequestBodyLength > 0 {

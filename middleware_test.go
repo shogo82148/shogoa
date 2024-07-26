@@ -43,7 +43,6 @@ func TestNewMiddleware(t *testing.T) {
 	t.Run("using a shogoa handler", func(t *testing.T) {
 		service := New("test")
 		service.Encoder.Register(NewJSONEncoder, "*/*")
-		ctrl := service.NewController("foo")
 
 		myHandler := Handler(func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			return service.Send(ctx, http.StatusOK, "ok")
@@ -55,7 +54,7 @@ func TestNewMiddleware(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
 		rw := httptest.NewRecorder()
-		ctx := NewContext(ctrl.Context, rw, req, nil)
+		ctx := NewContext(rw, req, nil)
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error { return nil }
 		if err := got(h)(ctx, rw, req); err != nil {
 			t.Fatal(err)
@@ -69,7 +68,6 @@ func TestNewMiddleware(t *testing.T) {
 	t.Run("using a shogoa handler func", func(t *testing.T) {
 		service := New("test")
 		service.Encoder.Register(NewJSONEncoder, "*/*")
-		ctrl := service.NewController("foo")
 
 		myHandler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			return service.Send(ctx, http.StatusOK, "ok")
@@ -81,7 +79,7 @@ func TestNewMiddleware(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
 		rw := httptest.NewRecorder()
-		ctx := NewContext(ctrl.Context, rw, req, nil)
+		ctx := NewContext(rw, req, nil)
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error { return nil }
 		if err := got(h)(ctx, rw, req); err != nil {
 			t.Fatal(err)
@@ -95,7 +93,6 @@ func TestNewMiddleware(t *testing.T) {
 	t.Run("using a http middleware func", func(t *testing.T) {
 		service := New("test")
 		service.Encoder.Register(NewJSONEncoder, "*/*")
-		ctrl := service.NewController("foo")
 
 		myHandler := func(h http.Handler) http.Handler { return h }
 		got, err := NewMiddleware(myHandler)
@@ -105,7 +102,7 @@ func TestNewMiddleware(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
 		rw := httptest.NewRecorder()
-		ctx := NewContext(ctrl.Context, rw, req, nil)
+		ctx := NewContext(rw, req, nil)
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			return service.Send(ctx, http.StatusOK, "ok")
 		}
@@ -121,7 +118,6 @@ func TestNewMiddleware(t *testing.T) {
 	t.Run("using a http handler", func(t *testing.T) {
 		service := New("test")
 		service.Encoder.Register(NewJSONEncoder, "*/*")
-		ctrl := service.NewController("foo")
 
 		myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -136,7 +132,7 @@ func TestNewMiddleware(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
 		rw := httptest.NewRecorder()
-		ctx := NewContext(ctrl.Context, rw, req, nil)
+		ctx := NewContext(rw, req, nil)
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			return nil
 		}
@@ -152,7 +148,6 @@ func TestNewMiddleware(t *testing.T) {
 	t.Run("using a http handler func", func(t *testing.T) {
 		service := New("test")
 		service.Encoder.Register(NewJSONEncoder, "*/*")
-		ctrl := service.NewController("foo")
 
 		myHandler := func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -167,7 +162,7 @@ func TestNewMiddleware(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
 		rw := httptest.NewRecorder()
-		ctx := NewContext(ctrl.Context, rw, req, nil)
+		ctx := NewContext(rw, req, nil)
 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			return nil
 		}
