@@ -139,6 +139,7 @@ func (g *Generator) generateCommands(commandsFile string, clientPkg string, func
 		codegen.SimpleImport("github.com/spf13/cobra"),
 		codegen.SimpleImport(clientPkg),
 		codegen.SimpleImport("context"),
+		codegen.SimpleImport("log/slog"),
 		codegen.SimpleImport("golang.org/x/net/websocket"),
 		codegen.NewImport("uuid", "github.com/shogo82148/shogoa/uuid"),
 	}
@@ -732,7 +733,7 @@ func (cmd *{{ $cmdName }}) Run(c *{{ .Package }}.Client, args []string) error {
 {{ $default := defaultPath .Action }}{{ if $default }}	path = "{{ $default }}"
 {{ else }}{{ $pparams := defaultRouteParams .Action }}	path = fmt.Sprintf({{ printf "%q" (defaultRouteTemplate .Action)}}, {{ joinRouteParams .Action $pparams }})
 {{ end }}	}
-	logger := shogoa.NewLogger(log.New(os.Stderr, "", log.LstdFlags))
+	logger := shogoa.NewLogger(slog.NewJSONHandler(os.Stderr, nil))
 	ctx := shogoa.WithLogger(context.Background(), logger){{ $specialTypeResult := handleSpecialTypes .Action.QueryParams .Action.Headers }}{{ $specialTypeResult.Output }}
 	ws, err := c.{{ goify (printf "%s%s" .Action.Name (title .Resource.Name)) true }}(ctx, path{{/*
 	*/}}{{ $params := joinNames true .Action.QueryParams .Action.Headers }}{{ if $params }}, {{ format $params $specialTypeResult.Temps }}{{ end }})
@@ -756,7 +757,7 @@ func (cmd *DownloadCommand) Run(c *{{ .Package }}.Client, args []string) error {
 
 		rpath = args[0]
 		outfile = cmd.OutFile
-		logger = shogoa.NewLogger(log.New(os.Stderr, "", log.LstdFlags))
+		logger = shogoa.NewLogger(slog.NewJSONHandler(os.Stderr, nil))
 		ctx = shogoa.WithLogger(context.Background(), logger)
 		err error
 	)
@@ -831,7 +832,7 @@ func (cmd *{{ $cmdName }}) Run(c *{{ .Package }}.Client, args []string) error {
 {{ else }}			return fmt.Errorf("failed to deserialize payload: %s", err)
 {{ end }}		}
 	}
-{{ end }}	logger := shogoa.NewLogger(log.New(os.Stderr, "", log.LstdFlags))
+{{ end }}	logger := shogoa.NewLogger(slog.NewJSONHandler(os.Stderr, nil))
 	ctx := shogoa.WithLogger(context.Background(), logger){{ $specialTypeResult := handleSpecialTypes .Action.QueryParams .Action.Headers }}{{ $specialTypeResult.Output }}
 	resp, err := c.{{ goify (printf "%s%s" .Action.Name (title .Resource.Name)) true }}(ctx, path{{ if .Action.Payload }}, {{/*
 	*/}}{{ if or .Action.Payload.Type.IsObject .Action.Payload.IsPrimitive }}&{{ end }}payload{{ else }}{{ end }}{{/*
