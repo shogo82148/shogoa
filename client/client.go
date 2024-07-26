@@ -141,13 +141,21 @@ func dumpReqBody(req *http.Request) ([]byte, error) {
 	if chunked {
 		dest = httputil.NewChunkedWriter(dest)
 	}
-	_, err = io.Copy(dest, req.Body)
+	if _, err := io.Copy(dest, req.Body); err != nil {
+		return nil, err
+	}
 	if chunked {
-		dest.(io.Closer).Close()
-		io.WriteString(&b, "\r\n") // test for reviewdog
+		if closer, ok := dest.(io.Closer); ok {
+			if err := closer.Close(); err != nil {
+				return nil, err
+			}
+		}
+		if _, err := io.WriteString(&b, "\r\n"); err != nil {
+			return nil, err
+		}
 	}
 	req.Body = save
-	return b.Bytes(), err
+	return b.Bytes(), nil
 }
 
 // Dump response body, strongly inspired from httputil.DumpResponse
