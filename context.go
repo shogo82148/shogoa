@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -219,7 +218,6 @@ func (r *ResponseData) Written() bool {
 
 // WriteHeader records the response status code and calls the underlying writer.
 func (r *ResponseData) WriteHeader(status int) {
-	go IncrCounter([]string{"shogoa", "response", strconv.Itoa(status)}, 1.0)
 	r.Status = status
 	r.ResponseWriter.WriteHeader(status)
 }

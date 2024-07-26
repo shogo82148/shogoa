@@ -4,7 +4,6 @@ go 1.22.5
 
 require (
 	github.com/ajg/form v1.5.1
-	github.com/armon/go-metrics v0.4.1
 	github.com/dimfeld/httppath v0.0.0-20170720192232-ee938bf73598
 	github.com/dimfeld/httptreemux v5.0.1+incompatible
 	github.com/go-openapi/loads v0.22.0
@@ -14,7 +13,6 @@ require (
 	github.com/manveru/faker v0.0.0-20171103152722-9fbc68a78c4d
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.33.1
-	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/ugorji/go/codec v1.2.12
@@ -37,8 +35,6 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gxui v0.0.0-20151028112939-f85e0a97b3a4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
