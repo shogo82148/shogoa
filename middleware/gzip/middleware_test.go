@@ -48,7 +48,7 @@ var _ = Describe("Gzip", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = &TestResponseWriter{ParentHeader: make(http.Header)}
 
-		ctx = shogoa.NewContext(req.Context(), rw, req, nil)
+		ctx = shogoa.NewContext(rw, req, nil)
 		shogoa.ContextRequest(ctx).Payload = payload
 	})
 
@@ -244,7 +244,7 @@ var _ = Describe("NotGzip", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = &TestResponseWriter{ParentHeader: make(http.Header)}
 
-		ctx = shogoa.NewContext(req.Context(), rw, req, nil)
+		ctx = shogoa.NewContext(rw, req, nil)
 		shogoa.ContextRequest(ctx).Payload = payload
 	})
 
@@ -465,7 +465,7 @@ var _ = Describe("NotGzip", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		rw = &TestResponseWriter{ParentHeader: make(http.Header)}
 
-		ctx = shogoa.NewContext(req.Context(), rw, req, nil)
+		ctx = shogoa.NewContext(rw, req, nil)
 		shogoa.ContextRequest(ctx).Payload = payload
 	})
 

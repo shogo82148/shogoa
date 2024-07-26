@@ -17,99 +17,102 @@ import (
 	"github.com/dimfeld/httptreemux"
 )
 
-type (
-	// Service is the data structure supporting shogoa services.
-	// It provides methods for configuring a service and running it.
-	// At the basic level a service consists of a set of controllers, each implementing a given
-	// resource actions. shogoagen generates global functions - one per resource - that make it
-	// possible to mount the corresponding controller onto a service. A service contains the
-	// middleware, not found handler, encoders and muxes shared by all its controllers.
-	Service struct {
-		// Name of service used for logging, tracing etc.
-		Name string
-		// Mux is the service request mux
-		Mux ServeMux
-		// Server is the service HTTP server.
-		Server *http.Server
-		// Context is the root context from which all request contexts are derived.
-		// Set values in the root context prior to starting the server to make these values
-		// available to all request handlers.
-		Context context.Context
-		// Request body decoder
-		Decoder *HTTPDecoder
-		// Response body encoder
-		Encoder *HTTPEncoder
+// Service is the data structure supporting shogoa services.
+// It provides methods for configuring a service and running it.
+// At the basic level a service consists of a set of controllers, each implementing a given
+// resource actions. shogoagen generates global functions - one per resource - that make it
+// possible to mount the corresponding controller onto a service. A service contains the
+// middleware, not found handler, encoders and muxes shared by all its controllers.
+type Service struct {
+	// Name of service used for logging, tracing etc.
+	Name string
+	// Mux is the service request mux
+	Mux ServeMux
+	// Server is the service HTTP server.
+	Server *http.Server
+	// Context is the root context from which all request contexts are derived.
+	// Set values in the root context prior to starting the server to make these values
+	// available to all request handlers.
+	Context context.Context
+	// Request body decoder
+	Decoder *HTTPDecoder
+	// Response body encoder
+	Encoder *HTTPEncoder
 
-		middleware []Middleware       // Middleware chain
-		cancel     context.CancelFunc // Service context cancel signal trigger
-	}
+	middleware []Middleware       // Middleware chain
+	cancel     context.CancelFunc // Service context cancel signal trigger
+}
 
-	// Controller defines the common fields and behavior of generated controllers.
-	Controller struct {
-		// Controller resource name
-		Name string
-		// Service that exposes the controller
-		Service *Service
-		// Controller root context
-		Context context.Context
-		// MaxRequestBodyLength is the maximum length read from request bodies.
-		// Set to 0 to remove the limit altogether. Defaults to 1GB.
-		MaxRequestBodyLength int64
-		// FileSystem is used in FileHandler to open files. By default it returns
-		// http.Dir but you can override it with another one that implements http.FileSystem.
-		// For example using github.com/elazarl/go-bindata-assetfs is like below.
-		//
-		//	ctrl.FileSystem = func(dir string) http.FileSystem {
-		//		return &assetfs.AssetFS{
-		//			Asset: Asset,
-		//			AssetDir: AssetDir,
-		//			AssetInfo: AssetInfo,
-		//			Prefix: dir,
-		//		}
-		//	}
-		FileSystem func(string) http.FileSystem
+// Controller defines the common fields and behavior of generated controllers.
+type Controller struct {
+	// Controller resource name
+	Name string
 
-		middleware []Middleware // Controller specific middleware if any
-	}
+	// Service that exposes the controller
+	Service *Service
 
-	// FileServer is the interface implemented by controllers that can serve static files.
-	FileServer interface {
-		// FileHandler returns a handler that serves files under the given request path.
-		FileHandler(path, filename string) Handler
-	}
+	// BaseContext is a function that returns the base context for each request.
+	BaseContext func(req *http.Request) context.Context
 
-	// Handler defines the request handler signatures.
-	Handler func(context.Context, http.ResponseWriter, *http.Request) error
+	// MaxRequestBodyLength is the maximum length read from request bodies.
+	// Set to 0 to remove the limit altogether. Defaults to 1GB.
+	MaxRequestBodyLength int64
 
-	// Unmarshaler defines the request payload unmarshaler signatures.
-	Unmarshaler func(context.Context, *Service, *http.Request) error
+	// FileSystem is used in FileHandler to open files. By default it returns
+	// http.Dir but you can override it with another one that implements http.FileSystem.
+	// For example using github.com/elazarl/go-bindata-assetfs is like below.
+	//
+	//	ctrl.FileSystem = func(dir string) http.FileSystem {
+	//		return &assetfs.AssetFS{
+	//			Asset: Asset,
+	//			AssetDir: AssetDir,
+	//			AssetInfo: AssetInfo,
+	//			Prefix: dir,
+	//		}
+	//	}
+	FileSystem func(string) http.FileSystem
 
-	// DecodeFunc is the function that initialize the unmarshaled payload from the request body.
-	DecodeFunc func(context.Context, io.ReadCloser, interface{}) error
-)
+	middleware []Middleware // Controller specific middleware if any
+}
+
+// FileServer is the interface implemented by controllers that can serve static files.
+type FileServer interface {
+	// FileHandler returns a handler that serves files under the given request path.
+	FileHandler(path, filename string) Handler
+}
+
+// Handler defines the request handler signatures.
+type Handler func(context.Context, http.ResponseWriter, *http.Request) error
+
+// Unmarshaler defines the request payload unmarshaler signatures.
+type Unmarshaler func(context.Context, *Service, *http.Request) error
+
+// DecodeFunc is the function that initialize the unmarshaled payload from the request body.
+type DecodeFunc func(context.Context, io.ReadCloser, interface{}) error
 
 // New instantiates a service with the given name.
 func New(name string) *Service {
-	var (
-		logHandler   = slog.NewJSONHandler(os.Stderr, nil)
-		ctx          = WithLogger(context.Background(), NewLogger(logHandler))
-		cctx, cancel = context.WithCancel(ctx)
-		mux          = NewMux()
-		service      = &Service{
-			Name:    name,
-			Context: cctx,
-			Mux:     mux,
-			Server: &http.Server{
-				Handler: mux,
-			},
-			Decoder: NewHTTPDecoder(),
-			Encoder: NewHTTPEncoder(),
+	logHandler := slog.NewJSONHandler(os.Stderr, nil)
+	ctx := WithLogger(context.Background(), NewLogger(logHandler))
+	cctx, cancel := context.WithCancel(ctx)
+	mux := NewMux()
+	service := &Service{
+		Name:    name,
+		Context: cctx,
+		Mux:     mux,
+		Server: &http.Server{
+			Handler: mux,
+		},
+		Decoder: NewHTTPDecoder(),
+		Encoder: NewHTTPEncoder(),
 
-			cancel: cancel,
-		}
-		notFoundHandler         Handler
-		methodNotAllowedHandler Handler
-	)
+		cancel: cancel,
+	}
+	service.Server.BaseContext = func(_ net.Listener) context.Context {
+		return service.Context
+	}
+	var notFoundHandler Handler
+	var methodNotAllowedHandler Handler
 
 	// Setup default NotFound handler
 	mux.HandleNotFound(func(rw http.ResponseWriter, req *http.Request, params url.Values) {
@@ -128,7 +131,7 @@ func New(name string) *Service {
 				notFoundHandler = chain[ml-i-1](notFoundHandler)
 			}
 		}
-		ctx := NewContext(service.Context, rw, req, params)
+		ctx := NewContext(rw, req, params)
 		err := notFoundHandler(ctx, ContextResponse(ctx), req)
 		if !ContextResponse(ctx).Written() {
 			service.Send(ctx, 404, err)
@@ -159,7 +162,7 @@ func New(name string) *Service {
 				methodNotAllowedHandler = chain[ml-i-1](methodNotAllowedHandler)
 			}
 		}
-		ctx := NewContext(service.Context, rw, req, params)
+		ctx := NewContext(rw, req, params)
 		err := methodNotAllowedHandler(ctx, ContextResponse(ctx), req)
 		if !ContextResponse(ctx).Written() {
 			service.Send(ctx, 405, err)
@@ -240,9 +243,13 @@ func (service *Service) Serve(l net.Listener) error {
 // use by the generated code. User code shouldn't have to call it directly.
 func (service *Service) NewController(name string) *Controller {
 	return &Controller{
-		Name:                 name,
-		Service:              service,
-		Context:              context.WithValue(service.Context, ctrlKey, name),
+		Name:    name,
+		Service: service,
+		BaseContext: func(req *http.Request) context.Context {
+			ctx := req.Context()
+			ctx = context.WithValue(ctx, ctrlKey, name)
+			return ctx
+		},
 		MaxRequestBodyLength: 1073741824, // 1 GB
 		FileSystem: func(dir string) http.FileSystem {
 			return http.Dir(dir)
@@ -290,10 +297,11 @@ func (service *Service) EncodeResponse(ctx context.Context, v interface{}) error
 // ServeFiles replies to the request with the contents of the named file or directory. See
 // FileHandler for details.
 func (ctrl *Controller) ServeFiles(path, filename string) error {
+	ctx := ctrl.Service.Context
 	if strings.Contains(path, ":") {
 		return fmt.Errorf("path may only include wildcards that match the entire end of the URL (e.g. *filepath)")
 	}
-	LogInfo(ctrl.Context, "mount file", "name", filename, "route", fmt.Sprintf("GET %s", path))
+	LogInfo(ctx, "mount file", "name", filename, "route", fmt.Sprintf("GET %s", path))
 	handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		if !ContextResponse(ctx).Written() {
 			return ctrl.FileHandler(path, filename)(ctx, rw, req)
@@ -339,7 +347,10 @@ func (ctrl *Controller) MuxHandler(name string, hdlr Handler, unm Unmarshaler) M
 		})
 
 		// Build context
-		ctx := NewContext(WithAction(ctrl.Context, name), rw, req, params)
+		ctx := NewContext(rw, req, params)
+		req = req.WithContext(ctx)
+		ctx = ctrl.BaseContext(req)
+		ctx = WithAction(ctx, name)
 
 		// Protect against request bodies with unreasonable length
 		if ctrl.MaxRequestBodyLength > 0 {
@@ -363,7 +374,7 @@ func (ctrl *Controller) MuxHandler(name string, hdlr Handler, unm Unmarshaler) M
 		if err := handler(ctx, ContextResponse(ctx), req); err != nil {
 			LogError(ctx, "uncaught error", "err", err)
 			respBody := fmt.Sprintf("Internal error: %s", err) // Sprintf catches panics
-			ctrl.Service.Send(ctx, 500, respBody)
+			_ = ctrl.Service.Send(ctx, 500, respBody)
 		}
 	}
 }
@@ -428,6 +439,7 @@ func (ctrl *Controller) FileHandler(path, filename string) Handler {
 				}
 			}
 		}
+		_ = name
 
 		// serveContent will check modification time
 		// Still a directory? (we didn't find an index.html file)

@@ -424,7 +424,8 @@ func {{ $test.Name }}(t testing.TB, ctx context.Context, service *shogoa.Service
 		{{ $prms }}[{{ printf "%q" $param.Label }}] = sliceVal
 	}
 {{ end }}
-	{{ $goaCtx := $test.Escape "goaCtx" }}{{ $goaCtx }} := shogoa.NewContext(shogoa.WithAction(ctx, "{{ $test.ResourceName }}Test"), {{ $rw }}, {{ $req }}, {{ $prms }})
+	{{ $goaCtx := $test.Escape "goaCtx" }}{{ $goaCtx }} := shogoa.NewContext({{ $rw }}, {{ $req }}, {{ $prms }})
+	{{ $goaCtx }} = shogoa.WithAction({{ $goaCtx }}, "{{ $test.ResourceName }}Test")
 	{{ $test.ContextVarName }}, {{ $err := $test.Escape "err" }}{{ $err }} := {{ $test.ContextType }}({{ $goaCtx }}, {{ $req }}, service)
 	if {{ $err }} != nil {
 		{{ $e := $test.Escape "e" }}{{ $e }}, {{ $ok := $test.Escape "ok" }}{{ $ok }} := {{ $err }}.(shogoa.ServiceError)
