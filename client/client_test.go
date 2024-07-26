@@ -2,47 +2,46 @@ package client_test
 
 import (
 	"context"
+	"testing"
 
 	"github.com/shogo82148/shogoa/client"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("client", func() {
-	Context("with background context", func() {
-		var ctx context.Context
+func TestContextRequestID(t *testing.T) {
+	ctx := context.Background()
+	if reqID := client.ContextRequestID(ctx); reqID != "" {
+		t.Errorf("expected empty request ID, got %s", reqID)
+	}
+}
 
-		BeforeEach(func() {
-			ctx = context.Background()
-		})
+func TestContextWithRequestID(t *testing.T) {
+	ctx := context.Background()
+	newCtx, reqID := client.ContextWithRequestID(ctx)
+	if reqID == "" {
+		t.Errorf("expected non-empty request ID")
+	}
+	if got := client.ContextRequestID(newCtx); got != reqID {
+		t.Errorf("expected request ID %s, got %s", reqID, got)
+	}
+}
 
-		Context("ContextRequestID", func() {
-			It("should have empty request ID", func() {
-				Expect(client.ContextRequestID(ctx)).To(BeEmpty())
-			})
-		})
+func TestSetContextRequestID(t *testing.T) {
+	ctx := context.Background()
+	const customID = "foo"
+	newCtx := client.SetContextRequestID(ctx, customID)
+	if newCtx == ctx {
+		t.Errorf("expected new context, got the same context")
+	}
+	if got := client.ContextRequestID(newCtx); got != customID {
+		t.Errorf("expected request ID %s, got %s", customID, got)
+	}
 
-		Context("ContextWithRequestID", func() {
-			It("should generate a new request ID", func() {
-				newCtx, reqID := client.ContextWithRequestID(ctx)
-				Expect(reqID).ToNot(BeEmpty())
-				Expect(client.ContextRequestID(newCtx)).To(Equal(reqID))
-			})
-		})
-
-		Context("SetContextRequestID", func() {
-			It("should set a custom request ID", func() {
-				const customID = "foo"
-				newCtx := client.SetContextRequestID(ctx, customID)
-				Expect(newCtx).ToNot(Equal(ctx))
-				Expect(client.ContextRequestID(newCtx)).To(Equal(customID))
-
-				// request ID should not need to be generated again. the same context should be returned instead.
-				newCtx2, reqID := client.ContextWithRequestID(newCtx)
-				Expect(newCtx).To(Equal(newCtx2))
-				Expect(reqID).To(Equal(customID))
-			})
-		})
-	})
-})
+	// request ID should not need to be generated again. the same context should be returned instead.
+	newCtx2, reqID := client.ContextWithRequestID(newCtx)
+	if newCtx != newCtx2 {
+		t.Errorf("expected the same context, got a different one")
+	}
+	if reqID != customID {
+		t.Errorf("expected request ID %s, got %s", customID, reqID)
+	}
+}
