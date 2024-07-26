@@ -88,7 +88,7 @@ func (a *adapter) log(ctx context.Context, level slog.Level, msg string, data ..
 	pc = pcs[0]
 	r := slog.NewRecord(time.Now(), level, msg, pc)
 	r.Add(data...)
-	a.handler.Handle(ctx, r)
+	_ = a.handler.Handle(ctx, r)
 }
 
 // LogInfo extracts the logger from the given context and calls Info on it.
