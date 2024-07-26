@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -91,8 +91,8 @@ type (
 // New instantiates a service with the given name.
 func New(name string) *Service {
 	var (
-		stdlog       = log.New(os.Stderr, "", log.LstdFlags)
-		ctx          = WithLogger(context.Background(), NewLogger(stdlog))
+		logHandler   = slog.NewJSONHandler(os.Stderr, nil)
+		ctx          = WithLogger(context.Background(), NewLogger(logHandler))
 		cctx, cancel = context.WithCancel(ctx)
 		mux          = NewMux()
 		service      = &Service{
@@ -196,10 +196,8 @@ func (service *Service) LogInfo(msg string, keyvals ...interface{}) {
 	// and makes the log adapter more complex to implement.
 	if l := ctx.Value(logKey); l != nil {
 		switch logger := l.(type) {
-		case ContextLogAdapter:
-			logger.InfoContext(ctx, msg, keyvals...)
 		case LogAdapter:
-			logger.Info(msg, keyvals...)
+			logger.InfoContext(ctx, msg, keyvals...)
 		}
 	}
 }
@@ -213,10 +211,8 @@ func (service *Service) LogError(msg string, keyvals ...interface{}) {
 	// and makes the log adapter more complex to implement.
 	if l := ctx.Value(logKey); l != nil {
 		switch logger := l.(type) {
-		case ContextLogAdapter:
-			logger.ErrorContext(ctx, msg, keyvals...)
 		case LogAdapter:
-			logger.Error(msg, keyvals...)
+			logger.ErrorContext(ctx, msg, keyvals...)
 		}
 	}
 }

@@ -85,7 +85,7 @@ func (g *Generator) generateResourceTest() error {
 		codegen.SimpleImport("bytes"),
 		codegen.SimpleImport("fmt"),
 		codegen.SimpleImport("io"),
-		codegen.SimpleImport("log"),
+		codegen.SimpleImport("log/slog"),
 		codegen.SimpleImport("net/http"),
 		codegen.SimpleImport("net/http/httptest"),
 		codegen.SimpleImport("net/url"),
@@ -379,7 +379,7 @@ func {{ $test.Name }}(t testing.TB, ctx context.Context, service *shogoa.Service
 	if service == nil {
 		service = goatest.Service(&{{ $logBuf }}, {{ $respSetter }})
 	} else {
-		{{ $logger := $test.Escape "logger" }}{{ $logger }} := log.New(&{{ $logBuf }}, "", log.Ltime)
+		{{ $logger := $test.Escape "logger" }}{{ $logger }} := slog.NewJSONHandler(&{{ $logBuf }}, nil)
 		service.WithLogger(shogoa.NewLogger({{ $logger }}))
 		{{ $newEncoder := $test.Escape "newEncoder" }}{{ $newEncoder }} := func(io.Writer) shogoa.Encoder { return  {{ $respSetter }} }
 		service.Encoder = shogoa.NewHTTPEncoder() // Make sure the code ends up using this decoder

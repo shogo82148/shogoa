@@ -142,7 +142,7 @@ func WithLogger(ctx context.Context, logger LogAdapter) context.Context {
 
 // WithLogContext instantiates a new logger by appending the given key/value pairs to the context
 // logger and setting the resulting logger in the context.
-func WithLogContext(ctx context.Context, keyvals ...interface{}) context.Context {
+func WithLogContext(ctx context.Context, keyvals ...any) context.Context {
 	logger := ContextLogger(ctx)
 	if logger == nil {
 		return ctx

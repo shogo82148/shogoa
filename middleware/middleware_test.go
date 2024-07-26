@@ -23,38 +23,6 @@ func newContext(service *shogoa.Service, rw http.ResponseWriter, req *http.Reque
 	return shogoa.NewContext(ctrl.Context, rw, req, params)
 }
 
-type logEntry struct {
-	Msg  string
-	Data []interface{}
-}
-
-type testLogger struct {
-	Context      []interface{}
-	InfoEntries  []logEntry
-	WarnEntries  []logEntry
-	ErrorEntries []logEntry
-}
-
-func (t *testLogger) Info(msg string, data ...interface{}) {
-	e := logEntry{msg, append(t.Context, data...)}
-	t.InfoEntries = append(t.InfoEntries, e)
-}
-
-func (t *testLogger) Warn(msg string, data ...interface{}) {
-	e := logEntry{msg, append(t.Context, data...)}
-	t.WarnEntries = append(t.InfoEntries, e)
-}
-
-func (t *testLogger) Error(msg string, data ...interface{}) {
-	e := logEntry{msg, append(t.Context, data...)}
-	t.ErrorEntries = append(t.ErrorEntries, e)
-}
-
-func (t *testLogger) New(data ...interface{}) shogoa.LogAdapter {
-	t.Context = append(t.Context, data...)
-	return t
-}
-
 type testResponseWriter struct {
 	ParentHeader http.Header
 	Body         []byte
