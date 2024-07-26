@@ -1,86 +1,60 @@
-package shogoa_test
+package shogoa
 
 import (
-	"bytes"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/shogo82148/shogoa"
+	"strings"
+	"testing"
 )
 
-var _ = Describe("Mux", func() {
-	var mux shogoa.ServeMux
-
-	var req *http.Request
-	var rw *TestResponseWriter
-
-	BeforeEach(func() {
-		mux = shogoa.NewMux()
-	})
-
-	JustBeforeEach(func() {
-		rw = &TestResponseWriter{ParentHeader: http.Header{}}
+func TestMux(t *testing.T) {
+	t.Run("with no handler", func(t *testing.T) {
+		mux := NewMux()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rw := httptest.NewRecorder()
 		mux.ServeHTTP(rw, req)
+		if rw.Code != http.StatusNotFound {
+			t.Errorf("unexpected status code: %d", rw.Code)
+		}
 	})
 
-	Context("with no handler", func() {
-		BeforeEach(func() {
-			var err error
-			req, err = http.NewRequest("GET", "/", nil)
-			Ω(err).ShouldNot(HaveOccurred())
+	t.Run("with registered handlers", func(t *testing.T) {
+		mux := NewMux()
+		mux.Handle(http.MethodPost, "/foo", func(w http.ResponseWriter, r *http.Request, v url.Values) {
+			data, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Error(err)
+			}
+			if r.URL.Path != "/foo" {
+				t.Errorf("unexpected path: %s", r.URL.Path)
+			}
+			if r.Method != http.MethodPost {
+				t.Errorf("unexpected method: %s", r.Method)
+			}
+			if string(data) != "some body" {
+				t.Errorf("unexpected body: %s", string(data))
+			}
+			w.WriteHeader(http.StatusOK)
 		})
-		It("returns 404 to all requests", func() {
-			Ω(rw.Status).Should(Equal(404))
-		})
+
+		req := httptest.NewRequest(http.MethodPost, "/foo", strings.NewReader("some body"))
+		rw := httptest.NewRecorder()
+		mux.ServeHTTP(rw, req)
+		if rw.Code != http.StatusOK {
+			t.Errorf("unexpected status code: %d", rw.Code)
+		}
 	})
 
-	Context("with registered handlers", func() {
-		const reqMeth = "POST"
-		const reqPath = "/foo"
-		const reqBody = "some body"
-
-		var readMeth, readPath, readBody string
-
-		BeforeEach(func() {
-			var body bytes.Buffer
-			body.WriteString(reqBody)
-			var err error
-			req, err = http.NewRequest(reqMeth, reqPath, &body)
-			Ω(err).ShouldNot(HaveOccurred())
-			mux.Handle(reqMeth, reqPath, func(rw http.ResponseWriter, req *http.Request, vals url.Values) {
-				b, err := io.ReadAll(req.Body)
-				Ω(err).ShouldNot(HaveOccurred())
-				readPath = req.URL.Path
-				readMeth = req.Method
-				readBody = string(b)
-			})
-		})
-
-		It("handles requests", func() {
-			Ω(readMeth).Should(Equal(reqMeth))
-			Ω(readPath).Should(Equal(reqPath))
-			Ω(readBody).Should(Equal(reqBody))
-		})
+	t.Run("with registered handlers and wrong method", func(t *testing.T) {
+		mux := NewMux()
+		mux.Handle(http.MethodPost, "/foo", func(w http.ResponseWriter, r *http.Request, v url.Values) {})
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		mux.ServeHTTP(rw, req)
+		if rw.Code != http.StatusMethodNotAllowed {
+			t.Errorf("unexpected status code: %d", rw.Code)
+		}
 	})
-
-	Context("with registered handlers and wrong method", func() {
-		const handlerMeth = "POST"
-		const reqMeth = "GET"
-		const reqPath = "/foo"
-
-		BeforeEach(func() {
-			var err error
-			req, err = http.NewRequest(reqMeth, reqPath, nil)
-			Ω(err).ShouldNot(HaveOccurred())
-			mux.Handle(handlerMeth, reqPath, func(rw http.ResponseWriter, req *http.Request, vals url.Values) {})
-		})
-
-		It("returns 405 to not allowed method", func() {
-			Ω(rw.Status).Should(Equal(405))
-		})
-	})
-
-})
+}
