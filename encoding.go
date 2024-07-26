@@ -8,7 +8,6 @@ import (
 	"io"
 	"mime"
 	"sync"
-	"time"
 )
 
 type (
@@ -104,8 +103,6 @@ func NewHTTPDecoder() *HTTPDecoder {
 
 // Decode uses registered Decoders to unmarshal a body based on the contentType.
 func (decoder *HTTPDecoder) Decode(v interface{}, body io.Reader, contentType string) error {
-	now := time.Now()
-	defer MeasureSince([]string{"shogoa", "decode", contentType}, now)
 	var p *decoderPool
 	if contentType == "" {
 		// Default to JSON
@@ -185,7 +182,6 @@ func (p *decoderPool) Put(d Decoder) {
 // Encode uses the registered encoders and given content type to marshal and write the given value
 // using the given writer.
 func (encoder *HTTPEncoder) Encode(v interface{}, resp io.Writer, accept string) error {
-	now := time.Now()
 	if accept == "" {
 		accept = "*/*"
 	}
@@ -196,7 +192,6 @@ func (encoder *HTTPEncoder) Encode(v interface{}, resp io.Writer, accept string)
 			break
 		}
 	}
-	defer MeasureSince([]string{"shogoa", "encode", contentType}, now)
 	p := encoder.pools[contentType]
 	if p == nil && contentType != "*/*" {
 		p = encoder.pools["*/*"]
