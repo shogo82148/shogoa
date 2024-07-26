@@ -144,7 +144,7 @@ func dumpReqBody(req *http.Request) ([]byte, error) {
 	_, err = io.Copy(dest, req.Body)
 	if chunked {
 		dest.(io.Closer).Close()
-		io.WriteString(&b, "\r\n")
+		io.WriteString(&b, "\r\n") // test for reviewdog
 	}
 	req.Body = save
 	return b.Bytes(), err
