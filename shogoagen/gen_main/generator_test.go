@@ -15,7 +15,7 @@ package genmain_test
 // )
 
 // var _ = Describe("Generate", func() {
-// 	const testgenPackagePath = "github.com/shogo82148/shogoa/shogoagen/gen_main/goatest"
+// 	const testgenPackagePath = "github.com/shogo82148/shogoa/shogoagen/gen_main/shogoatest"
 
 // 	var outDir string
 // 	var files []string

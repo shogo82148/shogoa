@@ -95,7 +95,7 @@ func (g *Generator) generateResourceTest() error {
 		codegen.SimpleImport("time"),
 		codegen.SimpleImport(appPkg),
 		codegen.NewImport("shogoa", "github.com/shogo82148/shogoa"),
-		codegen.SimpleImport("github.com/shogo82148/shogoa/goatest"),
+		codegen.SimpleImport("github.com/shogo82148/shogoa/shogoatest"),
 		codegen.SimpleImport("context"),
 		codegen.NewImport("uuid", "github.com/gofrs/uuid"),
 	}
@@ -374,10 +374,10 @@ func {{ $test.Name }}(t testing.TB, ctx context.Context, service *shogoa.Service
 		{{ $logBuf := $test.Escape "logBuf" }}{{ $logBuf }} strings.Builder
 		{{ $resp := $test.Escape "resp" }}{{ if $test.ReturnType }}{{ $resp }}   interface{}{{ end }}
 
-		{{ $respSetter := $test.Escape "respSetter" }}{{ $respSetter }} goatest.ResponseSetterFunc = func(r interface{}) { {{ if $test.ReturnType }}{{ $resp }} = r{{ end }} }
+		{{ $respSetter := $test.Escape "respSetter" }}{{ $respSetter }} shogoatest.ResponseSetterFunc = func(r interface{}) { {{ if $test.ReturnType }}{{ $resp }} = r{{ end }} }
 	)
 	if service == nil {
-		service = goatest.Service(&{{ $logBuf }}, {{ $respSetter }})
+		service = shogoatest.Service(&{{ $logBuf }}, {{ $respSetter }})
 	} else {
 		{{ $logger := $test.Escape "logger" }}{{ $logger }} := slog.NewJSONHandler(&{{ $logBuf }}, nil)
 		service.WithLogger(shogoa.NewLogger({{ $logger }}))

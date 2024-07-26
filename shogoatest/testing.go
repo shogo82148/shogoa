@@ -1,4 +1,4 @@
-package goatest
+package shogoatest
 
 import (
 	"io"
