@@ -7,47 +7,20 @@ import (
 	"time"
 )
 
-// ErrMissingLogValue is the value used to log keys with missing values
-const ErrMissingLogValue = "MISSING"
-
-// LogAdapter is the logger interface used by shogoa to log informational and error messages.
-// Adapters to different logging backends are provided in the logging sub-packages.
-// shogoa takes care of initializing the logging context with the service, controller and
-// action names.
-type LogAdapter interface {
-	// Info logs an informational message.
-	Info(msg string, keyvals ...any)
-	// Error logs an error.
-	Error(msg string, keyvals ...any)
-	// New appends to the logger context and returns the updated logger logger.
-	New(keyvals ...any) LogAdapter
-}
-
-// WarningLogAdapter is the logger interface used by shogoa to log informational, warning and error messages.
-// Adapters to different logging backends are provided in the logging sub-packages.
-// shogoa takes care of initializing the logging context with the service, controller and
-// action names.
-type WarningLogAdapter interface {
-	LogAdapter
-	// Warn logs a warning message.
-	Warn(mgs string, keyvals ...any)
-}
-
 // ContextLogAdapter is the logger interface used by shogoa to log informational, warning and error messages.
 // It allows to pass a context.Context to the logger.
-type ContextLogAdapter interface {
-	WarningLogAdapter
-
-	// InfoContext is same as Info but with context.
+type LogAdapter interface {
+	// New appends to the logger context and returns the updated logger logger.
+	New(keyvals ...any) LogAdapter
+	// InfoContext logs an informational message.
 	InfoContext(ctx context.Context, msg string, keyvals ...any)
-	// ErrorContext is same as Error but with context.
+	// ErrorContext logs an error.
 	ErrorContext(ctx context.Context, msg string, keyvals ...any)
-	// WarnContext is same as Warn but with context.
+	// WarnContext logs a warning message.
 	WarnContext(ctx context.Context, mgs string, keyvals ...any)
 }
 
 var _ LogAdapter = (*adapter)(nil)
-var _ ContextLogAdapter = (*adapter)(nil)
 
 // adapter is the slog shogoa logger adapter.
 type adapter struct {
@@ -121,14 +94,12 @@ func (a *adapter) log(ctx context.Context, level slog.Level, msg string, data ..
 // LogInfo extracts the logger from the given context and calls Info on it.
 // This is intended for code that needs portable logging such as the internal code of shogoa and
 // middleware. User code should use the log adapters instead.
-func LogInfo(ctx context.Context, msg string, keyvals ...interface{}) {
+func LogInfo(ctx context.Context, msg string, keyvals ...any) {
 	// This block should be synced with Service.LogInfo
 	if l := ctx.Value(logKey); l != nil {
 		switch logger := l.(type) {
-		case ContextLogAdapter:
-			logger.InfoContext(ctx, msg, keyvals...)
 		case LogAdapter:
-			logger.Info(msg, keyvals...)
+			logger.InfoContext(ctx, msg, keyvals...)
 		}
 	}
 }
@@ -136,15 +107,11 @@ func LogInfo(ctx context.Context, msg string, keyvals ...interface{}) {
 // LogWarn extracts the logger from the given context and calls Warn on it.
 // This is intended for code that needs portable logging such as the internal code of shogoa and
 // middleware. User code should use the log adapters instead.
-func LogWarn(ctx context.Context, msg string, keyvals ...interface{}) {
+func LogWarn(ctx context.Context, msg string, keyvals ...any) {
 	if l := ctx.Value(logKey); l != nil {
 		switch logger := l.(type) {
-		case ContextLogAdapter:
-			logger.WarnContext(ctx, msg, keyvals...)
-		case WarningLogAdapter:
-			logger.Warn(msg, keyvals...)
 		case LogAdapter:
-			logger.Info(msg, keyvals...)
+			logger.WarnContext(ctx, msg, keyvals...)
 		}
 	}
 }
@@ -152,14 +119,12 @@ func LogWarn(ctx context.Context, msg string, keyvals ...interface{}) {
 // LogError extracts the logger from the given context and calls Error on it.
 // This is intended for code that needs portable logging such as the internal code of shogoa and
 // middleware. User code should use the log adapters instead.
-func LogError(ctx context.Context, msg string, keyvals ...interface{}) {
+func LogError(ctx context.Context, msg string, keyvals ...any) {
 	// this block should be synced with Service.LogError
 	if l := ctx.Value(logKey); l != nil {
 		switch logger := l.(type) {
-		case ContextLogAdapter:
-			logger.ErrorContext(ctx, msg, keyvals...)
 		case LogAdapter:
-			logger.Error(msg, keyvals...)
+			logger.ErrorContext(ctx, msg, keyvals...)
 		}
 	}
 }

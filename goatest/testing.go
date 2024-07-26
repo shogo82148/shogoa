@@ -2,7 +2,7 @@ package goatest
 
 import (
 	"io"
-	"log"
+	"log/slog"
 	"testing"
 
 	"github.com/shogo82148/shogoa"
@@ -26,8 +26,8 @@ func (r ResponseSetterFunc) Encode(v interface{}) error {
 // Service provide a general shogoa.Service used for testing purposes
 func Service(logBuf io.Writer, respSetter ResponseSetterFunc) *shogoa.Service {
 	s := shogoa.New("test")
-	logger := log.New(logBuf, "", log.Ltime)
-	s.WithLogger(shogoa.NewLogger(logger))
+	logHandler := slog.NewJSONHandler(logBuf, nil)
+	s.WithLogger(shogoa.NewLogger(logHandler))
 	s.Use(middleware.LogRequest(true))
 	s.Use(middleware.LogResponse())
 	newEncoder := func(io.Writer) shogoa.Encoder {
