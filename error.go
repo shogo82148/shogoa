@@ -33,6 +33,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"strings"
 )
 
@@ -80,58 +81,56 @@ var (
 	ErrInternal = NewErrorClass("internal", 500)
 )
 
-type (
-	// ErrorClass is an error generating function.
-	// It accepts a message and optional key value pairs and produces errors that implement
-	// ServiceError.
-	// If the message is a string or a fmt.Stringer then the string value is used.
-	// If the message is an error then the string returned by Error() is used.
-	// Otherwise the string produced using fmt.Sprintf("%v") is used.
-	// The optional key value pairs are intended to provide additional contextual information
-	// and are returned to the client.
-	ErrorClass func(message interface{}, keyvals ...interface{}) error
+// ErrorClass is an error generating function.
+// It accepts a message and optional key value pairs and produces errors that implement
+// ServiceError.
+// If the message is a string or a fmt.Stringer then the string value is used.
+// If the message is an error then the string returned by Error() is used.
+// Otherwise the string produced using fmt.Sprintf("%v") is used.
+// The optional key value pairs are intended to provide additional contextual information
+// and are returned to the client.
+type ErrorClass func(message any, keyvals ...any) error
 
-	// ServiceError is the interface implemented by all errors created using a ErrorClass
-	// function.
-	ServiceError interface {
-		// ServiceError extends the error interface
-		error
-		// ResponseStatus dictates the status used to build the response sent to the client.
-		ResponseStatus() int
-		// Token is a unique value associated with the occurrence of the error.
-		Token() string
-	}
+// ServiceError is the interface implemented by all errors created using a ErrorClass
+// function.
+type ServiceError interface {
+	// ServiceError extends the error interface
+	error
+	// ResponseStatus dictates the status used to build the response sent to the client.
+	ResponseStatus() int
+	// Token is a unique value associated with the occurrence of the error.
+	Token() string
+}
 
-	// ServiceMergeableError is the interface implemented by ServiceErrors that can merge
-	// another error into a combined error.
-	ServiceMergeableError interface {
-		// ServiceMergeableError extends from the ServiceError interface.
-		ServiceError
+// ServiceMergeableError is the interface implemented by ServiceErrors that can merge
+// another error into a combined error.
+type ServiceMergeableError interface {
+	// ServiceMergeableError extends from the ServiceError interface.
+	ServiceError
 
-		// Merge updates an error by combining another error into it.
-		Merge(other error) error
-	}
+	// Merge updates an error by combining another error into it.
+	Merge(other error) error
+}
 
-	// ErrorResponse contains the details of a error response. It implements ServiceError.
-	// This struct is mainly intended for clients to decode error responses.
-	ErrorResponse struct {
-		// ID is the unique error instance identifier.
-		ID string `json:"id" yaml:"id" xml:"id" form:"id"`
-		// Code identifies the class of errors.
-		Code string `json:"code" yaml:"code" xml:"code" form:"code"`
-		// Status is the HTTP status code used by responses that cary the error.
-		Status int `json:"status" yaml:"status" xml:"status" form:"status"`
-		// Detail describes the specific error occurrence.
-		Detail string `json:"detail" yaml:"detail" xml:"detail" form:"detail"`
-		// Meta contains additional key/value pairs useful to clients.
-		Meta map[string]interface{} `json:"meta,omitempty" yaml:"meta,omitempty" xml:"meta,omitempty" form:"meta,omitempty"`
-	}
-)
+// ErrorResponse contains the details of a error response. It implements ServiceError.
+// This struct is mainly intended for clients to decode error responses.
+type ErrorResponse struct {
+	// ID is the unique error instance identifier.
+	ID string `json:"id" yaml:"id" xml:"id" form:"id"`
+	// Code identifies the class of errors.
+	Code string `json:"code" yaml:"code" xml:"code" form:"code"`
+	// Status is the HTTP status code used by responses that cary the error.
+	Status int `json:"status" yaml:"status" xml:"status" form:"status"`
+	// Detail describes the specific error occurrence.
+	Detail string `json:"detail" yaml:"detail" xml:"detail" form:"detail"`
+	// Meta contains additional key/value pairs useful to clients.
+	Meta map[string]any `json:"meta,omitempty" yaml:"meta,omitempty" xml:"meta,omitempty" form:"meta,omitempty"`
+}
 
 // NewErrorClass creates a new error class.
 // It is the responsibility of the client to guarantee uniqueness of code.
 func NewErrorClass(code string, status int) ErrorClass {
-	return func(message interface{}, keyvals ...interface{}) error {
+	return func(message any, keyvals ...any) error {
 		var msg string
 		switch actual := message.(type) {
 		case string:
@@ -143,14 +142,14 @@ func NewErrorClass(code string, status int) ErrorClass {
 		default:
 			msg = fmt.Sprintf("%v", actual)
 		}
-		var meta map[string]interface{}
+		var meta map[string]any
 		l := len(keyvals)
 		if l > 0 {
-			meta = make(map[string]interface{})
+			meta = make(map[string]any)
 		}
 		for i := 0; i < l; i += 2 {
 			k := keyvals[i]
-			var v interface{} = "MISSING"
+			var v any = "MISSING"
 			if i+1 < l {
 				v = keyvals[i+1]
 			}
@@ -167,7 +166,7 @@ func MissingPayloadError() error {
 
 // InvalidParamTypeError is the error produced when the type of a parameter does not match the type
 // defined in the design.
-func InvalidParamTypeError(name string, val interface{}, expected string) error {
+func InvalidParamTypeError(name string, val any, expected string) error {
 	msg := fmt.Sprintf("invalid value %#v for parameter %#v, must be a %s", val, name, expected)
 	return ErrInvalidRequest(msg, "param", name, "value", val, "expected", expected)
 }
@@ -181,7 +180,7 @@ func MissingParamError(name string) error {
 
 // InvalidAttributeTypeError is the error produced when the type of payload field does not match
 // the type defined in the design.
-func InvalidAttributeTypeError(ctx string, val interface{}, expected string) error {
+func InvalidAttributeTypeError(ctx string, val any, expected string) error {
 	msg := fmt.Sprintf("type of %s must be %s but got value %#v", ctx, expected, val)
 	return ErrInvalidRequest(msg, "attribute", ctx, "value", val, "expected", expected)
 }
@@ -200,7 +199,7 @@ func MissingHeaderError(name string) error {
 
 // InvalidEnumValueError is the error produced when the value of a parameter or payload field does
 // not match one the values defined in the design Enum validation.
-func InvalidEnumValueError(ctx string, val interface{}, allowed []interface{}) error {
+func InvalidEnumValueError(ctx string, val any, allowed []any) error {
 	elems := make([]string, len(allowed))
 	for i, a := range allowed {
 		elems[i] = fmt.Sprintf("%#v", a)
@@ -225,7 +224,7 @@ func InvalidPatternError(ctx, target string, pattern string) error {
 
 // InvalidRangeError is the error produced when the value of a parameter or payload field does
 // not match the range validation defined in the design. value may be a int or a float64.
-func InvalidRangeError(ctx string, target interface{}, value interface{}, min bool) error {
+func InvalidRangeError(ctx string, target any, value any, min bool) error {
 	comp := "greater than or equal to"
 	if !min {
 		comp = "less than or equal to"
@@ -236,7 +235,7 @@ func InvalidRangeError(ctx string, target interface{}, value interface{}, min bo
 
 // InvalidLengthError is the error produced when the value of a parameter or payload field does
 // not match the length validation defined in the design.
-func InvalidLengthError(ctx string, target interface{}, ln, value int, min bool) error {
+func InvalidLengthError(ctx string, target any, ln, value int, min bool) error {
 	comp := "greater than or equal to"
 	if !min {
 		comp = "less than or equal to"
@@ -316,19 +315,19 @@ func MergeErrors(err, other error) error {
 	e := asErrorResponse(err)
 	o := asErrorResponse(other)
 	switch {
-	case e.Status == 500 || o.Status == 500:
-		if e.Status != 500 {
-			e.Status = 500
+	case e.Status == http.StatusInternalServerError || o.Status == http.StatusInternalServerError:
+		if e.Status != http.StatusInternalServerError {
+			e.Status = http.StatusInternalServerError
 			e.Code = "internal_error"
 		}
 	case e.Status != o.Status || e.Code != o.Code:
-		e.Status = 400
+		e.Status = http.StatusBadRequest
 		e.Code = "bad_request"
 	}
 	e.Detail = e.Detail + "; " + o.Detail
 
 	if e.Meta == nil && len(o.Meta) > 0 {
-		e.Meta = make(map[string]interface{})
+		e.Meta = make(map[string]any)
 	}
 	for k, v := range o.Meta {
 		e.Meta[k] = v
@@ -347,7 +346,7 @@ func asServiceError(err error) ServiceError {
 func asErrorResponse(err error) *ErrorResponse {
 	e, ok := err.(*ErrorResponse)
 	if !ok {
-		return &ErrorResponse{Status: 500, Code: "internal_error", Detail: err.Error()}
+		return &ErrorResponse{Status: http.StatusBadRequest, Code: "internal_error", Detail: err.Error()}
 	}
 	return e
 }
