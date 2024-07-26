@@ -33,6 +33,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"strings"
 )
 
@@ -314,13 +315,13 @@ func MergeErrors(err, other error) error {
 	e := asErrorResponse(err)
 	o := asErrorResponse(other)
 	switch {
-	case e.Status == 500 || o.Status == 500:
-		if e.Status != 500 {
-			e.Status = 500
+	case e.Status == http.StatusInternalServerError || o.Status == http.StatusInternalServerError:
+		if e.Status != http.StatusInternalServerError {
+			e.Status = http.StatusInternalServerError
 			e.Code = "internal_error"
 		}
 	case e.Status != o.Status || e.Code != o.Code:
-		e.Status = 400
+		e.Status = http.StatusBadRequest
 		e.Code = "bad_request"
 	}
 	e.Detail = e.Detail + "; " + o.Detail
@@ -345,7 +346,7 @@ func asServiceError(err error) ServiceError {
 func asErrorResponse(err error) *ErrorResponse {
 	e, ok := err.(*ErrorResponse)
 	if !ok {
-		return &ErrorResponse{Status: 500, Code: "internal_error", Detail: err.Error()}
+		return &ErrorResponse{Status: http.StatusBadRequest, Code: "internal_error", Detail: err.Error()}
 	}
 	return e
 }
