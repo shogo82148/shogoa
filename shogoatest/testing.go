@@ -3,16 +3,10 @@ package shogoatest
 import (
 	"io"
 	"log/slog"
-	"testing"
 
 	"github.com/shogo82148/shogoa"
 	"github.com/shogo82148/shogoa/middleware"
 )
-
-// TInterface is an interface for Go's testing.T and testing.B.
-//
-// Deprecated: use testing.TB instead.
-type TInterface = testing.TB
 
 // ResponseSetterFunc func
 type ResponseSetterFunc func(resp interface{})
