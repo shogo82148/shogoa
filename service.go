@@ -247,7 +247,7 @@ func (service *Service) NewController(name string) *Controller {
 		Service: service,
 		BaseContext: func(req *http.Request) context.Context {
 			ctx := req.Context()
-			ctx = WithAction(ctx, name)
+			ctx = context.WithValue(ctx, ctrlKey, name)
 			return ctx
 		},
 		MaxRequestBodyLength: 1073741824, // 1 GB
