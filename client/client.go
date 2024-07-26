@@ -175,9 +175,6 @@ func dumpRespBody(resp *http.Response) ([]byte, error) {
 	}
 	resp.Body = save
 	resp.ContentLength = savecl
-	if err != nil {
-		return nil, err
-	}
 	return b.Bytes(), nil
 }
 
