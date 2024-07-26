@@ -6,50 +6,44 @@ import (
 	"net/http"
 )
 
-type (
-	// Middleware represents the canonical shogoa middleware signature.
-	Middleware func(Handler) Handler
-)
+// Middleware represents the canonical shogoa middleware signature.
+type Middleware func(Handler) Handler
 
 // NewMiddleware creates a middleware from the given argument. The allowed types for the
 // argument are:
 //
-// - a shogoa middleware: shogoa.Middleware or func(shogoa.Handler) shogoa.Handler
-//
-// - a shogoa handler: shogoa.Handler or func(context.Context, http.ResponseWriter, *http.Request) error
-//
-// - an http middleware: func(http.Handler) http.Handler
-//
-// - or an http handler: http.Handler or func(http.ResponseWriter, *http.Request)
+//   - a shogoa middleware: shogoa.Middleware or func(shogoa.Handler) shogoa.Handler
+//   - a shogoa handler: shogoa.Handler or func(context.Context, http.ResponseWriter, *http.Request) error
+//   - an http middleware: func(http.Handler) http.Handler
+//   - or an http handler: http.Handler or func(http.ResponseWriter, *http.Request)
 //
 // An error is returned if the given argument is not one of the types above.
-func NewMiddleware(m interface{}) (mw Middleware, err error) {
+func NewMiddleware(m any) (Middleware, error) {
 	switch m := m.(type) {
 	case Middleware:
-		mw = m
+		return m, nil
 	case func(Handler) Handler:
-		mw = m
+		return m, nil
 	case Handler:
-		mw = handlerToMiddleware(m)
+		return handlerToMiddleware(m), nil
 	case func(context.Context, http.ResponseWriter, *http.Request) error:
-		mw = handlerToMiddleware(m)
+		return handlerToMiddleware(m), nil
 	case func(http.Handler) http.Handler:
-		mw = func(h Handler) Handler {
+		return func(h Handler) Handler {
 			return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (err error) {
 				m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					err = h(ctx, w, r)
 				})).ServeHTTP(rw, req)
 				return
 			}
-		}
+		}, nil
 	case http.Handler:
-		mw = httpHandlerToMiddleware(m.ServeHTTP)
+		return httpHandlerToMiddleware(m.ServeHTTP), nil
 	case func(http.ResponseWriter, *http.Request):
-		mw = httpHandlerToMiddleware(m)
+		return httpHandlerToMiddleware(m), nil
 	default:
-		err = fmt.Errorf("invalid middleware %#v", m)
+		return nil, fmt.Errorf("shogoa: invalid middleware %#v", m)
 	}
-	return
 }
 
 // handlerToMiddleware creates a middleware from a raw handler.
