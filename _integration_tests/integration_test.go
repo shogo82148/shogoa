@@ -47,7 +47,7 @@ type CreateGreetingPayload struct {
 }
 
 func TestDefaultTime(t *testing.T) {
-	defer cleanup("./default-value/*")
+	cleanup("./default-value/*")
 	if err := shogoagen("./default-value", "bootstrap", "-d", "github.com/shogo82148/shogoa/_integration_tests/default-value/design"); err != nil {
 		t.Error(err.Error())
 	}
