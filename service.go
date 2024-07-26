@@ -51,7 +51,7 @@ type Controller struct {
 	// Service that exposes the controller
 	Service *Service
 
-	// BaseContext is the controller base context.
+	// BaseContext is a function that returns the base context for each request.
 	BaseContext func(req *http.Request) context.Context
 
 	// MaxRequestBodyLength is the maximum length read from request bodies.
