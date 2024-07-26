@@ -18,40 +18,38 @@ var (
 	securityScopesKey = &contextKey{"security-scope"}
 )
 
-type (
-	// RequestData provides access to the underlying HTTP request.
-	RequestData struct {
-		*http.Request
-
-		// Payload returns the decoded request body.
-		Payload interface{}
-		// Params contains the raw values for the parameters defined in the design including
-		// path parameters, query string parameters and header parameters.
-		Params url.Values
-	}
-
-	// ResponseData provides access to the underlying HTTP response.
-	ResponseData struct {
-		http.ResponseWriter
-
-		// The service used to encode the response.
-		Service *Service
-		// ErrorCode is the code of the error returned by the action if any.
-		ErrorCode string
-		// Status is the response HTTP status code.
-		Status int
-		// Length is the response body length.
-		Length int
-	}
-)
-
 // contextKey is a value for use with context.WithValue. It's used as
 // a pointer so it fits in an interface{} without allocation.
 type contextKey struct {
 	name string
 }
 
-func (k *contextKey) String() string { return "shogo1 context value " + k.name }
+func (k *contextKey) String() string { return "shogoa context value " + k.name }
+
+// RequestData provides access to the underlying HTTP request.
+type RequestData struct {
+	*http.Request
+
+	// Payload returns the decoded request body.
+	Payload interface{}
+	// Params contains the raw values for the parameters defined in the design including
+	// path parameters, query string parameters and header parameters.
+	Params url.Values
+}
+
+// ResponseData provides access to the underlying HTTP response.
+type ResponseData struct {
+	http.ResponseWriter
+
+	// The service used to encode the response.
+	Service *Service
+	// ErrorCode is the code of the error returned by the action if any.
+	ErrorCode string
+	// Status is the response HTTP status code.
+	Status int
+	// Length is the response body length.
+	Length int
+}
 
 // NewContext builds a new shogoa request context.
 // If ctx is nil then req.Context() is used.
