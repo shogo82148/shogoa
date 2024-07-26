@@ -80,53 +80,51 @@ var (
 	ErrInternal = NewErrorClass("internal", 500)
 )
 
-type (
-	// ErrorClass is an error generating function.
-	// It accepts a message and optional key value pairs and produces errors that implement
-	// ServiceError.
-	// If the message is a string or a fmt.Stringer then the string value is used.
-	// If the message is an error then the string returned by Error() is used.
-	// Otherwise the string produced using fmt.Sprintf("%v") is used.
-	// The optional key value pairs are intended to provide additional contextual information
-	// and are returned to the client.
-	ErrorClass func(message interface{}, keyvals ...interface{}) error
+// ErrorClass is an error generating function.
+// It accepts a message and optional key value pairs and produces errors that implement
+// ServiceError.
+// If the message is a string or a fmt.Stringer then the string value is used.
+// If the message is an error then the string returned by Error() is used.
+// Otherwise the string produced using fmt.Sprintf("%v") is used.
+// The optional key value pairs are intended to provide additional contextual information
+// and are returned to the client.
+type ErrorClass func(message interface{}, keyvals ...interface{}) error
 
-	// ServiceError is the interface implemented by all errors created using a ErrorClass
-	// function.
-	ServiceError interface {
-		// ServiceError extends the error interface
-		error
-		// ResponseStatus dictates the status used to build the response sent to the client.
-		ResponseStatus() int
-		// Token is a unique value associated with the occurrence of the error.
-		Token() string
-	}
+// ServiceError is the interface implemented by all errors created using a ErrorClass
+// function.
+type ServiceError interface {
+	// ServiceError extends the error interface
+	error
+	// ResponseStatus dictates the status used to build the response sent to the client.
+	ResponseStatus() int
+	// Token is a unique value associated with the occurrence of the error.
+	Token() string
+}
 
-	// ServiceMergeableError is the interface implemented by ServiceErrors that can merge
-	// another error into a combined error.
-	ServiceMergeableError interface {
-		// ServiceMergeableError extends from the ServiceError interface.
-		ServiceError
+// ServiceMergeableError is the interface implemented by ServiceErrors that can merge
+// another error into a combined error.
+type ServiceMergeableError interface {
+	// ServiceMergeableError extends from the ServiceError interface.
+	ServiceError
 
-		// Merge updates an error by combining another error into it.
-		Merge(other error) error
-	}
+	// Merge updates an error by combining another error into it.
+	Merge(other error) error
+}
 
-	// ErrorResponse contains the details of a error response. It implements ServiceError.
-	// This struct is mainly intended for clients to decode error responses.
-	ErrorResponse struct {
-		// ID is the unique error instance identifier.
-		ID string `json:"id" yaml:"id" xml:"id" form:"id"`
-		// Code identifies the class of errors.
-		Code string `json:"code" yaml:"code" xml:"code" form:"code"`
-		// Status is the HTTP status code used by responses that cary the error.
-		Status int `json:"status" yaml:"status" xml:"status" form:"status"`
-		// Detail describes the specific error occurrence.
-		Detail string `json:"detail" yaml:"detail" xml:"detail" form:"detail"`
-		// Meta contains additional key/value pairs useful to clients.
-		Meta map[string]interface{} `json:"meta,omitempty" yaml:"meta,omitempty" xml:"meta,omitempty" form:"meta,omitempty"`
-	}
-)
+// ErrorResponse contains the details of a error response. It implements ServiceError.
+// This struct is mainly intended for clients to decode error responses.
+type ErrorResponse struct {
+	// ID is the unique error instance identifier.
+	ID string `json:"id" yaml:"id" xml:"id" form:"id"`
+	// Code identifies the class of errors.
+	Code string `json:"code" yaml:"code" xml:"code" form:"code"`
+	// Status is the HTTP status code used by responses that cary the error.
+	Status int `json:"status" yaml:"status" xml:"status" form:"status"`
+	// Detail describes the specific error occurrence.
+	Detail string `json:"detail" yaml:"detail" xml:"detail" form:"detail"`
+	// Meta contains additional key/value pairs useful to clients.
+	Meta map[string]interface{} `json:"meta,omitempty" yaml:"meta,omitempty" xml:"meta,omitempty" form:"meta,omitempty"`
+}
 
 // NewErrorClass creates a new error class.
 // It is the responsibility of the client to guarantee uniqueness of code.
