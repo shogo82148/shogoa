@@ -7,47 +7,45 @@ import (
 	"github.com/dimfeld/httptreemux"
 )
 
-type (
-	// MuxHandler provides the low level implementation for an API endpoint.
-	// The values argument includes both the querystring and path parameter values.
-	MuxHandler func(http.ResponseWriter, *http.Request, url.Values)
+// MuxHandler provides the low level implementation for an API endpoint.
+// The values argument includes both the querystring and path parameter values.
+type MuxHandler func(http.ResponseWriter, *http.Request, url.Values)
 
-	// MethodNotAllowedHandler provides the implementation for an MethodNotAllowed
-	// handler. The values argument includes both the querystring and path parameter
-	// values. The methods argument includes both the allowed method identifier
-	// and the registered handler.
-	MethodNotAllowedHandler func(http.ResponseWriter, *http.Request, url.Values, map[string]httptreemux.HandlerFunc)
+// MethodNotAllowedHandler provides the implementation for an MethodNotAllowed
+// handler. The values argument includes both the querystring and path parameter
+// values. The methods argument includes both the allowed method identifier
+// and the registered handler.
+type MethodNotAllowedHandler func(http.ResponseWriter, *http.Request, url.Values, map[string]httptreemux.HandlerFunc)
 
-	// ServeMux is the interface implemented by the service request muxes.
-	// It implements http.Handler and makes it possible to register request handlers for
-	// specific HTTP methods and request path via the Handle method.
-	ServeMux interface {
-		http.Handler
-		// Handle sets the MuxHandler for a given HTTP method and path.
-		Handle(method, path string, handle MuxHandler)
-		// HandleNotFound sets the MuxHandler invoked for requests that don't match any
-		// handler registered with Handle. The values argument given to the handler is
-		// always nil.
-		HandleNotFound(handle MuxHandler)
-		// HandleMethodNotAllowed sets the MethodNotAllowedHandler invoked for requests
-		// that match the path of a handler but not its HTTP method. The values argument
-		// given to the Handler is always nil.
-		HandleMethodNotAllowed(handle MethodNotAllowedHandler)
-		// Lookup returns the MuxHandler associated with the given HTTP method and path.
-		Lookup(method, path string) MuxHandler
-	}
+// ServeMux is the interface implemented by the service request muxes.
+// It implements http.Handler and makes it possible to register request handlers for
+// specific HTTP methods and request path via the Handle method.
+type ServeMux interface {
+	http.Handler
+	// Handle sets the MuxHandler for a given HTTP method and path.
+	Handle(method, path string, handle MuxHandler)
+	// HandleNotFound sets the MuxHandler invoked for requests that don't match any
+	// handler registered with Handle. The values argument given to the handler is
+	// always nil.
+	HandleNotFound(handle MuxHandler)
+	// HandleMethodNotAllowed sets the MethodNotAllowedHandler invoked for requests
+	// that match the path of a handler but not its HTTP method. The values argument
+	// given to the Handler is always nil.
+	HandleMethodNotAllowed(handle MethodNotAllowedHandler)
+	// Lookup returns the MuxHandler associated with the given HTTP method and path.
+	Lookup(method, path string) MuxHandler
+}
 
-	// Muxer implements an adapter that given a request handler can produce a mux handler.
-	Muxer interface {
-		MuxHandler(string, Handler, Unmarshaler) MuxHandler
-	}
+// Muxer implements an adapter that given a request handler can produce a mux handler.
+type Muxer interface {
+	MuxHandler(string, Handler, Unmarshaler) MuxHandler
+}
 
-	// mux is the default ServeMux implementation.
-	mux struct {
-		router  *httptreemux.TreeMux
-		handles map[string]MuxHandler
-	}
-)
+// mux is the default ServeMux implementation.
+type mux struct {
+	router  *httptreemux.TreeMux
+	handles map[string]MuxHandler
+}
 
 // NewMux returns a Mux.
 func NewMux() ServeMux {
