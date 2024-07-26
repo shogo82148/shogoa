@@ -1,153 +1,182 @@
-package shogoa_test
+package shogoa
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/shogo82148/shogoa"
+	"net/http/httptest"
+	"testing"
 )
 
-var _ = Describe("NewMiddleware", func() {
-	var input interface{}
-	var middleware shogoa.Middleware
-	var mErr error
-
-	JustBeforeEach(func() {
-		middleware, mErr = shogoa.NewMiddleware(input)
+func TestNewMiddleware(t *testing.T) {
+	t.Run("shogoa Middleware", func(t *testing.T) {
+		called := false
+		myMiddleware := Middleware(func(h Handler) Handler {
+			called = true
+			return h
+		})
+		got, err := NewMiddleware(myMiddleware)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got(nil)
+		if !called {
+			t.Fatal("middleware not called")
+		}
 	})
 
-	Context("using a shogoa Middleware", func() {
-		var goaMiddleware shogoa.Middleware
-
-		BeforeEach(func() {
-			goaMiddleware = func(h shogoa.Handler) shogoa.Handler { return h }
-			input = goaMiddleware
-		})
-
-		It("returns the middleware", func() {
-			Ω(fmt.Sprintf("%#v", middleware)).Should(Equal(fmt.Sprintf("%#v", goaMiddleware)))
-			Ω(mErr).ShouldNot(HaveOccurred())
-		})
+	t.Run("shogoa middleware func", func(t *testing.T) {
+		called := false
+		myMiddleware := func(h Handler) Handler {
+			called = true
+			return h
+		}
+		got, err := NewMiddleware(myMiddleware)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got(nil)
+		if !called {
+			t.Fatal("middleware not called")
+		}
 	})
 
-	Context("using a shogoa middleware func", func() {
-		var goaMiddlewareFunc func(shogoa.Handler) shogoa.Handler
+	t.Run("using a shogoa handler", func(t *testing.T) {
+		service := New("test")
+		service.Encoder.Register(NewJSONEncoder, "*/*")
+		ctrl := service.NewController("foo")
 
-		BeforeEach(func() {
-			goaMiddlewareFunc = func(h shogoa.Handler) shogoa.Handler { return h }
-			input = goaMiddlewareFunc
+		myHandler := Handler(func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return service.Send(ctx, http.StatusOK, "ok")
 		})
+		got, err := NewMiddleware(myHandler)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-		It("returns the middleware", func() {
-			Ω(fmt.Sprintf("%#v", middleware)).Should(Equal(fmt.Sprintf("%#v", shogoa.Middleware(goaMiddlewareFunc))))
-			Ω(mErr).ShouldNot(HaveOccurred())
-		})
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		ctx := NewContext(ctrl.Context, rw, req, nil)
+		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error { return nil }
+		if err := got(h)(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Fatalf("expected status code %d, got %d", http.StatusOK, result.StatusCode)
+		}
 	})
 
-	Context("with a context", func() {
-		var service *shogoa.Service
-		var req *http.Request
-		var rw http.ResponseWriter
-		var ctx context.Context
+	t.Run("using a shogoa handler func", func(t *testing.T) {
+		service := New("test")
+		service.Encoder.Register(NewJSONEncoder, "*/*")
+		ctrl := service.NewController("foo")
 
-		BeforeEach(func() {
-			service = shogoa.New("test")
-			ctrl := service.NewController("foo")
-			var err error
-			req, err = http.NewRequest("GET", "/goo", nil)
-			Ω(err).ShouldNot(HaveOccurred())
-			rw = new(TestResponseWriter)
-			ctx = shogoa.NewContext(ctrl.Context, rw, req, nil)
-			Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(0))
-		})
+		myHandler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return service.Send(ctx, http.StatusOK, "ok")
+		}
+		got, err := NewMiddleware(myHandler)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-		Context("using a shogoa handler", func() {
-			BeforeEach(func() {
-				var goaHandler shogoa.Handler = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-					service.Send(ctx, 200, "ok")
-					return nil
-				}
-				input = goaHandler
-			})
-
-			It("wraps it in a middleware", func() {
-				Ω(mErr).ShouldNot(HaveOccurred())
-				h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error { return nil }
-				Ω(middleware(h)(ctx, rw, req)).ShouldNot(HaveOccurred())
-				Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(200))
-			})
-		})
-
-		Context("using a shogoa handler func", func() {
-			BeforeEach(func() {
-				input = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-					service.Send(ctx, 200, "ok")
-					return nil
-				}
-			})
-
-			It("wraps it in a middleware", func() {
-				Ω(mErr).ShouldNot(HaveOccurred())
-				h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error { return nil }
-				Ω(middleware(h)(ctx, rw, req)).ShouldNot(HaveOccurred())
-				Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(200))
-			})
-		})
-
-		Context("using a http middleware func", func() {
-			BeforeEach(func() {
-				input = func(h http.Handler) http.Handler { return h }
-			})
-
-			It("wraps it in a middleware", func() {
-				Ω(mErr).ShouldNot(HaveOccurred())
-				h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-					service.Send(ctx, 200, "ok")
-					return nil
-				}
-				Ω(middleware(h)(ctx, rw, req)).ShouldNot(HaveOccurred())
-				Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(200))
-			})
-		})
-
-		Context("using a http handler", func() {
-			BeforeEach(func() {
-				input = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(200)
-					w.Write([]byte("ok"))
-				})
-			})
-
-			It("wraps it in a middleware", func() {
-				Ω(mErr).ShouldNot(HaveOccurred())
-				h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-					return nil
-				}
-				Ω(middleware(h)(ctx, rw, req)).ShouldNot(HaveOccurred())
-				Ω(rw.(*TestResponseWriter).Status).Should(Equal(200))
-			})
-		})
-
-		Context("using a http handler func", func() {
-			BeforeEach(func() {
-				input = func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(200)
-					w.Write([]byte("ok"))
-				}
-			})
-
-			It("wraps it in a middleware", func() {
-				Ω(mErr).ShouldNot(HaveOccurred())
-				h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-					return nil
-				}
-				Ω(middleware(h)(ctx, rw, req)).ShouldNot(HaveOccurred())
-				Ω(rw.(*TestResponseWriter).Status).Should(Equal(200))
-			})
-		})
-
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		ctx := NewContext(ctrl.Context, rw, req, nil)
+		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error { return nil }
+		if err := got(h)(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Fatalf("expected status code %d, got %d", http.StatusOK, result.StatusCode)
+		}
 	})
-})
+
+	t.Run("using a http middleware func", func(t *testing.T) {
+		service := New("test")
+		service.Encoder.Register(NewJSONEncoder, "*/*")
+		ctrl := service.NewController("foo")
+
+		myHandler := func(h http.Handler) http.Handler { return h }
+		got, err := NewMiddleware(myHandler)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		ctx := NewContext(ctrl.Context, rw, req, nil)
+		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return service.Send(ctx, http.StatusOK, "ok")
+		}
+		if err := got(h)(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Fatalf("expected status code %d, got %d", http.StatusOK, result.StatusCode)
+		}
+	})
+
+	t.Run("using a http handler", func(t *testing.T) {
+		service := New("test")
+		service.Encoder.Register(NewJSONEncoder, "*/*")
+		ctrl := service.NewController("foo")
+
+		myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			if _, err := w.Write([]byte("ok")); err != nil {
+				panic(err)
+			}
+		})
+		got, err := NewMiddleware(myHandler)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		ctx := NewContext(ctrl.Context, rw, req, nil)
+		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return nil
+		}
+		if err := got(h)(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Fatalf("expected status code %d, got %d", http.StatusOK, result.StatusCode)
+		}
+	})
+
+	t.Run("using a http handler func", func(t *testing.T) {
+		service := New("test")
+		service.Encoder.Register(NewJSONEncoder, "*/*")
+		ctrl := service.NewController("foo")
+
+		myHandler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			if _, err := w.Write([]byte("ok")); err != nil {
+				panic(err)
+			}
+		}
+		got, err := NewMiddleware(myHandler)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		ctx := NewContext(ctrl.Context, rw, req, nil)
+		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return nil
+		}
+		if err := got(h)(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Fatalf("expected status code %d, got %d", http.StatusOK, result.StatusCode)
+		}
+	})
+}
