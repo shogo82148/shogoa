@@ -128,7 +128,9 @@ func TestMarshalJSON(t *testing.T) {
 
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	encoder.Encode(Payload{ID: u, Name: "Test"})
+	if err := encoder.Encode(Payload{ID: u, Name: "Test"}); err != nil {
+		t.Fatal(err)
+	}
 	want := `{"ID":"c0586f01-87b5-462b-a673-3b2dcf619091","Name":"Test"}` + "\n"
 	if got := buf.String(); got != want {
 		t.Errorf("expected %s, got %s", want, got)
