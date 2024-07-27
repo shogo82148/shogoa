@@ -88,7 +88,7 @@ type Handler func(context.Context, http.ResponseWriter, *http.Request) error
 type Unmarshaler func(context.Context, *Service, *http.Request) error
 
 // DecodeFunc is the function that initialize the unmarshaled payload from the request body.
-type DecodeFunc func(context.Context, io.ReadCloser, interface{}) error
+type DecodeFunc func(context.Context, io.ReadCloser, any) error
 
 // New instantiates a service with the given name.
 func New(name string) *Service {
@@ -134,7 +134,9 @@ func New(name string) *Service {
 		ctx := NewContext(rw, req, params)
 		err := notFoundHandler(ctx, ContextResponse(ctx), req)
 		if !ContextResponse(ctx).Written() {
-			service.Send(ctx, 404, err)
+			if err := service.Send(ctx, 404, err); err != nil {
+				service.LogError("failed to send 404 response", "error", err)
+			}
 		}
 	})
 
@@ -165,7 +167,9 @@ func New(name string) *Service {
 		ctx := NewContext(rw, req, params)
 		err := methodNotAllowedHandler(ctx, ContextResponse(ctx), req)
 		if !ContextResponse(ctx).Written() {
-			service.Send(ctx, 405, err)
+			if err := service.Send(ctx, 405, err); err != nil {
+				service.LogError("failed to send 405 response", "error", err)
+			}
 		}
 	})
 
@@ -191,7 +195,7 @@ func (service *Service) WithLogger(logger LogAdapter) {
 }
 
 // LogInfo logs the message and values at odd indexes using the keys at even indexes of the keyvals slice.
-func (service *Service) LogInfo(msg string, keyvals ...interface{}) {
+func (service *Service) LogInfo(msg string, keyvals ...any) {
 	ctx := service.Context
 
 	// this block should be synced with LogInfo.
@@ -206,7 +210,7 @@ func (service *Service) LogInfo(msg string, keyvals ...interface{}) {
 }
 
 // LogError logs the error and values at odd indexes using the keys at even indexes of the keyvals slice.
-func (service *Service) LogError(msg string, keyvals ...interface{}) {
+func (service *Service) LogError(msg string, keyvals ...any) {
 	ctx := service.Context
 
 	// this block should be synced with LogError.
@@ -259,7 +263,7 @@ func (service *Service) NewController(name string) *Controller {
 
 // Send serializes the given body matching the request Accept header against the service
 // encoders. It uses the default service encoder if no match is found.
-func (service *Service) Send(ctx context.Context, code int, body interface{}) error {
+func (service *Service) Send(ctx context.Context, code int, body any) error {
 	r := ContextResponse(ctx)
 	if r == nil {
 		return fmt.Errorf("no response data in context")
@@ -276,7 +280,7 @@ func (service *Service) ServeFiles(path, filename string) error {
 
 // DecodeRequest uses the HTTP decoder to unmarshal the request body into the provided value based
 // on the request Content-Type header.
-func (service *Service) DecodeRequest(req *http.Request, v interface{}) error {
+func (service *Service) DecodeRequest(req *http.Request, v any) error {
 	body, contentType := req.Body, req.Header.Get("Content-Type")
 	defer body.Close()
 
@@ -289,7 +293,7 @@ func (service *Service) DecodeRequest(req *http.Request, v interface{}) error {
 
 // EncodeResponse uses the HTTP encoder to marshal and write the response body based on the request
 // Accept header.
-func (service *Service) EncodeResponse(ctx context.Context, v interface{}) error {
+func (service *Service) EncodeResponse(ctx context.Context, v any) error {
 	accept := ContextRequest(ctx).Header.Get("Accept")
 	return service.Encoder.Encode(v, ContextResponse(ctx), accept)
 }
