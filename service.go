@@ -134,7 +134,9 @@ func New(name string) *Service {
 		ctx := NewContext(rw, req, params)
 		err := notFoundHandler(ctx, ContextResponse(ctx), req)
 		if !ContextResponse(ctx).Written() {
-			service.Send(ctx, 404, err)
+			if err := service.Send(ctx, 404, err); err != nil {
+				service.LogError("failed to send 404 response", "error", err)
+			}
 		}
 	})
 
@@ -165,7 +167,9 @@ func New(name string) *Service {
 		ctx := NewContext(rw, req, params)
 		err := methodNotAllowedHandler(ctx, ContextResponse(ctx), req)
 		if !ContextResponse(ctx).Written() {
-			service.Send(ctx, 405, err)
+			if err := service.Send(ctx, 405, err); err != nil {
+				service.LogError("failed to send 405 response", "error", err)
+			}
 		}
 	})
 
