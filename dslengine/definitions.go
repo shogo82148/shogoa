@@ -79,7 +79,7 @@ type TraitDefinition struct {
 type ValidationDefinition struct {
 	// Values represents an enum validation as described at
 	// http://json-schema.org/latest/json-schema-validation.html#anchor76.
-	Values []interface{}
+	Values []any
 	// Format represents a format validation as described at
 	// http://json-schema.org/latest/json-schema-validation.html#anchor104.
 	Format string
