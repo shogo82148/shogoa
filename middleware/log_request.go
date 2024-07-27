@@ -14,6 +14,11 @@ import (
 	"github.com/shogo82148/shogoa"
 )
 
+type reqIDKeyType struct{}
+
+// ReqIDKey is the context key used by the RequestID middleware to store the request ID value.
+var reqIDKey = reqIDKeyType{}
+
 // LogRequest creates a request logger middleware.
 // This middleware is aware of the RequestID middleware and if registered after it leverages the
 // request ID for logging.
