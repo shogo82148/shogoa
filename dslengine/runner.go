@@ -23,22 +23,20 @@ var (
 	dslPackages map[string]bool
 )
 
-type (
-	// Error represents an error that occurred while running the API DSL.
-	// It contains the name of the file and line number of where the error
-	// occurred as well as the original Go error.
-	Error struct {
-		GoError error
-		File    string
-		Line    int
-	}
+// Error represents an error that occurred while running the API DSL.
+// It contains the name of the file and line number of where the error
+// occurred as well as the original Go error.
+type Error struct {
+	GoError error
+	File    string
+	Line    int
+}
 
-	// MultiError collects all DSL errors. It implements error.
-	MultiError []*Error
+// MultiError collects all DSL errors. It implements error.
+type MultiError []*Error
 
-	// DSL evaluation contexts stack
-	contextStack []Definition
-)
+// DSL evaluation contexts stack
+type contextStack []Definition
 
 func init() {
 	dslPackages = map[string]bool{
@@ -396,7 +394,7 @@ func SortRoots() ([]Root, error) {
 	return sorted, nil
 }
 
-// sortDependencies sorts the depencies of the given root in the given slice.
+// sortDependencies sorts the dependencies of the given root in the given slice.
 func sortDependencies(root Root, depFunc func(Root) []Root) []Root {
 	seen := make(map[string]bool, len(roots))
 	var sorted []Root
@@ -404,7 +402,7 @@ func sortDependencies(root Root, depFunc func(Root) []Root) []Root {
 	return sorted
 }
 
-// sortDependenciesR sorts the depencies of the given root in the given slice.
+// sortDependenciesR sorts the dependencies of the given root in the given slice.
 func sortDependenciesR(root Root, seen map[string]bool, sorted *[]Root, depFunc func(Root) []Root) {
 	for _, dep := range depFunc(root) {
 		if !seen[dep.DSLName()] {

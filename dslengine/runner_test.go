@@ -1,168 +1,172 @@
 package dslengine_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"runtime"
+	"strings"
+	"testing"
+
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/design/apidsl"
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
-var _ = Describe("DSL execution", func() {
-	Context("with cyclical type dependencies", func() {
-		const type1Name = "type1Name"
-		const type2Name = "type2Name"
-		const att1Name = "att1Name"
-		const att2Name = "att2Name"
+func TestDSL(t *testing.T) {
+	current_line := func() int {
+		_, _, line, _ := runtime.Caller(1)
+		return line
+	}
 
-		BeforeEach(func() {
-			dslengine.Reset()
-
-			apidsl.API("foo", func() {})
-
-			var type1, type2 *design.UserTypeDefinition
-
-			type1 = apidsl.Type(type1Name, func() {
-				apidsl.Attribute(att1Name, type2)
-			})
-			type2 = apidsl.Type(type2Name, func() {
-				apidsl.Attribute(att2Name, type1)
-			})
-		})
-
-		JustBeforeEach(func() {
-			dslengine.Run()
-		})
-
-		It("still produces the correct metadata", func() {
-			Ω(dslengine.Errors).Should(BeEmpty())
-			Ω(design.Design.Types).Should(HaveLen(2))
-			t1 := design.Design.Types[type1Name]
-			t2 := design.Design.Types[type2Name]
-			Ω(t1).ShouldNot(BeNil())
-			Ω(t2).ShouldNot(BeNil())
-			Ω(t1.Type).Should(BeAssignableToTypeOf(design.Object{}))
-			Ω(t2.Type).Should(BeAssignableToTypeOf(design.Object{}))
-			o1 := t1.Type.(design.Object)
-			o2 := t2.Type.(design.Object)
-			Ω(o1).Should(HaveKey(att1Name))
-			Ω(o2).Should(HaveKey(att2Name))
-			Ω(o1[att1Name].Type).Should(Equal(t2))
-			Ω(o2[att2Name].Type).Should(Equal(t1))
-		})
-	})
-})
-
-var _ = Describe("DSL errors", func() {
-	var ErrorMsg string
-
-	BeforeEach(func() {
+	t.Run("with cyclical type dependencies", func(t *testing.T) {
+		// define the DSL
 		dslengine.Reset()
+		apidsl.API("foo", func() {})
+		apidsl.Type("type1Name", func() {
+			apidsl.Attribute("att1Name", "type2Name")
+		})
+		apidsl.Type("type2Name", func() {
+			apidsl.Attribute("att2Name", "type1Name")
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		// verify the result
+		if len(dslengine.Errors) != 0 {
+			t.Errorf("unexpected errors: %v", dslengine.Errors)
+		}
+		if len(design.Design.Types) != 2 {
+			t.Errorf("unexpected number of types: %v", design.Design.Types)
+		}
+		t1 := design.Design.Types["type1Name"]
+		t2 := design.Design.Types["type2Name"]
+		o1 := t1.Type.(design.Object)
+		o2 := t2.Type.(design.Object)
+		if o1["att1Name"].Type != t2 {
+			t.Errorf("unexpected type want %v, got %v", t2, o1["att1Name"].Type)
+		}
+		if o2["att2Name"].Type != t1 {
+			t.Errorf("unexpected type: want %v, got %v", t1, o2["att2Name"].Type)
+		}
 	})
 
-	JustBeforeEach(func() {
-		ErrorMsg = dslengine.Errors.Error()
-	})
-
-	Context("with one error", func() {
-		const errMsg = "err"
-
+	t.Run("with one error", func(t *testing.T) {
 		// See NOTE below.
-		const lineNumber = 76
+		var lineNumber = current_line() + 6
 
-		BeforeEach(func() {
-			// NOTE: moving the line below requires updating the
-			// constant above to match its number.
-			dslengine.ReportError(errMsg)
-		})
+		// define the DSL
+		dslengine.Reset()
+		// NOTE: moving the line below requires updating
+		// lineNumber above to match its number.
+		dslengine.ReportError("err")
 
-		It("computes the location", func() {
-			Ω(ErrorMsg).Should(ContainSubstring(errMsg))
-			Ω(dslengine.Errors).Should(HaveLen(1))
-			Ω(dslengine.Errors[0]).ShouldNot(BeNil())
-			Ω(dslengine.Errors[0].File).Should(HaveSuffix("runner_test.go"))
-			Ω(dslengine.Errors[0].Line).Should(Equal(lineNumber))
-		})
+		// verify the result
+		if len(dslengine.Errors) != 1 {
+			t.Errorf("unexpected number of errors: %v", dslengine.Errors)
+		}
+		err := dslengine.Errors[0]
+		if err.File != "runner_test.go" {
+			t.Errorf("unexpected file: %v", err.File)
+		}
+		if err.Line != lineNumber {
+			t.Errorf("unexpected line: %d, want %d", err.Line, lineNumber)
+		}
 	})
 
-	Context("with multiple errors", func() {
-		const error1msg = "foo1"
-		const error2msg = "foo2"
+	t.Run("with multiple errors", func(t *testing.T) {
+		// define the DSL
+		dslengine.Reset()
+		dslengine.ReportError("foo1")
+		dslengine.ReportError("foo2")
 
-		BeforeEach(func() {
-			dslengine.ReportError(error1msg)
-			dslengine.ReportError(error2msg)
-		})
-
-		It("reports all errors", func() {
-			Ω(ErrorMsg).Should(ContainSubstring(error1msg))
-			Ω(ErrorMsg).Should(ContainSubstring(error2msg))
-		})
+		// verify the result
+		if len(dslengine.Errors) != 2 {
+			t.Errorf("unexpected number of errors: %v", dslengine.Errors)
+		}
+		msg := dslengine.Errors.Error()
+		if !strings.Contains(msg, "foo1") {
+			t.Errorf("unexpected message: %v", msg)
+		}
+		if !strings.Contains(msg, "foo2") {
+			t.Errorf("unexpected message: %v", msg)
+		}
 	})
 
-	// FIXME: @shogo82148
-	// Context("with invalid DSL", func() {
-	// 	// See NOTE below.
-	// 	const lineNumber = 111
+	t.Run("with invalid DSL", func(t *testing.T) {
+		// See NOTE below.
+		var lineNumber = current_line() + 7
 
-	// 	BeforeEach(func() {
-	// 		API("foo", func() {
-	// 			// NOTE: moving the line below requires updating the
-	// 			// constant above to match its number.
-	// 			Attributes(func() {})
-	// 		})
-	// 		dslengine.Run()
-	// 	})
-
-	// 	It("reports an invalid DSL error", func() {
-	// 		Ω(ErrorMsg).Should(ContainSubstring("invalid use of Attributes"))
-	// 		Ω(dslengine.Errors).Should(HaveLen(1))
-	// 		Ω(dslengine.Errors[0]).ShouldNot(BeNil())
-	// 		Ω(dslengine.Errors[0].File).Should(HaveSuffix("runner_test.go"))
-	// 		Ω(dslengine.Errors[0].Line).Should(Equal(lineNumber))
-	// 	})
-	// })
-
-	// Context("with DSL calling a function with an invalid argument type", func() {
-	// 	// See NOTE below.
-	// 	const lineNumber = 133
-
-	// 	BeforeEach(func() {
-	// 		Type("bar", func() {
-	// 			// NOTE: moving the line below requires updating the
-	// 			// constant above to match its number.
-	// 			Attribute("baz", 42)
-	// 		})
-	// 		dslengine.Run()
-	// 	})
-
-	// 	It("reports an incompatible type DSL error", func() {
-	// 		Ω(ErrorMsg).Should(ContainSubstring("cannot use 42 (type int) as type"))
-	// 		Ω(dslengine.Errors).Should(HaveLen(1))
-	// 		Ω(dslengine.Errors[0]).ShouldNot(BeNil())
-	// 		Ω(dslengine.Errors[0].File).Should(HaveSuffix("runner_test.go"))
-	// 		Ω(dslengine.Errors[0].Line).Should(Equal(lineNumber))
-	// 	})
-	// })
-
-	Context("with DSL using an empty type", func() {
-		BeforeEach(func() {
-			apidsl.API("foo", func() {})
-			apidsl.Resource("bar", func() {
-				apidsl.Action("baz", func() {
-					apidsl.Payload("use-empty")
-				})
-			})
-			apidsl.Type("use-empty", func() {
-				apidsl.Attribute("e", "empty")
-			})
-			apidsl.Type("empty", func() {
-			})
-			dslengine.Run()
+		// define the DSL
+		dslengine.Reset()
+		apidsl.API("foo", func() {
+			// NOTE: moving the line below requires updating
+			// lineNumber above to match its number.
+			apidsl.Attributes(func() {})
 		})
+		if err := dslengine.Run(); err == nil {
+			t.Fatal("expected an error")
+		}
 
-		It("does not panic", func() {
-			Ω(func() { dslengine.Run() }).ShouldNot(Panic())
-		})
+		// verify the result
+		if len(dslengine.Errors) != 1 {
+			t.Errorf("unexpected number of errors: %v", dslengine.Errors)
+		}
+		err := dslengine.Errors[0]
+		if !strings.Contains(err.Error(), "invalid use of Attributes") {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if err.File != "runner_test.go" {
+			t.Errorf("unexpected file: %v", err.File)
+		}
+		if err.Line != lineNumber {
+			t.Errorf("unexpected line: %v", err.Line)
+		}
 	})
-})
+
+	t.Run("with DSL calling a function with an invalid argument type", func(t *testing.T) {
+		// See NOTE below.
+		var lineNumber = current_line() + 7
+
+		// define the DSL
+		dslengine.Reset()
+		apidsl.Type("bar", func() {
+			// NOTE: moving the line below requires updating
+			// lineNumber above to match its number.
+			apidsl.Attribute("baz", 42)
+		})
+		if err := dslengine.Run(); err == nil {
+			t.Fatal("expected an error")
+		}
+
+		// verify the result
+		if len(dslengine.Errors) != 1 {
+			t.Errorf("unexpected number of errors: %v", dslengine.Errors)
+		}
+		err := dslengine.Errors[0]
+		if !strings.Contains(err.Error(), "cannot use 42 (type int) as type") {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if err.File != "runner_test.go" {
+			t.Errorf("unexpected file: %v", err.File)
+		}
+		if err.Line != lineNumber {
+			t.Errorf("unexpected line: %v", err.Line)
+		}
+	})
+
+	t.Run("with DSL using an empty type", func(t *testing.T) {
+		// define DSL
+		apidsl.API("foo", func() {})
+		apidsl.Resource("bar", func() {
+			apidsl.Action("baz", func() {
+				apidsl.Payload("use-empty")
+			})
+		})
+		apidsl.Type("use-empty", func() {
+			apidsl.Attribute("e", "empty")
+		})
+		apidsl.Type("empty", func() {})
+	})
+	if err := dslengine.Run(); err == nil {
+		t.Fatal("expected an error")
+	}
+}

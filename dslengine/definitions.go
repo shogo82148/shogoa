@@ -2,109 +2,106 @@ package dslengine
 
 import "fmt"
 
-type (
+// Definition is the common interface implemented by all definitions.
+type Definition interface {
+	// Context is used to build error messages that refer to the definition.
+	Context() string
+}
 
-	// Definition is the common interface implemented by all definitions.
-	Definition interface {
-		// Context is used to build error messages that refer to the definition.
-		Context() string
-	}
+// DefinitionSet contains DSL definitions that are executed as one unit.
+// The slice elements may implement the Validate an, Source interfaces to enable the
+// corresponding behaviors during DSL execution.
+type DefinitionSet []Definition
 
-	// DefinitionSet contains DSL definitions that are executed as one unit.
-	// The slice elements may implement the Validate an, Source interfaces to enable the
-	// corresponding behaviors during DSL execution.
-	DefinitionSet []Definition
+// Root is the interface implemented by the DSL root objects.
+// These objects contains all the definition sets created by the DSL and can
+// be passed to the dsl engine for execution.
+type Root interface {
+	// DSLName is displayed by the runner upon executing the DSL.
+	// Registered DSL roots must have unique names.
+	DSLName() string
+	// DependsOn returns the list of other DSL roots this root depends on.
+	// The DSL engine uses this function to order execution of the DSLs.
+	DependsOn() []Root
+	// IterateSets implements the visitor pattern: is is called by the engine so the
+	// DSL can control the order of execution. IterateSets calls back the engine via
+	// the given iterator as many times as needed providing the DSL definitions that
+	// must be run for each callback.
+	IterateSets(SetIterator)
+	// Reset restores the root to pre DSL execution state.
+	// This is mainly used by tests.
+	Reset()
+}
 
-	// Root is the interface implemented by the DSL root objects.
-	// These objects contains all the definition sets created by the DSL and can
-	// be passed to the dsl engine for execution.
-	Root interface {
-		// DSLName is displayed by the runner upon executing the DSL.
-		// Registered DSL roots must have unique names.
-		DSLName() string
-		// DependsOn returns the list of other DSL roots this root depends on.
-		// The DSL engine uses this function to order execution of the DSLs.
-		DependsOn() []Root
-		// IterateSets implements the visitor pattern: is is called by the engine so the
-		// DSL can control the order of execution. IterateSets calls back the engine via
-		// the given iterator as many times as needed providing the DSL definitions that
-		// must be run for each callback.
-		IterateSets(SetIterator)
-		// Reset restores the root to pre DSL execution state.
-		// This is mainly used by tests.
-		Reset()
-	}
+// Validate is the interface implemented by definitions that can be validated.
+// Validation is done by the DSL dsl post execution.
+type Validate interface {
+	Definition
+	// Validate returns nil if the definition contains no validation error.
+	// The Validate implementation may take advantage of ValidationErrors to report
+	// more than one errors at a time.
+	Validate() error
+}
 
-	// Validate is the interface implemented by definitions that can be validated.
-	// Validation is done by the DSL dsl post execution.
-	Validate interface {
-		Definition
-		// Validate returns nil if the definition contains no validation error.
-		// The Validate implementation may take advantage of ValidationErrors to report
-		// more than one errors at a time.
-		Validate() error
-	}
+// Source is the interface implemented by definitions that can be initialized via DSL.
+type Source interface {
+	Definition
+	// DSL returns the DSL used to initialize the definition if any.
+	DSL() func()
+}
 
-	// Source is the interface implemented by definitions that can be initialized via DSL.
-	Source interface {
-		Definition
-		// DSL returns the DSL used to initialize the definition if any.
-		DSL() func()
-	}
+// Finalize is the interface implemented by definitions that require an additional pass
+// after the DSL has executed (e.g. to merge generated definitions or initialize default
+// values)
+type Finalize interface {
+	Definition
+	// Finalize is run by the DSL runner once the definition DSL has executed and the
+	// definition has been validated.
+	Finalize()
+}
 
-	// Finalize is the interface implemented by definitions that require an additional pass
-	// after the DSL has executed (e.g. to merge generated definitions or initialize default
-	// values)
-	Finalize interface {
-		Definition
-		// Finalize is run by the DSL runner once the definition DSL has executed and the
-		// definition has been validated.
-		Finalize()
-	}
+// SetIterator is the function signature used to iterate over definition sets with
+// IterateSets.
+type SetIterator func(s DefinitionSet) error
 
-	// SetIterator is the function signature used to iterate over definition sets with
-	// IterateSets.
-	SetIterator func(s DefinitionSet) error
+// MetadataDefinition is a set of key/value pairs
+type MetadataDefinition map[string][]string
 
-	// MetadataDefinition is a set of key/value pairs
-	MetadataDefinition map[string][]string
+// TraitDefinition defines a set of reusable properties.
+type TraitDefinition struct {
+	// Trait name
+	Name string
+	// Trait DSL
+	DSLFunc func()
+}
 
-	// TraitDefinition defines a set of reusable properties.
-	TraitDefinition struct {
-		// Trait name
-		Name string
-		// Trait DSL
-		DSLFunc func()
-	}
-
-	// ValidationDefinition contains validation rules for an attribute.
-	ValidationDefinition struct {
-		// Values represents an enum validation as described at
-		// http://json-schema.org/latest/json-schema-validation.html#anchor76.
-		Values []interface{}
-		// Format represents a format validation as described at
-		// http://json-schema.org/latest/json-schema-validation.html#anchor104.
-		Format string
-		// PatternValidationDefinition represents a pattern validation as described at
-		// http://json-schema.org/latest/json-schema-validation.html#anchor33
-		Pattern string
-		// Minimum represents an minimum value validation as described at
-		// http://json-schema.org/latest/json-schema-validation.html#anchor21.
-		Minimum *float64
-		// Maximum represents a maximum value validation as described at
-		// http://json-schema.org/latest/json-schema-validation.html#anchor17.
-		Maximum *float64
-		// MinLength represents an minimum length validation as described at
-		// http://json-schema.org/latest/json-schema-validation.html#anchor29.
-		MinLength *int
-		// MaxLength represents an maximum length validation as described at
-		// http://json-schema.org/latest/json-schema-validation.html#anchor26.
-		MaxLength *int
-		// Required list the required fields of object attributes as described at
-		// http://json-schema.org/latest/json-schema-validation.html#anchor61.
-		Required []string
-	}
-)
+// ValidationDefinition contains validation rules for an attribute.
+type ValidationDefinition struct {
+	// Values represents an enum validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor76.
+	Values []any
+	// Format represents a format validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor104.
+	Format string
+	// PatternValidationDefinition represents a pattern validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor33
+	Pattern string
+	// Minimum represents an minimum value validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor21.
+	Minimum *float64
+	// Maximum represents a maximum value validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor17.
+	Maximum *float64
+	// MinLength represents an minimum length validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor29.
+	MinLength *int
+	// MaxLength represents an maximum length validation as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor26.
+	MaxLength *int
+	// Required list the required fields of object attributes as described at
+	// http://json-schema.org/latest/json-schema-validation.html#anchor61.
+	Required []string
+}
 
 // Context returns the generic definition name used in error messages.
 func (t *TraitDefinition) Context() string {
