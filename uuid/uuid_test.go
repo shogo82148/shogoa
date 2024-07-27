@@ -1,7 +1,10 @@
 package uuid
 
 import (
+	"bytes"
+	"encoding/json"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -109,6 +112,43 @@ func TestString(t *testing.T) {
 	u := UUID{0x6b, 0xa7, 0xb8, 0x10, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8}
 	if got := u.String(); got != "6ba7b810-9dad-11d1-80b4-00c04fd430c8" {
 		t.Errorf("expected 6ba7b810-9dad-11d1-80b4-00c04fd430c8, got %s", got)
+	}
+}
+
+func TestMarshalJSON(t *testing.T) {
+	u, err := FromString("c0586f01-87b5-462b-a673-3b2dcf619091")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type Payload struct {
+		ID   UUID
+		Name string
+	}
+
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.Encode(Payload{ID: u, Name: "Test"})
+	want := `{"ID":"c0586f01-87b5-462b-a673-3b2dcf619091","Name":"Test"}` + "\n"
+	if got := buf.String(); got != want {
+		t.Errorf("expected %s, got %s", want, got)
+	}
+}
+
+func TestUnmarshalJSON(t *testing.T) {
+	encoded := `{"ID":"c0586f01-87b5-462b-a673-3b2dcf619091","Name":"Test"}`
+
+	var payload struct {
+		ID   UUID
+		Name string
+	}
+	decoder := json.NewDecoder(strings.NewReader(encoded))
+	if err := decoder.Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(payload.ID[:], []byte{0xc0, 0x58, 0x6f, 0x01, 0x87, 0xb5, 0x46, 0x2b, 0xa6, 0x73, 0x3b, 0x2d, 0xcf, 0x61, 0x90, 0x91}) {
+		t.Errorf("expected c0586f01-87b5-462b-a673-3b2dcf619091, got %s", payload.ID)
 	}
 }
 
