@@ -23,22 +23,20 @@ var (
 	dslPackages map[string]bool
 )
 
-type (
-	// Error represents an error that occurred while running the API DSL.
-	// It contains the name of the file and line number of where the error
-	// occurred as well as the original Go error.
-	Error struct {
-		GoError error
-		File    string
-		Line    int
-	}
+// Error represents an error that occurred while running the API DSL.
+// It contains the name of the file and line number of where the error
+// occurred as well as the original Go error.
+type Error struct {
+	GoError error
+	File    string
+	Line    int
+}
 
-	// MultiError collects all DSL errors. It implements error.
-	MultiError []*Error
+// MultiError collects all DSL errors. It implements error.
+type MultiError []*Error
 
-	// DSL evaluation contexts stack
-	contextStack []Definition
-)
+// DSL evaluation contexts stack
+type contextStack []Definition
 
 func init() {
 	dslPackages = map[string]bool{
