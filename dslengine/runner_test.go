@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/design/apidsl"
 	"github.com/shogo82148/shogoa/dslengine"
@@ -43,10 +42,10 @@ func TestDSL(t *testing.T) {
 		o1 := t1.Type.(design.Object)
 		o2 := t2.Type.(design.Object)
 		if o1["att1Name"].Type != t2 {
-			t.Errorf("unexpected type: %v", cmp.Diff(o1["att1Name"].Type, t2))
+			t.Errorf("unexpected type want %v, got %v", t2, o1["att1Name"].Type)
 		}
 		if o2["att2Name"].Type != t1 {
-			t.Errorf("unexpected type: %v", cmp.Diff(o2["att2Name"].Type, t1))
+			t.Errorf("unexpected type: want %v, got %v", t1, o2["att2Name"].Type)
 		}
 	})
 
