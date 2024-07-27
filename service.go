@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -155,6 +156,7 @@ func New(name string) *Service {
 					allowedMethods[i] = k
 					i++
 				}
+				slices.Sort(allowedMethods)
 				rw.Header().Set("Allow", strings.Join(allowedMethods, ", "))
 				return MethodNotAllowedError(req.Method, allowedMethods)
 			}
