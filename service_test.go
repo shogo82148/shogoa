@@ -1,441 +1,23 @@
-package shogoa_test
+package shogoa
 
 import (
-	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/shogo82148/shogoa"
+	"testing"
 )
 
-var _ = Describe("Service", func() {
-	const appName = "foo"
-	var s *shogoa.Service
-
-	BeforeEach(func() {
-		s = shogoa.New(appName)
-		s.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
-		s.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
-	})
-
-	Describe("New", func() {
-		It("creates a service", func() {
-			Ω(s).ShouldNot(BeNil())
-		})
-
-		It("initializes the service fields", func() {
-			Ω(s.Name).Should(Equal(appName))
-			Ω(s.Mux).ShouldNot(BeNil())
-			Ω(s.Server).ShouldNot(BeNil())
-		})
-	})
-
-	Describe("NotFound", func() {
-		var rw *TestResponseWriter
-		var req *http.Request
-
-		BeforeEach(func() {
-			req, _ = http.NewRequest("GET", "/foo", nil)
-			rw = &TestResponseWriter{ParentHeader: make(http.Header)}
-		})
-
-		JustBeforeEach(func() {
-			s.Mux.ServeHTTP(rw, req)
-		})
-
-		It("handles requests with no registered handlers", func() {
-			Ω(string(rw.Body)).Should(MatchRegexp(`{"id":".*","code":"not_found","status":404,"detail":"/foo"}` + "\n"))
-		})
-
-		Context("with middleware", func() {
-			middlewareCalled := false
-
-			BeforeEach(func() {
-				s.Use(TMiddleware(&middlewareCalled))
-				// trigger finalize
-				ctrl := s.NewController("test")
-				ctrl.MuxHandler("", nil, nil)
-			})
-
-			It("calls the middleware", func() {
-				Ω(middlewareCalled).Should(BeTrue())
-			})
-		})
-
-		Context("middleware and multiple controllers", func() {
-			middlewareCalled := 0
-
-			BeforeEach(func() {
-				s.Use(CMiddleware(&middlewareCalled))
-				ctrl := s.NewController("test")
-				ctrl.MuxHandler("/foo", nil, nil)
-				ctrl.MuxHandler("/bar", nil, nil)
-			})
-
-			It("calls the middleware once", func() {
-				Ω(middlewareCalled).Should(Equal(1))
-			})
-		})
-	})
-
-	Describe("MethodNotAllowed", func() {
-		var rw *TestResponseWriter
-		var req *http.Request
-
-		JustBeforeEach(func() {
-			rw = &TestResponseWriter{ParentHeader: http.Header{}}
-			s.Mux.ServeHTTP(rw, req)
-		})
-
-		BeforeEach(func() {
-			req, _ = http.NewRequest("GET", "/foo", nil)
-			s.Mux.Handle("POST", "/foo", func(rw http.ResponseWriter, req *http.Request, vals url.Values) {})
-			s.Mux.Handle("PUT", "/foo", func(rw http.ResponseWriter, req *http.Request, vals url.Values) {})
-		})
-
-		It("handles requests with wrong method but existing endpoint", func() {
-			Ω(rw.Status).Should(Equal(405))
-			Ω(rw.Header().Get("Allow")).Should(Or(Equal("POST, PUT"), Equal("PUT, POST")))
-			Ω(string(rw.Body)).Should(MatchRegexp(`{"id":".*","code":"method_not_allowed","status":405,"detail":".*","meta":{.*}}` + "\n"))
-		})
-	})
-
-	Describe("MaxRequestBodyLength", func() {
-		var rw *TestResponseWriter
-		var req *http.Request
-		var muxHandler shogoa.MuxHandler
-
-		BeforeEach(func() {
-			body := bytes.NewBuffer([]byte{'"', '2', '3', '4', '"'})
-			req, _ = http.NewRequest("GET", "/foo", body)
-			rw = &TestResponseWriter{ParentHeader: make(http.Header)}
-			ctrl := s.NewController("test")
-			ctrl.MaxRequestBodyLength = 4
-			unmarshaler := func(ctx context.Context, service *shogoa.Service, req *http.Request) error {
-				_, err := io.ReadAll(req.Body)
-				return err
-			}
-			handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-				rw.WriteHeader(400)
-				rw.Write([]byte(shogoa.ContextError(ctx).Error()))
-				return nil
-			}
-			muxHandler = ctrl.MuxHandler("testMax", handler, unmarshaler)
-		})
-
-		JustBeforeEach(func() {
-			muxHandler(rw, req, nil)
-		})
-
-		It("prevents reading more bytes", func() {
-			Ω(string(rw.Body)).Should(MatchRegexp(`\[.*\] 413 request_too_large: request body length exceeds 4 bytes`))
-		})
-	})
-
-	Describe("MuxHandler", func() {
-		var handler shogoa.Handler
-		var unmarshaler shogoa.Unmarshaler
-		const respStatus = 200
-		var respContent = []byte("response")
-
-		var muxHandler shogoa.MuxHandler
-		var ctx context.Context
-
-		JustBeforeEach(func() {
-			ctrl := s.NewController("test")
-			muxHandler = ctrl.MuxHandler("testAct", handler, unmarshaler)
-		})
-
-		BeforeEach(func() {
-			handler = func(c context.Context, rw http.ResponseWriter, req *http.Request) error {
-				if err := shogoa.ContextError(c); err != nil {
-					rw.WriteHeader(400)
-					rw.Write([]byte(err.Error()))
-					return nil
-				}
-				shogoa.ContextRequest(c).Request = req
-				ctx = c
-				rw.WriteHeader(respStatus)
-				rw.Write(respContent)
-				return nil
-			}
-			unmarshaler = func(c context.Context, service *shogoa.Service, req *http.Request) error {
-				ctx = c
-				if req != nil {
-					var payload interface{}
-					err := service.DecodeRequest(req, &payload)
-					if err != nil {
-						return err
-					}
-					shogoa.ContextRequest(ctx).Payload = payload
-				}
-				return nil
-			}
-		})
-
-		It("creates a handler", func() {
-			Ω(muxHandler).ShouldNot(BeNil())
-		})
-
-		Context("with multiple instances and middlewares", func() {
-			var ctrl *shogoa.Controller
-			var handlers []shogoa.MuxHandler
-			var rws []*TestResponseWriter
-			var reqs []*http.Request
-			var p url.Values
-			var wg sync.WaitGroup
-
-			BeforeEach(func() {
-				nopHandler := func(context.Context, http.ResponseWriter, *http.Request) error {
-					return nil
-				}
-				ctrl = s.NewController("test")
-				for i := 0; i < 5; i++ {
-					ctrl.Service.Use(func(shogoa.Handler) shogoa.Handler {
-						return nopHandler
-					})
-				}
-				ctrl.Use(func(shogoa.Handler) shogoa.Handler { return nopHandler })
-				for i := 0; i < 10; i++ {
-					tmp := ctrl.MuxHandler("test", nopHandler, nil)
-					handlers = append(handlers, tmp)
-					rws = append(rws, &TestResponseWriter{})
-					req, _ := http.NewRequest("GET", "", nil)
-					reqs = append(reqs, req)
-				}
-				p = url.Values{}
-				wg = sync.WaitGroup{}
-				wg.Add(10)
-			})
-
-			It("doesn't race with parallel handler calls", func() {
-				for i := range handlers {
-					go func(j int) {
-						handlers[j](rws[j], reqs[j], p)
-						wg.Done()
-					}(i)
-				}
-				wg.Wait()
-			})
-		})
-
-		Context("with a request", func() {
-			var rw http.ResponseWriter
-			var r *http.Request
-			var p url.Values
-
-			BeforeEach(func() {
-				var err error
-				r, err = http.NewRequest("GET", "/foo", nil)
-				Ω(err).ShouldNot(HaveOccurred())
-				rw = &TestResponseWriter{ParentHeader: make(http.Header)}
-				p = url.Values{"id": []string{"42"}, "sort": []string{"asc"}}
-			})
-
-			JustBeforeEach(func() {
-				muxHandler(rw, r, p)
-			})
-
-			It("creates a handle that handles the request", func() {
-				i := shogoa.ContextRequest(ctx).Params.Get("id")
-				Ω(i).Should(Equal("42"))
-				s := shogoa.ContextRequest(ctx).Params.Get("sort")
-				Ω(s).Should(Equal("asc"))
-				tw := rw.(*TestResponseWriter)
-				Ω(tw.Status).Should(Equal(respStatus))
-				Ω(tw.Body).Should(Equal(respContent))
-			})
-
-			Context("with an invalid payload", func() {
-				BeforeEach(func() {
-					r.Body = io.NopCloser(bytes.NewBuffer([]byte("not json")))
-					r.ContentLength = 8
-				})
-
-				It("triggers the error handler", func() {
-					Ω(rw.(*TestResponseWriter).Status).Should(Equal(400))
-					Ω(string(rw.(*TestResponseWriter).Body)).Should(ContainSubstring("failed to decode"))
-				})
-
-				Context("then a valid payload", func() {
-					It("then succeeds", func() {
-						var err error
-						r, err = http.NewRequest("GET", "/foo2", nil)
-						Ω(err).ShouldNot(HaveOccurred())
-						rw = &TestResponseWriter{ParentHeader: make(http.Header)}
-						muxHandler(rw, r, p)
-						Ω(rw.(*TestResponseWriter).Status).Should(Equal(200))
-					})
-				})
-			})
-
-			Context("and middleware", func() {
-				middlewareCalled := false
-
-				BeforeEach(func() {
-					s.Use(TMiddleware(&middlewareCalled))
-				})
-
-				It("calls the middleware", func() {
-					Ω(middlewareCalled).Should(BeTrue())
-				})
-			})
-
-			Context("and a middleware chain", func() {
-				middlewareCalled := false
-				secondCalled := false
-
-				BeforeEach(func() {
-					s.Use(TMiddleware(&middlewareCalled))
-					s.Use(SecondMiddleware(&middlewareCalled, &secondCalled))
-				})
-
-				It("calls the middleware in the right order", func() {
-					Ω(middlewareCalled).Should(BeTrue())
-					Ω(secondCalled).Should(BeTrue())
-				})
-			})
-
-			Context("with a handler that fails", func() {
-				errorHandlerCalled := false
-
-				BeforeEach(func() {
-					s.Use(TErrorHandler(&errorHandlerCalled))
-				})
-
-				Context("by returning an error", func() {
-					BeforeEach(func() {
-						handler = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-							return fmt.Errorf("boom")
-						}
-						s.WithLogger(nil)
-					})
-
-					It("triggers the error handler", func() {
-						Ω(errorHandlerCalled).Should(BeTrue())
-					})
-				})
-			})
-
-			Context("with different payload types", func() {
-				content := []byte(`{"hello": "world"}`)
-				decodedContent := map[string]interface{}{"hello": "world"}
-
-				BeforeEach(func() {
-					r.Header.Set("Content-Type", "application/json")
-					r.Body = io.NopCloser(bytes.NewReader(content))
-					r.ContentLength = int64(len(content))
-				})
-
-				It("should work with application/json and load properly", func() {
-					Ω(shogoa.ContextRequest(ctx).Payload).Should(Equal(decodedContent))
-				})
-
-				Context("with an empty Content-Type", func() {
-					BeforeEach(func() {
-						delete(r.Header, "Content-Type")
-					})
-
-					It("defaults to application/json and loads properly for JSON bodies", func() {
-						Ω(shogoa.ContextRequest(ctx).Payload).Should(Equal(decodedContent))
-					})
-				})
-
-				Context("with a Content-Type of 'application/octet-stream' or any other", func() {
-					BeforeEach(func() {
-						s.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
-						r.Header.Set("Content-Type", "application/octet-stream")
-					})
-
-					It("should use the default decoder", func() {
-						Ω(shogoa.ContextRequest(ctx).Payload).Should(Equal(decodedContent))
-					})
-				})
-
-				Context("with a Content-Type of 'application/octet-stream' or any other and no default decoder", func() {
-					BeforeEach(func() {
-						s = shogoa.New("test")
-						s.Decoder.Register(shogoa.NewJSONDecoder, "application/json")
-						r.Header.Set("Content-Type", "application/octet-stream")
-					})
-
-					It("should bypass decoding", func() {
-						Ω(shogoa.ContextRequest(ctx).Payload).Should(BeNil())
-					})
-				})
-			})
-		})
-	})
-
-	// FIXME: @shogo82148 https://github.com/shogo82148/shogoa/pull/1/checks?check_run_id=382581692#step:6:27
-	// Describe("FileHandler", func() {
-	// 	const publicPath = "github.com/shogo82148/shogoa/public"
-
-	// 	var outDir string
-
-	// 	var handler shogoa.Handler
-	// 	const respStatus = 200
-	// 	var respContent = []byte(`{"foo":"bar"}`)
-
-	// 	var muxHandler shogoa.MuxHandler
-
-	// 	JustBeforeEach(func() {
-	// 		gopath := filepath.SplitList(build.Default.GOPATH)[0]
-	// 		outDir = filepath.Join(gopath, "src", publicPath)
-	// 		err := os.MkdirAll(filepath.Join(outDir, "swagger"), 0777)
-	// 		Ω(err).ShouldNot(HaveOccurred())
-	// 		file, err := os.Create(filepath.Join(outDir, "swagger", "swagger.json"))
-	// 		Ω(err).ShouldNot(HaveOccurred())
-	// 		_, err = file.Write(respContent)
-	// 		Ω(err).ShouldNot(HaveOccurred())
-	// 		file.Close()
-
-	// 		ctrl := s.NewController("test")
-	// 		handler = ctrl.FileHandler("/swagger.json", "public/swagger/swagger.json")
-	// 		muxHandler = ctrl.MuxHandler("testAct", handler, nil)
-	// 	})
-
-	// 	AfterEach(func() {
-	// 		os.RemoveAll(outDir)
-	// 	})
-
-	// 	It("creates a handler", func() {
-	// 		Ω(muxHandler).ShouldNot(BeNil())
-	// 	})
-
-	// 	Context("with a request", func() {
-	// 		var rw http.ResponseWriter
-	// 		var r *http.Request
-	// 		var p url.Values
-
-	// 		BeforeEach(func() {
-	// 			var err error
-	// 			r, err = http.NewRequest("GET", "/swagger.json", nil)
-	// 			Ω(err).ShouldNot(HaveOccurred())
-	// 			rw = &TestResponseWriter{ParentHeader: make(http.Header)}
-	// 		})
-
-	// 		JustBeforeEach(func() {
-	// 			muxHandler(rw, r, p)
-	// 		})
-
-	// 		It("creates a handle that handles the request", func() {
-	// 			tw := rw.(*TestResponseWriter)
-	// 			Ω(tw.Status).Should(Equal(respStatus))
-	// 			Ω(tw.Body).Should(Equal(respContent))
-	// 		})
-	// 	})
-	// })
-})
-
-func TErrorHandler(witness *bool) shogoa.Middleware {
-	return func(h shogoa.Handler) shogoa.Handler {
+// TErrorHandler is a test middleware that sets a witness to true if an error is returned.
+func TErrorHandler(witness *bool) Middleware {
+	return func(h Handler) Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			err := h(ctx, rw, req)
 			if err != nil {
@@ -446,8 +28,9 @@ func TErrorHandler(witness *bool) shogoa.Middleware {
 	}
 }
 
-func TMiddleware(witness *bool) shogoa.Middleware {
-	return func(h shogoa.Handler) shogoa.Handler {
+// TMiddleware is a test middleware that sets a witness to true.
+func TMiddleware(witness *bool) Middleware {
+	return func(h Handler) Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			*witness = true
 			return h(ctx, rw, req)
@@ -455,8 +38,9 @@ func TMiddleware(witness *bool) shogoa.Middleware {
 	}
 }
 
-func CMiddleware(witness *int) shogoa.Middleware {
-	return func(h shogoa.Handler) shogoa.Handler {
+// CMiddleware is a test middleware that increments a witness.
+func CMiddleware(witness *int) Middleware {
+	return func(h Handler) Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			*witness++
 			return h(ctx, rw, req)
@@ -464,8 +48,9 @@ func CMiddleware(witness *int) shogoa.Middleware {
 	}
 }
 
-func SecondMiddleware(witness1, witness2 *bool) shogoa.Middleware {
-	return func(h shogoa.Handler) shogoa.Handler {
+// SecondMiddleware is a test middleware that sets a witness to true if the first witness is true.
+func SecondMiddleware(witness1, witness2 *bool) Middleware {
+	return func(h Handler) Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			if !*witness1 {
 				panic("middleware called in wrong order")
@@ -476,21 +61,474 @@ func SecondMiddleware(witness1, witness2 *bool) shogoa.Middleware {
 	}
 }
 
-type TestResponseWriter struct {
-	ParentHeader http.Header
-	Body         []byte
-	Status       int
+func TestService_New(t *testing.T) {
+	const appName = "foo"
+	s := New(appName)
+
+	if s.Name != appName {
+		t.Errorf("expected service name to be %s, got %s", appName, s.Name)
+	}
+	if s.Mux == nil {
+		t.Errorf("expected service mux to be initialized, got nil")
+	}
+	if s.Server == nil {
+		t.Errorf("expected service server to be initialized, got nil")
+	}
 }
 
-func (t *TestResponseWriter) Header() http.Header {
-	return t.ParentHeader
+func TestService_NotFound(t *testing.T) {
+	t.Run("not found", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		req := httptest.NewRequest(http.MethodGet, "/404", nil)
+		rw := httptest.NewRecorder()
+		s.Mux.ServeHTTP(rw, req)
+
+		result := rw.Result()
+		body, err := io.ReadAll(result.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		ok, err := regexp.Match(`{"id":".*","code":"not_found","status":404,"detail":"/404"}`+"\n", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok {
+			t.Errorf("expected 404 not found response, got %s", string(body))
+		}
+	})
+
+	t.Run("with middleware", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		var called bool
+		s.Use(TErrorHandler(&called))
+
+		req := httptest.NewRequest(http.MethodGet, "/404", nil)
+		rw := httptest.NewRecorder()
+		s.Mux.ServeHTTP(rw, req)
+
+		if !called {
+			t.Error("expected error handler to be called, got false")
+		}
+	})
+
+	t.Run("with middleware and multiple controllers", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		var calledCount int
+		s.Use(CMiddleware(&calledCount))
+		ctrl := s.NewController("test")
+		ctrl.MuxHandler("/foo", nil, nil)
+		ctrl.MuxHandler("/bar", nil, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		s.Mux.ServeHTTP(rw, req)
+
+		if calledCount != 1 {
+			t.Errorf("expected middleware to be called once, got %d", calledCount)
+		}
+	})
 }
 
-func (t *TestResponseWriter) Write(b []byte) (int, error) {
-	t.Body = append(t.Body, b...)
-	return len(b), nil
+func TestService_MethodNotAllowed(t *testing.T) {
+	s := New("foo")
+	s.Decoder.Register(NewJSONDecoder, "*/*")
+	s.Encoder.Register(NewJSONEncoder, "*/*")
+
+	s.Mux.Handle(http.MethodPost, "/foo", func(rw http.ResponseWriter, req *http.Request, vals url.Values) {})
+	s.Mux.Handle(http.MethodPut, "/foo", func(rw http.ResponseWriter, req *http.Request, vals url.Values) {})
+
+	req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+	rw := httptest.NewRecorder()
+	s.Mux.ServeHTTP(rw, req)
+
+	result := rw.Result()
+	if result.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("expected status code %d, got %d", http.StatusMethodNotAllowed, result.StatusCode)
+	}
+	if got := result.Header.Get("Allow"); got != "POST, PUT" {
+		t.Errorf("expected Allow header to be POST, PUT, got %s", got)
+	}
+
+	body, err := io.ReadAll(result.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, err := regexp.Match(`{"id":".*","code":"method_not_allowed","status":405,"detail":".*","meta":{.*}}`+"\n", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Errorf("expected 404 not found response, got %s", string(body))
+	}
 }
 
-func (t *TestResponseWriter) WriteHeader(s int) {
-	t.Status = s
+func TestService_MaxRequestBodyLength(t *testing.T) {
+	s := New("foo")
+	s.Decoder.Register(NewJSONDecoder, "*/*")
+	s.Encoder.Register(NewJSONEncoder, "*/*")
+
+	ctrl := s.NewController("test")
+	ctrl.MaxRequestBodyLength = 4
+	unmarshaler := func(ctx context.Context, service *Service, req *http.Request) error {
+		_, err := io.ReadAll(req.Body)
+		return err
+	}
+	handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+		rw.WriteHeader(http.StatusBadRequest)
+		if _, err := rw.Write([]byte(ContextError(ctx).Error())); err != nil {
+			return err
+		}
+		return nil
+	}
+	muxHandler := ctrl.MuxHandler("testMax", handler, unmarshaler)
+
+	req := httptest.NewRequest(http.MethodPost, "/foo", strings.NewReader(`"234"`))
+	rw := httptest.NewRecorder()
+	muxHandler(rw, req, nil)
+
+	result := rw.Result()
+	body, err := io.ReadAll(result.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, err := regexp.Match(`\[.*\] 413 request_too_large: request body length exceeds 4 bytes`, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Errorf("expected 404 not found response, got %s", string(body))
+	}
+}
+
+func TestService_MuxHandler(t *testing.T) {
+	unmarshaler := func(ctx context.Context, service *Service, req *http.Request) error {
+		var payload any
+		if err := service.DecodeRequest(req, &payload); err != nil {
+			return err
+		}
+		ContextRequest(ctx).Payload = payload
+		return nil
+	}
+
+	t.Run("it should not race", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		nopHandler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return nil
+		}
+		ctrl := s.NewController("test")
+		ctrl.Use(func(h Handler) Handler {
+			return nopHandler
+		})
+		for range 5 {
+			s.Use(func(h Handler) Handler {
+				return nopHandler
+			})
+		}
+
+		var handlers []MuxHandler
+		for range 10 {
+			handler := ctrl.MuxHandler("test", nopHandler, nil)
+			handlers = append(handlers, handler)
+		}
+
+		// Run all handlers concurrently.
+		// It should not race.
+		var wg sync.WaitGroup
+		wg.Add(len(handlers))
+		for _, h := range handlers {
+			go func() {
+				defer wg.Done()
+				req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+				rw := httptest.NewRecorder()
+				h(rw, req, nil)
+			}()
+		}
+		wg.Wait()
+	})
+
+	t.Run("request parameters", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			if err := ContextError(ctx); err != nil {
+				t.Error(err)
+			}
+			params := ContextRequest(ctx).Params
+			if got := params.Get("id"); got != "42" {
+				t.Errorf("expected id to be 42, got %s", got)
+			}
+			if got := params.Get("sort"); got != "asc" {
+				t.Errorf("expected sort to be asc, got %s", got)
+			}
+			return nil
+		}
+
+		ctrl := s.NewController("test")
+		muxHandler := ctrl.MuxHandler("testAct", handler, unmarshaler)
+
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		param := url.Values{
+			"id":   []string{"42"},
+			"sort": []string{"asc"},
+		}
+		muxHandler(rw, req, param)
+	})
+
+	t.Run("invalid payload", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			err := ContextError(ctx)
+			if err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !strings.Contains(err.Error(), "failed to decode") {
+				t.Errorf("expected error to contain 'failed to decode', got %s", err.Error())
+			}
+			return nil
+		}
+
+		ctrl := s.NewController("test")
+		muxHandler := ctrl.MuxHandler("testAct", handler, unmarshaler)
+
+		req := httptest.NewRequest(http.MethodPost, "/foo", strings.NewReader("not json"))
+		rw := httptest.NewRecorder()
+		muxHandler(rw, req, nil)
+	})
+
+	t.Run("with middleware", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		var called bool
+		s.Use(TMiddleware(&called))
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return nil
+		}
+
+		ctrl := s.NewController("test")
+		muxHandler := ctrl.MuxHandler("testAct", handler, unmarshaler)
+
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		muxHandler(rw, req, nil)
+
+		if !called {
+			t.Error("expected the middleware to be called, got false")
+		}
+	})
+
+	t.Run("middleware chain", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		var first, second bool
+		s.Use(TMiddleware(&first))
+		s.Use(SecondMiddleware(&first, &second))
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return nil
+		}
+
+		ctrl := s.NewController("test")
+		muxHandler := ctrl.MuxHandler("testAct", handler, unmarshaler)
+
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		muxHandler(rw, req, nil)
+
+		if !first {
+			t.Error("expected the first middleware to be called, got false")
+		}
+		if !second {
+			t.Error("expected the second middleware to be called, got false")
+		}
+	})
+
+	t.Run("error in the handler", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		var called bool
+		s.Use(TErrorHandler(&called))
+
+		// return an error in handler.
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return errors.New("boom")
+		}
+
+		ctrl := s.NewController("test")
+		muxHandler := ctrl.MuxHandler("testAct", handler, unmarshaler)
+
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		muxHandler(rw, req, nil)
+
+		if !called {
+			t.Error("expected the error handler to be called, got false")
+		}
+	})
+
+	t.Run("decode JSON", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			if err := ContextError(ctx); err != nil {
+				t.Error(err)
+			}
+			payload := ContextRequest(ctx).Payload.(map[string]any)
+			if len(payload) != 1 {
+				t.Errorf("expected payload to have 1 key, got %d", len(payload))
+			}
+			if got := payload["foo"]; got != "bar" {
+				t.Errorf("expected foo to be bar, got %s", got)
+			}
+			return nil
+		}
+
+		ctrl := s.NewController("test")
+		muxHandler := ctrl.MuxHandler("testAct", handler, unmarshaler)
+
+		req := httptest.NewRequest(http.MethodPost, "/foo", strings.NewReader(`{"foo":"bar"}`))
+		req.Header.Set("Content-Type", "application/json")
+		rw := httptest.NewRecorder()
+		muxHandler(rw, req, nil)
+	})
+
+	t.Run("empty Content-Type", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			if err := ContextError(ctx); err != nil {
+				t.Error(err)
+			}
+			payload := ContextRequest(ctx).Payload.(map[string]any)
+			if len(payload) != 1 {
+				t.Errorf("expected payload to have 1 key, got %d", len(payload))
+			}
+			if got := payload["foo"]; got != "bar" {
+				t.Errorf("expected foo to be bar, got %s", got)
+			}
+			return nil
+		}
+
+		ctrl := s.NewController("test")
+		muxHandler := ctrl.MuxHandler("testAct", handler, unmarshaler)
+
+		req := httptest.NewRequest(http.MethodPost, "/foo", strings.NewReader(`{"foo":"bar"}`))
+		rw := httptest.NewRecorder()
+		muxHandler(rw, req, nil)
+	})
+
+	t.Run("fallback to the default decoder", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "*/*")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			if err := ContextError(ctx); err != nil {
+				t.Error(err)
+			}
+			payload := ContextRequest(ctx).Payload.(map[string]any)
+			if len(payload) != 1 {
+				t.Errorf("expected payload to have 1 key, got %d", len(payload))
+			}
+			if got := payload["foo"]; got != "bar" {
+				t.Errorf("expected foo to be bar, got %s", got)
+			}
+			return nil
+		}
+
+		ctrl := s.NewController("test")
+		muxHandler := ctrl.MuxHandler("testAct", handler, unmarshaler)
+
+		req := httptest.NewRequest(http.MethodPost, "/foo", strings.NewReader(`{"foo":"bar"}`))
+		req.Header.Set("Content-Type", "application/octet-stream")
+		rw := httptest.NewRecorder()
+		muxHandler(rw, req, nil)
+	})
+
+	t.Run("bypass decoding", func(t *testing.T) {
+		s := New("foo")
+		s.Decoder.Register(NewJSONDecoder, "application/json")
+		s.Encoder.Register(NewJSONEncoder, "*/*")
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			if err := ContextError(ctx); err != nil {
+				t.Error(err)
+			}
+			payload := ContextRequest(ctx).Payload
+			if payload != nil {
+				t.Errorf("expected payload to be nil, got %v", payload)
+			}
+			return nil
+		}
+
+		ctrl := s.NewController("test")
+		muxHandler := ctrl.MuxHandler("testAct", handler, unmarshaler)
+
+		req := httptest.NewRequest(http.MethodPost, "/foo", strings.NewReader(`{"foo":"bar"}`))
+		req.Header.Set("Content-Type", "application/octet-stream")
+		rw := httptest.NewRecorder()
+		muxHandler(rw, req, nil)
+	})
+}
+
+func TestService_FileHandler(t *testing.T) {
+	s := New("foo")
+	s.Decoder.Register(NewJSONDecoder, "*/*")
+	s.Encoder.Register(NewJSONEncoder, "*/*")
+
+	tmpDir := t.TempDir()
+	filename := filepath.Join(tmpDir, "swagger.json")
+	err := os.WriteFile(filename, []byte(`{"foo":"bar"}`), 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctrl := s.NewController("test")
+	handler := ctrl.FileHandler("/swagger.json", filename)
+	muxHandler := ctrl.MuxHandler("testAct", handler, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/swagger.json", nil)
+	rw := httptest.NewRecorder()
+	muxHandler(rw, req, nil)
+
+	result := rw.Result()
+	if result.StatusCode != http.StatusOK {
+		t.Errorf("expected status code %d, got %d", http.StatusOK, result.StatusCode)
+	}
+	body, err := io.ReadAll(result.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(body); got != `{"foo":"bar"}` {
+		t.Errorf("expected body to be {\"foo\":\"bar\"}, got %s", got)
+	}
 }
