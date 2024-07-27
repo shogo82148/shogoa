@@ -5,81 +5,79 @@ import (
 	"net/http"
 )
 
-type (
-	// Signer is the common interface implemented by all signers.
-	Signer interface {
-		// Sign adds required headers, cookies etc.
-		Sign(*http.Request) error
-	}
+// Signer is the common interface implemented by all signers.
+type Signer interface {
+	// Sign adds required headers, cookies etc.
+	Sign(*http.Request) error
+}
 
-	// BasicSigner implements basic auth.
-	BasicSigner struct {
-		// Username is the basic auth user.
-		Username string
-		// Password is err guess what? the basic auth password.
-		Password string
-	}
+// BasicSigner implements basic auth.
+type BasicSigner struct {
+	// Username is the basic auth user.
+	Username string
+	// Password is err guess what? the basic auth password.
+	Password string
+}
 
-	// APIKeySigner implements API Key auth.
-	APIKeySigner struct {
-		// SignQuery indicates whether to set the API key in the URL query with key KeyName
-		// or whether to use a header with name KeyName.
-		SignQuery bool
-		// KeyName is the name of the HTTP header or query string that contains the API key.
-		KeyName string
-		// KeyValue stores the actual key.
-		KeyValue string
-		// Format is the format used to render the key, e.g. "Bearer %s"
-		Format string
-	}
+// APIKeySigner implements API Key auth.
+type APIKeySigner struct {
+	// SignQuery indicates whether to set the API key in the URL query with key KeyName
+	// or whether to use a header with name KeyName.
+	SignQuery bool
+	// KeyName is the name of the HTTP header or query string that contains the API key.
+	KeyName string
+	// KeyValue stores the actual key.
+	KeyValue string
+	// Format is the format used to render the key, e.g. "Bearer %s"
+	Format string
+}
 
-	// JWTSigner implements JSON Web Token auth.
-	JWTSigner struct {
-		// TokenSource is a JWT token source.
-		// See https://godoc.org/golang.org/x/oauth2/jwt#Config.TokenSource for an example
-		// of an implementation.
-		TokenSource TokenSource
-	}
+// JWTSigner implements JSON Web Token auth.
+type JWTSigner struct {
+	// TokenSource is a JWT token source.
+	// See https://godoc.org/golang.org/x/oauth2/jwt#Config.TokenSource for an example
+	// of an implementation.
+	TokenSource TokenSource
+}
 
-	// OAuth2Signer adds a authorization header to the request using the given OAuth2 token
-	// source to produce the header value.
-	OAuth2Signer struct {
-		// TokenSource is an OAuth2 access token source.
-		// See package golang/oauth2 and its subpackage for implementations of token
-		// sources.
-		TokenSource TokenSource
-	}
+// OAuth2Signer adds a authorization header to the request using the given OAuth2 token
+// source to produce the header value.
+type OAuth2Signer struct {
+	// TokenSource is an OAuth2 access token source.
+	// See package golang/oauth2 and its subpackage for implementations of token
+	// sources.
+	TokenSource TokenSource
+}
 
-	// Token is the interface to an OAuth2 token implementation.
-	// It can be implemented with https://godoc.org/golang.org/x/oauth2#Token.
-	Token interface {
-		// SetAuthHeader sets the Authorization header to r.
-		SetAuthHeader(r *http.Request)
-		// Valid reports whether Token can be used to properly sign requests.
-		Valid() bool
-	}
+// Token is the interface to an OAuth2 token implementation.
+// It can be implemented with https://godoc.org/golang.org/x/oauth2#Token.
+type Token interface {
+	// SetAuthHeader sets the Authorization header to r.
+	SetAuthHeader(r *http.Request)
+	// Valid reports whether Token can be used to properly sign requests.
+	Valid() bool
+}
 
-	// A TokenSource is anything that can return a token.
-	TokenSource interface {
-		// Token returns a token or an error.
-		// Token must be safe for concurrent use by multiple goroutines.
-		// The returned Token must not be modified.
-		Token() (Token, error)
-	}
+// A TokenSource is anything that can return a token.
+type TokenSource interface {
+	// Token returns a token or an error.
+	// Token must be safe for concurrent use by multiple goroutines.
+	// The returned Token must not be modified.
+	Token() (Token, error)
+}
 
-	// StaticTokenSource implements a token source that always returns the same token.
-	StaticTokenSource struct {
-		StaticToken *StaticToken
-	}
+// StaticTokenSource implements a token source that always returns the same token.
+type StaticTokenSource struct {
+	StaticToken *StaticToken
+}
 
-	// StaticToken implements a token that sets the auth header with a given static value.
-	StaticToken struct {
-		// Value used to set the auth header.
-		Value string
-		// OAuth type, defaults to "Bearer".
-		Type string
-	}
-)
+// StaticToken implements a token that sets the auth header with a given static value.
+type StaticToken struct {
+	// Value used to set the auth header.
+	Value string
+	// OAuth type, defaults to "Bearer".
+	Type string
+}
 
 // Sign adds the basic auth header to the request.
 func (s *BasicSigner) Sign(req *http.Request) error {

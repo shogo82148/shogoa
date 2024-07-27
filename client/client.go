@@ -13,26 +13,24 @@ import (
 	"github.com/shogo82148/shogoa"
 )
 
-type (
-	// Doer defines the Do method of the http client.
-	Doer interface {
-		Do(context.Context, *http.Request) (*http.Response, error)
-	}
+// Doer defines the Do method of the http client.
+type Doer interface {
+	Do(context.Context, *http.Request) (*http.Response, error)
+}
 
-	// Client is the common client data structure for all shogoa service clients.
-	Client struct {
-		// Doer is the underlying http client.
-		Doer
-		// Scheme overrides the default action scheme.
-		Scheme string
-		// Host is the service hostname.
-		Host string
-		// UserAgent is the user agent set in requests made by the client.
-		UserAgent string
-		// Dump indicates whether to dump request response.
-		Dump bool
-	}
-)
+// Client is the common client data structure for all shogoa service clients.
+type Client struct {
+	// Doer is the underlying http client.
+	Doer
+	// Scheme overrides the default action scheme.
+	Scheme string
+	// Host is the service hostname.
+	Host string
+	// UserAgent is the user agent set in requests made by the client.
+	UserAgent string
+	// Dump indicates whether to dump request response.
+	Dump bool
+}
 
 // New creates a new API client that wraps c.
 // If c is nil, the returned client wraps http.DefaultClient.
@@ -109,8 +107,8 @@ func (c *Client) dumpResponse(ctx context.Context, resp *http.Response) {
 }
 
 // headersToSlice produces a loggable slice from a HTTP header.
-func headersToSlice(header http.Header) []interface{} {
-	res := make([]interface{}, 2*len(header))
+func headersToSlice(header http.Header) []any {
+	res := make([]any, 2*len(header))
 	i := 0
 	for k, v := range header {
 		res[i] = k
@@ -177,9 +175,6 @@ func dumpRespBody(resp *http.Response) ([]byte, error) {
 	}
 	resp.Body = save
 	resp.ContentLength = savecl
-	if err != nil {
-		return nil, err
-	}
 	return b.Bytes(), nil
 }
 
