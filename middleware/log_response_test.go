@@ -1,50 +1,54 @@
-package middleware_test
+package middleware
 
-// TODO: FIXME
-// import (
-// 	"context"
-// 	"net/http"
-// 	"net/url"
-// 	"strings"
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// 	"github.com/shogo82148/shogoa"
-// 	"github.com/shogo82148/shogoa/middleware"
-// )
+	"github.com/shogo82148/shogoa"
+)
 
-// var _ = Describe("LogResponse", func() {
-// 	var logger *testLogger
-// 	var ctx context.Context
-// 	var req *http.Request
-// 	var rw http.ResponseWriter
-// 	var params url.Values
-// 	responseText := "some response data to be logged"
+func TestLogResponse(t *testing.T) {
+	// create a new service with a JSON logger
+	var buf bytes.Buffer
+	service := shogoa.New("test")
+	logHandler := slog.NewJSONHandler(&buf, nil)
+	service.WithLogger(shogoa.NewLogger(logHandler))
+	service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+	service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
 
-// 	BeforeEach(func() {
-// 		logger = new(testLogger)
-// 		service := newService(logger)
+	// create a new request context
+	req := httptest.NewRequest(http.MethodPost, "/goo", strings.NewReader(`{"payload":42}`))
+	rw := httptest.NewRecorder()
+	params := url.Values{"query": []string{"value"}}
+	ctx := shogoa.NewContext(rw, req.WithContext(service.Context), params)
 
-// 		var err error
-// 		req, err = http.NewRequest("POST", "/goo", strings.NewReader(`{"payload":42}`))
-// 		Ω(err).ShouldNot(HaveOccurred())
-// 		rw = new(testResponseWriter)
-// 		params = url.Values{"query": []string{"value"}}
-// 		ctx = newContext(service, rw, req, params)
-// 	})
+	// call the handler
+	handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+		shogoa.ContextResponse(ctx).WriteHeader(200)
+		if _, err := shogoa.ContextResponse(ctx).Write([]byte("some response data to be logged")); err != nil {
+			return err
+		}
+		return nil
+	}
+	handler = LogResponse()(handler)
+	if err := handler(ctx, rw, req); err != nil {
+		t.Fatal(err)
+	}
 
-// 	It("logs responses", func() {
-// 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-// 			shogoa.ContextResponse(ctx).WriteHeader(200)
-// 			shogoa.ContextResponse(ctx).Write([]byte(responseText))
-// 			return nil
-// 		}
-// 		lg := middleware.LogResponse()(h)
-// 		Ω(lg(ctx, rw, req)).ShouldNot(HaveOccurred())
-// 		Ω(logger.InfoEntries).Should(HaveLen(1))
-
-// 		Ω(logger.InfoEntries[0].Data).Should(HaveLen(2))
-// 		Ω(logger.InfoEntries[0].Data[0]).Should(Equal("body"))
-// 		Ω(logger.InfoEntries[0].Data[1]).Should(Equal(responseText))
-// 	})
-// })
+	// check the log entry
+	var entry map[string]any
+	decoder := json.NewDecoder(&buf)
+	if err := decoder.Decode(&entry); err != nil {
+		t.Fatal(err)
+	}
+	if entry["body"] != "some response data to be logged" {
+		t.Errorf("unexpected body: %v", entry["body"])
+	}
+}

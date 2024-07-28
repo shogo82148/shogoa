@@ -1,33 +1,33 @@
-package middleware_test
+package middleware
 
 import (
 	"context"
 	"net/http"
-	"strings"
+	"net/http/httptest"
+	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/shogo82148/shogoa/middleware"
+	"github.com/shogo82148/shogoa"
 )
 
-var _ = Describe("Timeout", func() {
-	It("sets a deadline", func() {
-		service := newService(nil)
+func TestTimeout(t *testing.T) {
+	service := shogoa.New("test")
+	service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+	service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
 
-		req, err := http.NewRequest("POST", "/goo", strings.NewReader(`{"payload":42}`))
-		Ω(err).ShouldNot(HaveOccurred())
-		rw := new(testResponseWriter)
-		ctx := newContext(service, rw, req, nil)
-		var newCtx context.Context
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			newCtx = ctx
-			return service.Send(ctx, 200, "ok")
+	handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+		_, ok := ctx.Deadline()
+		if !ok {
+			t.Error("expected a deadline")
 		}
-		t := middleware.Timeout(time.Duration(1))(h)
-		err = t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		_, ok := newCtx.Deadline()
-		Ω(ok).Should(BeTrue())
-	})
-})
+		return service.Send(ctx, http.StatusOK, "ok")
+	}
+	handler = Timeout(time.Second)(handler)
+
+	req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+	rw := httptest.NewRecorder()
+	ctx := shogoa.NewContext(rw, req, nil)
+	if err := handler(ctx, rw, req); err != nil {
+		t.Fatal(err)
+	}
+}

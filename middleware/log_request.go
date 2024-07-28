@@ -14,6 +14,11 @@ import (
 	"github.com/shogo82148/shogoa"
 )
 
+type reqIDKeyType struct{}
+
+// ReqIDKey is the context key used by the RequestID middleware to store the request ID value.
+var reqIDKey = reqIDKeyType{}
+
 // LogRequest creates a request logger middleware.
 // This middleware is aware of the RequestID middleware and if registered after it leverages the
 // request ID for logging.
@@ -40,7 +45,7 @@ func LogRequest(verbose bool, sensitiveHeaders ...string) shogoa.Middleware {
 				"ctrl", shogoa.ContextController(ctx), "action", shogoa.ContextAction(ctx))
 			if verbose {
 				if len(r.Header) > 0 {
-					logCtx := make([]interface{}, 2*len(r.Header))
+					logCtx := make([]any, 2*len(r.Header))
 					i := 0
 					keys := make([]string, len(r.Header))
 					for k := range r.Header {
@@ -55,29 +60,29 @@ func LogRequest(verbose bool, sensitiveHeaders ...string) shogoa.Middleware {
 						if _, ok := suppressed[strings.ToLower(k)]; ok {
 							logCtx[i+1] = "<hidden>"
 						} else {
-							logCtx[i+1] = interface{}(strings.Join(v, ", "))
+							logCtx[i+1] = any(strings.Join(v, ", "))
 						}
 						i = i + 2
 					}
 					shogoa.LogInfo(ctx, "headers", logCtx...)
 				}
 				if len(r.Params) > 0 {
-					logCtx := make([]interface{}, 2*len(r.Params))
+					logCtx := make([]any, 2*len(r.Params))
 					i := 0
 					for k, v := range r.Params {
 						logCtx[i] = k
-						logCtx[i+1] = interface{}(strings.Join(v, ", "))
+						logCtx[i+1] = any(strings.Join(v, ", "))
 						i = i + 2
 					}
 					shogoa.LogInfo(ctx, "params", logCtx...)
 				}
 				if r.ContentLength > 0 {
-					if mp, ok := r.Payload.(map[string]interface{}); ok {
-						logCtx := make([]interface{}, 2*len(mp))
+					if mp, ok := r.Payload.(map[string]any); ok {
+						logCtx := make([]any, 2*len(mp))
 						i := 0
 						for k, v := range mp {
 							logCtx[i] = k
-							logCtx[i+1] = interface{}(v)
+							logCtx[i+1] = v
 							i = i + 2
 						}
 						shogoa.LogInfo(ctx, "payload", logCtx...)

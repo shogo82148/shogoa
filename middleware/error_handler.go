@@ -23,7 +23,7 @@ func ErrorHandler(service *shogoa.Service, verbose bool) shogoa.Middleware {
 			}
 			cause := cause(e)
 			status := http.StatusInternalServerError
-			var respBody interface{}
+			var respBody any
 			if err, ok := cause.(shogoa.ServiceError); ok {
 				status = err.ResponseStatus()
 				respBody = err

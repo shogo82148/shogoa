@@ -1,113 +1,155 @@
-package middleware_test
+package middleware
 
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"regexp"
-	"strings"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/shogo82148/shogoa"
-	"github.com/shogo82148/shogoa/middleware"
 )
 
-var _ = Describe("RequireHeader", func() {
-	var ctx context.Context
-	var req *http.Request
-	var rw http.ResponseWriter
-	var service *shogoa.Service
-	headerName := "Some-Header"
+func TestRequiredHeader(t *testing.T) {
+	t.Run("matches a header value", func(t *testing.T) {
+		service := shogoa.New("test")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
 
-	BeforeEach(func() {
-		var err error
-		service = newService(nil)
-		req, err = http.NewRequest("POST", "/foo/bar", strings.NewReader(`{"payload":42}`))
-		Ω(err).ShouldNot(HaveOccurred())
-		rw = new(testResponseWriter)
-		ctx = newContext(service, rw, req, nil)
-	})
-
-	It("matches a header value", func() {
-		req.Header.Set(headerName, "some value")
-		var newCtx context.Context
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			newCtx = ctx
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			return service.Send(ctx, http.StatusOK, "ok")
 		}
-		t := middleware.RequireHeader(
+		handler = RequireHeader(
 			service,
 			regexp.MustCompile("^/foo"),
-			headerName,
+			"Some-Header",
 			regexp.MustCompile("^some value$"),
-			http.StatusUnauthorized)(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(shogoa.ContextResponse(newCtx).Status).Should(Equal(http.StatusOK))
+			http.StatusUnauthorized,
+		)(handler)
+
+		req := httptest.NewRequest(http.MethodGet, "/foo/bar", nil)
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		req.Header.Set("Some-Header", "some value")
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+		if shogoa.ContextResponse(ctx).Status != http.StatusOK {
+			t.Errorf("unexpected status: %d", shogoa.ContextResponse(ctx).Status)
+		}
 	})
 
-	It("responds with failure on mismatch", func() {
-		req.Header.Set(headerName, "some other value")
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("responds with failure on mismatch", func(t *testing.T) {
+		service := shogoa.New("test")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			panic("unreachable")
 		}
-		t := middleware.RequireHeader(
+		handler = RequireHeader(
 			service,
 			regexp.MustCompile("^/foo"),
-			headerName,
+			"Some-Header",
 			regexp.MustCompile("^some value$"),
-			http.StatusUnauthorized)(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(http.StatusUnauthorized))
+			http.StatusUnauthorized,
+		)(handler)
+
+		req := httptest.NewRequest(http.MethodGet, "/foo/bar", nil)
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		req.Header.Set("Some-Header", "some other value")
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+		if shogoa.ContextResponse(ctx).Status != http.StatusUnauthorized {
+			t.Errorf("unexpected status: %d", shogoa.ContextResponse(ctx).Status)
+		}
 	})
 
-	It("responds with failure when header is missing", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("responds with failure when header is missing", func(t *testing.T) {
+		service := shogoa.New("test")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			panic("unreachable")
 		}
-		t := middleware.RequireHeader(
+		handler = RequireHeader(
 			service,
 			regexp.MustCompile("^/foo"),
-			headerName,
+			"Some-Header",
 			regexp.MustCompile("^some value$"),
-			http.StatusUnauthorized)(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(http.StatusUnauthorized))
+			http.StatusUnauthorized,
+		)(handler)
+
+		req := httptest.NewRequest(http.MethodGet, "/foo/bar", nil)
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+		if shogoa.ContextResponse(ctx).Status != http.StatusUnauthorized {
+			t.Errorf("unexpected status: %d", shogoa.ContextResponse(ctx).Status)
+		}
 	})
 
-	It("passes through for a non-matching path", func() {
-		var newCtx context.Context
-		req.Header.Set(headerName, "bogus")
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-			newCtx = ctx
+	t.Run("passes through for a non-matching path", func(t *testing.T) {
+		service := shogoa.New("test")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			return service.Send(ctx, http.StatusOK, "ok")
 		}
-		t := middleware.RequireHeader(
+		handler = RequireHeader(
 			service,
 			regexp.MustCompile("^/baz"),
-			headerName,
+			"Some-Header",
 			regexp.MustCompile("^some value$"),
-			http.StatusUnauthorized)(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(shogoa.ContextResponse(newCtx).Status).Should(Equal(http.StatusOK))
+			http.StatusUnauthorized,
+		)(handler)
+
+		req := httptest.NewRequest(http.MethodGet, "/foo/bar", nil)
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+		if shogoa.ContextResponse(ctx).Status != http.StatusOK {
+			t.Errorf("unexpected status: %d", shogoa.ContextResponse(ctx).Status)
+		}
 	})
 
-	It("matches value for a nil path pattern", func() {
-		req.Header.Set(headerName, "bogus")
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("matches value for a nil path pattern", func(t *testing.T) {
+		service := shogoa.New("test")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			panic("unreachable")
 		}
-		t := middleware.RequireHeader(
+		handler = RequireHeader(
 			service,
 			nil,
-			headerName,
+			"Some-Header",
 			regexp.MustCompile("^some value$"),
-			http.StatusNotFound)(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(shogoa.ContextResponse(ctx).Status).Should(Equal(http.StatusNotFound))
+			http.StatusUnauthorized,
+		)(handler)
+
+		req := httptest.NewRequest(http.MethodGet, "/foo/bar", nil)
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+		if shogoa.ContextResponse(ctx).Status != http.StatusUnauthorized {
+			t.Errorf("unexpected status: %d", shogoa.ContextResponse(ctx).Status)
+		}
 	})
-})
+}

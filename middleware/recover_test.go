@@ -1,61 +1,44 @@
-package middleware_test
+package middleware
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/shogo82148/shogoa"
-	"github.com/shogo82148/shogoa/middleware"
+	"strings"
+	"testing"
 )
 
-var _ = Describe("Recover", func() {
-	var h shogoa.Handler
-	var err error
-
-	JustBeforeEach(func() {
-		rg := middleware.Recover()(h)
-		err = rg(nil, nil, nil)
+func TestRecover(t *testing.T) {
+	t.Run("panics with a string", func(t *testing.T) {
+		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			panic("boom")
+		}
+		rg := Recover()(h)
+		err := rg(nil, nil, nil)
+		if !strings.HasPrefix(err.Error(), "panic: boom\n") {
+			t.Errorf("unexpected error: %v", err)
+		}
 	})
 
-	Context("with a handler that panics with a string", func() {
-		BeforeEach(func() {
-			h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-				panic("boom")
-			}
-		})
-
-		It("creates an error from the panic message", func() {
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(HavePrefix("panic: boom\n"))
-		})
+	t.Run("panics with an error", func(t *testing.T) {
+		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			panic(errors.New("boom"))
+		}
+		rg := Recover()(h)
+		err := rg(nil, nil, nil)
+		if !strings.HasPrefix(err.Error(), "panic: boom\n") {
+			t.Errorf("unexpected error: %v", err)
+		}
 	})
 
-	Context("with a handler that panics with an error", func() {
-		BeforeEach(func() {
-			h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-				panic(fmt.Errorf("boom"))
-			}
-		})
-
-		It("creates an error from the panic error message", func() {
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(HavePrefix("panic: boom\n"))
-		})
+	t.Run("panics with something else", func(t *testing.T) {
+		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			panic(42)
+		}
+		rg := Recover()(h)
+		err := rg(nil, nil, nil)
+		if !strings.HasPrefix(err.Error(), "unknown panic\n") {
+			t.Errorf("unexpected error: %v", err)
+		}
 	})
-
-	Context("with a handler that panics with something else", func() {
-		BeforeEach(func() {
-			h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-				panic(42)
-			}
-		})
-
-		It("creates a generic error message", func() {
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(HavePrefix("unknown panic\n"))
-		})
-	})
-})
+}
