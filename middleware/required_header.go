@@ -18,27 +18,28 @@ func RequireHeader(
 	pathPattern *regexp.Regexp,
 	requiredHeaderName string,
 	requiredHeaderValue *regexp.Regexp,
-	failureStatus int) shogoa.Middleware {
+	failureStatus int,
+) shogoa.Middleware {
 
 	return func(h shogoa.Handler) shogoa.Handler {
 		return func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (err error) {
-			if pathPattern == nil || pathPattern.MatchString(req.URL.Path) {
-				matched := false
-				headerValue := req.Header.Get(requiredHeaderName)
-				if len(headerValue) > 0 {
-					if requiredHeaderValue == nil {
-						matched = true
-					} else {
-						matched = requiredHeaderValue.MatchString(headerValue)
-					}
-				}
-				if matched {
-					err = h(ctx, rw, req)
+			if pathPattern != nil && !pathPattern.MatchString(req.URL.Path) {
+				return h(ctx, rw, req)
+			}
+
+			matched := false
+			headerValue := req.Header.Get(requiredHeaderName)
+			if len(headerValue) > 0 {
+				if requiredHeaderValue == nil {
+					matched = true
 				} else {
-					err = service.Send(ctx, failureStatus, http.StatusText(failureStatus))
+					matched = requiredHeaderValue.MatchString(headerValue)
 				}
-			} else {
+			}
+			if matched {
 				err = h(ctx, rw, req)
+			} else {
+				err = service.Send(ctx, failureStatus, http.StatusText(failureStatus))
 			}
 			return
 		}
