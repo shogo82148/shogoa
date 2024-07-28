@@ -3,7 +3,7 @@ package design
 import (
 	"mime"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/shogo82148/shogoa/dslengine"
@@ -136,12 +136,12 @@ var (
 			AttributeDefinition: &AttributeDefinition{
 				Type:        errorMediaType,
 				Description: "Error response media type",
-				Example: map[string]interface{}{
+				Example: map[string]any{
 					"id":     "3F1FKVRR",
 					"status": 400,
 					"code":   "invalid_value",
 					"detail": "Value of ID must be an integer",
-					"meta":   map[string]interface{}{"timestamp": 1458609066},
+					"meta":   map[string]any{"timestamp": 1458609066},
 				},
 			},
 			TypeName: "error",
@@ -177,7 +177,7 @@ var (
 				ElemType: &AttributeDefinition{Type: Any},
 			},
 			Description: "a meta object containing non-standard meta-information about the error.",
-			Example:     map[string]interface{}{"timestamp": 1458609066},
+			Example:     map[string]any{"timestamp": 1458609066},
 		},
 	}
 
@@ -252,17 +252,15 @@ func (r MediaTypeRoot) IterateSets(iterator dslengine.SetIterator) {
 		canonicalIDs[i] = canonicalID
 		i++
 	}
-	sort.Strings(canonicalIDs)
+	slices.Sort(canonicalIDs)
 	set := make([]dslengine.Definition, len(canonicalIDs))
 	for i, cid := range canonicalIDs {
 		set[i] = Design.MediaTypes[cid]
 	}
-	iterator(set)
+	_ = iterator(set)
 }
 
 // Reset deletes all the keys.
 func (r MediaTypeRoot) Reset() {
-	for k := range r {
-		delete(r, k)
-	}
+	clear(r)
 }
