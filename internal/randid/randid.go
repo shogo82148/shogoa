@@ -10,7 +10,7 @@ import (
 // The string contains only alphabets and numbers.
 func New(n int) string {
 	m := (n + 3) / 4 * 4
-	buf := make([]byte, m/4*(4+3))
+	buf := make([]byte, m + m/4*3)
 	buf1 := buf[:m]
 	buf2 := buf[m:]
 	var builder strings.Builder
