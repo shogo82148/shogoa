@@ -32,7 +32,9 @@ func TestLogResponse(t *testing.T) {
 	// call the handler
 	handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 		shogoa.ContextResponse(ctx).WriteHeader(200)
-		shogoa.ContextResponse(ctx).Write([]byte("some response data to be logged"))
+		if _, err := shogoa.ContextResponse(ctx).Write([]byte("some response data to be logged")); err != nil {
+			return err
+		}
 		return nil
 	}
 	handler = LogResponse()(handler)
