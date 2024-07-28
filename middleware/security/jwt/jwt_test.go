@@ -1,4 +1,4 @@
-package jwt_test
+package jwt
 
 import (
 	"context"
@@ -6,403 +6,420 @@ import (
 	"crypto/rsa"
 	"net/http"
 	"net/http/httptest"
+	"testing"
 
 	jwtpkg "github.com/golang-jwt/jwt/v4"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/shogo82148/shogoa"
-	"github.com/shogo82148/shogoa/middleware/security/jwt"
 )
 
-var _ = Describe("Middleware", func() {
-	var securityScheme *shogoa.JWTSecurity
-	var respRecord *httptest.ResponseRecorder
-	var request *http.Request
-	var handler shogoa.Handler
-	var middleware shogoa.Middleware
-	var dispatchResult error
-	var fetchedToken *jwtpkg.Token
-
-	Context("JWT with Authorization Header", func() {
-		BeforeEach(func() {
-			securityScheme = &shogoa.JWTSecurity{
-				In:   shogoa.LocHeader,
-				Name: "Authorization",
+func TestMiddleware_HMAC(t *testing.T) {
+	t.Run("HMAC keys signed token", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
 			}
-			respRecord = httptest.NewRecorder()
-			request, _ = http.NewRequest("GET", "http://example.com/", nil)
-			// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
-			request.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
-			handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-				fetchedToken = jwt.ContextJWT(ctx)
-				return nil
-			}
-		})
+			return nil
+		}
 
-		JustBeforeEach(func() {
-			dispatchResult = middleware(handler)(context.Background(), respRecord, request)
-		})
-
-		Context("HMAC keys signed token", func() {
-			BeforeEach(func() {
-				// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
-				request.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
-
-			})
-
-			Context("with a single key", func() {
-				BeforeEach(func() {
-					middleware = jwt.New("keys", nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-
-			Context("with keys that didn't the JWT", func() {
-				BeforeEach(func() {
-					middleware = jwt.New("otherkey", nil, securityScheme)
-				})
-
-				It("should fail with an error", func() {
-					Ω(dispatchResult).Should(HaveOccurred())
-				})
-			})
-
-			Context("with multiple keys", func() {
-				BeforeEach(func() {
-					middleware = jwt.New([]string{"firstkey", "keys"}, nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-		})
-
-		Context("RSA keys signed token", func() {
-			BeforeEach(func() {
-				// RS256 {"scopes":"scope1 scope2","admin":true}, signed with rsaKey1 below
-				request.Header.Set("Authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEgc2NvcGUyIiwiYWRtaW4iOnRydWV9.gT4gSGqXTCUZAJT_TWZ4eknazVo-ulMKwSpHoghWZU8Sm9QXt48ISwFAb_wW2xhR58MUNX95iuiex0bCWvze59r35dEQ2SOZixuDvE8srQi2SRk9qqsVV9-R361qf2D8KfLX9jQ7j-UB40bleg0fOyBAjPLPq0ggBigSjQ2yUz8YDKma-n6Ulc3LJ4gyozmb3MjO9RV2pdD3N-m6ttwkTkUE2jhsL6a3T8f0Y6xSGTMyZasKc6kHbUyz6NjAeplLhbkBDE8-Ak4GaLGlLnLzZ49oTVrh89yauciW5yLQCXzXt2PODqp6zXPC0FFcDr-2USCpA-nqaQQyhliMcgtqVw")
-			})
-
-			Context("with valid scopes", func() {
-
-				var ctx context.Context
-
-				BeforeEach(func() {
-					middleware = jwt.New("keys", nil, securityScheme)
-					ctx = shogoa.WithRequiredScopes(context.Background(), []string{"scope1"})
-				})
-
-				It("should accept scopes specified using the 'scope' claim", func() {
-					// HS256 {"scope":"scope1","admin":true}, signed with "keys"
-					request.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6InNjb3BlMSIsImFkbWluIjp0cnVlfQ.EwMZtpTUPUoKsiCHqH659JQeMLf3-KdboStmQKjv2IU")
-					dispatchResult = middleware(handler)(ctx, respRecord, request)
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-				})
-
-				It("should accept scopes specified using the 'scopes' claim", func() {
-					// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
-					request.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
-					dispatchResult = middleware(handler)(ctx, respRecord, request)
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-				})
-
-				It("should fall back to 'scopes' if 'scope' is null", func() {
-					// HS256 {"scope":null, "scopes":"scope1", "admin":true}, signed with "keys"
-					request.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6bnVsbCwic2NvcGVzIjoic2NvcGUxIiwiYWRtaW4iOnRydWV9.h8L_MlWWyB0RnwaUBDVu8nGPn5wPSVPMEm42iH8Jxmg")
-					dispatchResult = middleware(handler)(ctx, respRecord, request)
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-				})
-
-				It("should not fall back to 'scopes' if 'scope' is an empty string", func() {
-					// HS256 {"scope":"", "scopes":"scope1", "admin":true}, signed with "keys"
-					request.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6IiIsInNjb3BlcyI6InNjb3BlMSIsImFkbWluIjp0cnVlfQ.U5r-gAvk8SWRYBK3Hmj7zqHSQ0lSQO1wAAk0soyHkoU")
-					dispatchResult = middleware(handler)(ctx, respRecord, request)
-					Ω(dispatchResult).Should(HaveOccurred())
-				})
-
-			})
-
-			Context("with a single key", func() {
-				BeforeEach(func() {
-					middleware = jwt.New(rsaPubKey1, nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-
-			Context("with keys that didn't the JWT", func() {
-				BeforeEach(func() {
-					middleware = jwt.New(rsaPubKey2, nil, securityScheme)
-				})
-
-				It("should fail with an error", func() {
-					Ω(dispatchResult).Should(HaveOccurred())
-				})
-			})
-
-			Context("with multiple keys", func() {
-				BeforeEach(func() {
-					middleware = jwt.New([]*rsa.PublicKey{rsaPubKey1}, nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-		})
-
-		Context("ECDSA keys signed token", func() {
-			BeforeEach(func() {
-				// ES256 {"scopes":"scope1 scope2","admin":true}, signed with ecKey1 below
-				request.Header.Set("Authorization", "Bearer "+
-					"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9."+
-					"eyJhZG1pbiI6dHJ1ZSwic2NvcGVzIjoic2NvcGUxIHNjb3BlMiJ9."+
-					"7gM4EblP4cvX5C6PBLSBFpKX2FQ9AsLNmOXEm86uvrd4czBfw1zDO24abQ7gtlbMcjuVvxrpIyRa7Nbbn31G7w")
-			})
-
-			Context("with a single key", func() {
-				BeforeEach(func() {
-					middleware = jwt.New(ecPubKey1, nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-
-			Context("with keys that didn't the JWT", func() {
-				BeforeEach(func() {
-					middleware = jwt.New(ecPubKey2, nil, securityScheme)
-				})
-
-				It("should fail with an error", func() {
-					Ω(dispatchResult).Should(HaveOccurred())
-				})
-			})
-
-			Context("with multiple keys", func() {
-				BeforeEach(func() {
-					middleware = jwt.New([]*ecdsa.PublicKey{ecPubKey1}, nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-		})
+		middleware := New("keys", nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 	})
 
-	Context("JWT with Authorization Query Parameter", func() {
-		BeforeEach(func() {
-			securityScheme = &shogoa.JWTSecurity{
-				In:   shogoa.LocQuery,
-				Name: "access_token",
-			}
-			respRecord = httptest.NewRecorder()
-			request, _ = http.NewRequest("GET", "http://example.com/", nil)
-			// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
-			q := request.URL.Query()
-			q.Set("access_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
-			request.URL.RawQuery = q.Encode()
-			handler = func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-				fetchedToken = jwt.ContextJWT(ctx)
-				return nil
-			}
-		})
+	t.Run("HMAC fails", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			panic("should not be called")
+		}
 
-		JustBeforeEach(func() {
-			dispatchResult = middleware(handler)(context.Background(), respRecord, request)
-		})
-
-		Context("HMAC keys signed token", func() {
-			BeforeEach(func() {
-				// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
-				q := request.URL.Query()
-				q.Set("access_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
-				request.URL.RawQuery = q.Encode()
-
-			})
-
-			Context("with a single key", func() {
-				BeforeEach(func() {
-					middleware = jwt.New("keys", nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-
-			Context("with keys that didn't the JWT", func() {
-				BeforeEach(func() {
-					middleware = jwt.New("otherkey", nil, securityScheme)
-				})
-
-				It("should fail with an error", func() {
-					Ω(dispatchResult).Should(HaveOccurred())
-				})
-			})
-
-			Context("with multiple keys", func() {
-				BeforeEach(func() {
-					middleware = jwt.New([]string{"firstkey", "keys"}, nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-		})
-
-		Context("RSA keys signed token", func() {
-			BeforeEach(func() {
-				// RS256 {"scopes":"scope1 scope2","admin":true}, signed with rsaKey1 below
-				q := request.URL.Query()
-				q.Set("access_token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEgc2NvcGUyIiwiYWRtaW4iOnRydWV9.gT4gSGqXTCUZAJT_TWZ4eknazVo-ulMKwSpHoghWZU8Sm9QXt48ISwFAb_wW2xhR58MUNX95iuiex0bCWvze59r35dEQ2SOZixuDvE8srQi2SRk9qqsVV9-R361qf2D8KfLX9jQ7j-UB40bleg0fOyBAjPLPq0ggBigSjQ2yUz8YDKma-n6Ulc3LJ4gyozmb3MjO9RV2pdD3N-m6ttwkTkUE2jhsL6a3T8f0Y6xSGTMyZasKc6kHbUyz6NjAeplLhbkBDE8-Ak4GaLGlLnLzZ49oTVrh89yauciW5yLQCXzXt2PODqp6zXPC0FFcDr-2USCpA-nqaQQyhliMcgtqVw")
-				request.URL.RawQuery = q.Encode()
-			})
-
-			Context("with valid scopes", func() {
-
-				var ctx context.Context
-
-				BeforeEach(func() {
-					middleware = jwt.New("keys", nil, securityScheme)
-					ctx = shogoa.WithRequiredScopes(context.Background(), []string{"scope1"})
-				})
-
-				It("should accept scopes specified using the 'scope' claim", func() {
-					// HS256 {"scope":"scope1","admin":true}, signed with "keys"
-					q := request.URL.Query()
-					q.Set("access_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6InNjb3BlMSIsImFkbWluIjp0cnVlfQ.EwMZtpTUPUoKsiCHqH659JQeMLf3-KdboStmQKjv2IU")
-					request.URL.RawQuery = q.Encode()
-					dispatchResult = middleware(handler)(ctx, respRecord, request)
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-				})
-
-				It("should accept scopes specified using the 'scopes' claim", func() {
-					// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
-					q := request.URL.Query()
-					q.Set("access_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
-					request.URL.RawQuery = q.Encode()
-					dispatchResult = middleware(handler)(ctx, respRecord, request)
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-				})
-
-				It("should fall back to 'scopes' if 'scope' is null", func() {
-					// HS256 {"scope":null, "scopes":"scope1", "admin":true}, signed with "keys"
-					q := request.URL.Query()
-					q.Set("access_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6bnVsbCwic2NvcGVzIjoic2NvcGUxIiwiYWRtaW4iOnRydWV9.h8L_MlWWyB0RnwaUBDVu8nGPn5wPSVPMEm42iH8Jxmg")
-					request.URL.RawQuery = q.Encode()
-					dispatchResult = middleware(handler)(ctx, respRecord, request)
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-				})
-
-				It("should not fall back to 'scopes' if 'scope' is an empty string", func() {
-					// HS256 {"scope":"", "scopes":"scope1", "admin":true}, signed with "keys"
-					q := request.URL.Query()
-					q.Set("access_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6IiIsInNjb3BlcyI6InNjb3BlMSIsImFkbWluIjp0cnVlfQ.U5r-gAvk8SWRYBK3Hmj7zqHSQ0lSQO1wAAk0soyHkoU")
-					request.URL.RawQuery = q.Encode()
-					dispatchResult = middleware(handler)(ctx, respRecord, request)
-					Ω(dispatchResult).Should(HaveOccurred())
-				})
-
-			})
-
-			Context("with a single key", func() {
-				BeforeEach(func() {
-					middleware = jwt.New(rsaPubKey1, nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-
-			Context("with keys that didn't the JWT", func() {
-				BeforeEach(func() {
-					middleware = jwt.New(rsaPubKey2, nil, securityScheme)
-				})
-
-				It("should fail with an error", func() {
-					Ω(dispatchResult).Should(HaveOccurred())
-				})
-			})
-
-			Context("with multiple keys", func() {
-				BeforeEach(func() {
-					middleware = jwt.New([]*rsa.PublicKey{rsaPubKey1}, nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-		})
-
-		Context("ECDSA keys signed token", func() {
-			BeforeEach(func() {
-				// ES256 {"scopes":"scope1 scope2","admin":true}, signed with ecKey1 below
-				q := request.URL.Query()
-				q.Set("access_token", ""+
-					"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9."+
-					"eyJhZG1pbiI6dHJ1ZSwic2NvcGVzIjoic2NvcGUxIHNjb3BlMiJ9."+
-					"7gM4EblP4cvX5C6PBLSBFpKX2FQ9AsLNmOXEm86uvrd4czBfw1zDO24abQ7gtlbMcjuVvxrpIyRa7Nbbn31G7w")
-				request.URL.RawQuery = q.Encode()
-			})
-
-			Context("with a single key", func() {
-				BeforeEach(func() {
-					middleware = jwt.New(ecPubKey1, nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-
-			Context("with keys that didn't the JWT", func() {
-				BeforeEach(func() {
-					middleware = jwt.New(ecPubKey2, nil, securityScheme)
-				})
-
-				It("should fail with an error", func() {
-					Ω(dispatchResult).Should(HaveOccurred())
-				})
-			})
-
-			Context("with multiple keys", func() {
-				BeforeEach(func() {
-					middleware = jwt.New([]*ecdsa.PublicKey{ecPubKey1}, nil, securityScheme)
-				})
-
-				It("should go through", func() {
-					Ω(dispatchResult).ShouldNot(HaveOccurred())
-					Ω(fetchedToken).ShouldNot(BeNil())
-				})
-			})
-		})
+		middleware := New("otherkey", nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err == nil {
+			t.Fatal("expected error")
+		}
 	})
-})
 
-var rsaKey1, _ = jwtpkg.ParseRSAPrivateKeyFromPEM([]byte(`-----BEGIN RSA PRIVATE KEY-----
+	t.Run("multiple keys", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
+			}
+			return nil
+		}
+
+		middleware := New([]string{"firstkey", "keys"}, nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("should accept scopes specified using the 'scope' claim", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// HS256 {"scope":"scope1","admin":true}, signed with "keys"
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6InNjb3BlMSIsImFkbWluIjp0cnVlfQ.EwMZtpTUPUoKsiCHqH659JQeMLf3-KdboStmQKjv2IU")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		ctx = shogoa.WithRequiredScopes(ctx, []string{"scope1"})
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
+			}
+			return nil
+		}
+
+		middleware := New("keys", nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("should accept scopes specified using the 'scopes' claim", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		ctx = shogoa.WithRequiredScopes(ctx, []string{"scope1"})
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
+			}
+			return nil
+		}
+
+		middleware := New("keys", nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("should fall back to 'scopes' if 'scope' is null", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// HS256 {"scope":null, "scopes":"scope1", "admin":true}, signed with "keys"
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6bnVsbCwic2NvcGVzIjoic2NvcGUxIiwiYWRtaW4iOnRydWV9.h8L_MlWWyB0RnwaUBDVu8nGPn5wPSVPMEm42iH8Jxmg")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		ctx = shogoa.WithRequiredScopes(ctx, []string{"scope1"})
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
+			}
+			return nil
+		}
+
+		middleware := New("keys", nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("should not fall back to 'scopes' if 'scope' is an empty string", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// HS256 {"scope":"", "scopes":"scope1", "admin":true}, signed with "keys"
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZSI6IiIsInNjb3BlcyI6InNjb3BlMSIsImFkbWluIjp0cnVlfQ.U5r-gAvk8SWRYBK3Hmj7zqHSQ0lSQO1wAAk0soyHkoU")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		ctx = shogoa.WithRequiredScopes(ctx, []string{"scope1"})
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			panic("should not be called")
+		}
+
+		middleware := New("keys", nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err == nil {
+			t.Fatal("expected error")
+		}
+	})
+}
+
+func TestMiddleware_RSA(t *testing.T) {
+	t.Run("a single key", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// RS256 {"scopes":"scope1 scope2","admin":true}, signed with rsaKey1 below
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEgc2NvcGUyIiwiYWRtaW4iOnRydWV9.gT4gSGqXTCUZAJT_TWZ4eknazVo-ulMKwSpHoghWZU8Sm9QXt48ISwFAb_wW2xhR58MUNX95iuiex0bCWvze59r35dEQ2SOZixuDvE8srQi2SRk9qqsVV9-R361qf2D8KfLX9jQ7j-UB40bleg0fOyBAjPLPq0ggBigSjQ2yUz8YDKma-n6Ulc3LJ4gyozmb3MjO9RV2pdD3N-m6ttwkTkUE2jhsL6a3T8f0Y6xSGTMyZasKc6kHbUyz6NjAeplLhbkBDE8-Ak4GaLGlLnLzZ49oTVrh89yauciW5yLQCXzXt2PODqp6zXPC0FFcDr-2USCpA-nqaQQyhliMcgtqVw")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
+			}
+			return nil
+		}
+
+		middleware := New(rsaPubKey1, nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("keys that didn't the JWT", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// RS256 {"scopes":"scope1 scope2","admin":true}, signed with rsaKey1 below
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEgc2NvcGUyIiwiYWRtaW4iOnRydWV9.gT4gSGqXTCUZAJT_TWZ4eknazVo-ulMKwSpHoghWZU8Sm9QXt48ISwFAb_wW2xhR58MUNX95iuiex0bCWvze59r35dEQ2SOZixuDvE8srQi2SRk9qqsVV9-R361qf2D8KfLX9jQ7j-UB40bleg0fOyBAjPLPq0ggBigSjQ2yUz8YDKma-n6Ulc3LJ4gyozmb3MjO9RV2pdD3N-m6ttwkTkUE2jhsL6a3T8f0Y6xSGTMyZasKc6kHbUyz6NjAeplLhbkBDE8-Ak4GaLGlLnLzZ49oTVrh89yauciW5yLQCXzXt2PODqp6zXPC0FFcDr-2USCpA-nqaQQyhliMcgtqVw")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			panic("should not be called")
+		}
+
+		middleware := New(rsaPubKey2, nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("multiple keys", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// RS256 {"scopes":"scope1 scope2","admin":true}, signed with rsaKey1 below
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEgc2NvcGUyIiwiYWRtaW4iOnRydWV9.gT4gSGqXTCUZAJT_TWZ4eknazVo-ulMKwSpHoghWZU8Sm9QXt48ISwFAb_wW2xhR58MUNX95iuiex0bCWvze59r35dEQ2SOZixuDvE8srQi2SRk9qqsVV9-R361qf2D8KfLX9jQ7j-UB40bleg0fOyBAjPLPq0ggBigSjQ2yUz8YDKma-n6Ulc3LJ4gyozmb3MjO9RV2pdD3N-m6ttwkTkUE2jhsL6a3T8f0Y6xSGTMyZasKc6kHbUyz6NjAeplLhbkBDE8-Ak4GaLGlLnLzZ49oTVrh89yauciW5yLQCXzXt2PODqp6zXPC0FFcDr-2USCpA-nqaQQyhliMcgtqVw")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
+			}
+			return nil
+		}
+
+		middleware := New([]*rsa.PublicKey{rsaPubKey1}, nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+func TestMiddleware_ECDSA(t *testing.T) {
+	t.Run("a single key", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// RS256 {"scopes":"scope1 scope2","admin":true}, signed with rsaKey1 below
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwic2NvcGVzIjoic2NvcGUxIHNjb3BlMiJ9.7gM4EblP4cvX5C6PBLSBFpKX2FQ9AsLNmOXEm86uvrd4czBfw1zDO24abQ7gtlbMcjuVvxrpIyRa7Nbbn31G7w")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
+			}
+			return nil
+		}
+
+		middleware := New(ecPubKey1, nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("with keys that didn't the JWT", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// RS256 {"scopes":"scope1 scope2","admin":true}, signed with rsaKey1 below
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwic2NvcGVzIjoic2NvcGUxIHNjb3BlMiJ9.7gM4EblP4cvX5C6PBLSBFpKX2FQ9AsLNmOXEm86uvrd4czBfw1zDO24abQ7gtlbMcjuVvxrpIyRa7Nbbn31G7w")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			panic("should not be called")
+		}
+
+		middleware := New(ecPubKey2, nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("multiple keys", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocHeader,
+			Name: "Authorization",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// RS256 {"scopes":"scope1 scope2","admin":true}, signed with rsaKey1 below
+		req.Header.Set("Authorization", "Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwic2NvcGVzIjoic2NvcGUxIHNjb3BlMiJ9.7gM4EblP4cvX5C6PBLSBFpKX2FQ9AsLNmOXEm86uvrd4czBfw1zDO24abQ7gtlbMcjuVvxrpIyRa7Nbbn31G7w")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
+			}
+			return nil
+		}
+
+		middleware := New([]*ecdsa.PublicKey{ecPubKey1}, nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+func TestMiddleware_HMAC_Query(t *testing.T) {
+	t.Run("HMAC keys signed token", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocQuery,
+			Name: "access_token",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
+		q := req.URL.Query()
+		q.Set("access_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
+		req.URL.RawQuery = q.Encode()
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
+			}
+			return nil
+		}
+
+		middleware := New("keys", nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("with keys that didn't the JWT", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocQuery,
+			Name: "access_token",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
+		q := req.URL.Query()
+		q.Set("access_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
+		req.URL.RawQuery = q.Encode()
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			panic("should not be called")
+		}
+
+		middleware := New("otherkey", nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("multiple keys", func(t *testing.T) {
+		securityScheme := &shogoa.JWTSecurity{
+			In:   shogoa.LocQuery,
+			Name: "access_token",
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		// HS256 {"scopes":"scope1","admin":true}, signed with "keys"
+		q := req.URL.Query()
+		q.Set("access_token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzY29wZXMiOiJzY29wZTEiLCJhZG1pbiI6dHJ1ZX0.UCvEfbD_yuS5dCZidxZgogVi2yF0ZVecMsQQbY1HJy0")
+		req.URL.RawQuery = q.Encode()
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			token := ContextJWT(ctx)
+			if token == nil {
+				t.Fatal("token is nil")
+			}
+			return nil
+		}
+
+		middleware := New([]string{"firstkey", "keys"}, nil, securityScheme)
+		handler = middleware(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
+// the private key of rsaPubKey1
+/*
+-----BEGIN RSA PRIVATE KEY-----
 MIIEogIBAAKCAQEArZIJcPQd7aSGb80wgFpy5SVjzzsGpfIysZ30SdWlTcWMVbAT
 XmsDNgw98TzIeoyikSbSHEeORbKWKS2clgNsdLjYKv3XLTBaXfLcU3x9mhnk/kUL
 N/AQgyvsRGynPris2oVzGSib7uOZK/9+u+QAKIrp7prcmMmnwvdcjFXjwzx83RTF
@@ -428,9 +445,10 @@ g8jc3+O5uoYuUnfbnRJyOsPtb4VSLgXz6deUmI9fugmU1l55tH93jMT4ijyzg2BJ
 grGxAoGAWX24Yx9qoasqEQ2rgdTsgylwL28UczKQ5KNHt2PcEfPNw6/GpfK7YmlU
 Heef2umEzb1K2ZK95wlMbF8zpNDWBf4PkxgfW+JEE+pO1kb5KXysBymymyXhGHAP
 CwH9XHqbjVlsD358AbPeKqLgTCaGo9JgsEZDBpESmBDnIPUahMc=
------END RSA PRIVATE KEY-----`))
+-----END RSA PRIVATE KEY-----
+*/
 
-var rsaPubKey1, _ = jwtpkg.ParseRSAPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+var rsaPubKey1 = must(jwtpkg.ParseRSAPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArZIJcPQd7aSGb80wgFpy
 5SVjzzsGpfIysZ30SdWlTcWMVbATXmsDNgw98TzIeoyikSbSHEeORbKWKS2clgNs
 dLjYKv3XLTBaXfLcU3x9mhnk/kULN/AQgyvsRGynPris2oVzGSib7uOZK/9+u+QA
@@ -438,9 +456,11 @@ KIrp7prcmMmnwvdcjFXjwzx83RTF1b+iuVGCdV0T4m1XQdm/YtIUh7JNbYrUolkd
 wZlOxMZuV0FDC+ms02+gyj580PylTuAD4JmtSmmijyWfEx5dsZYtGALyUxcm5Hz1
 5RP3FACrv4B++BHI6smO4sWdrSYVl3sHJ60Bm6zbwuyB2twJPOdL5nVIGiIDdf+1
 IwIDAQAB
------END PUBLIC KEY-----`))
+-----END PUBLIC KEY-----`)))
 
-var rsaKey2, _ = jwtpkg.ParseRSAPrivateKeyFromPEM([]byte(`-----BEGIN RSA PRIVATE KEY-----
+// the private key of rsaPubKey2
+/*
+-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEA4jr/DGbPt0UDGvu6Xo2LV0F6Wf8OnyxF2IFPdG5B4X0YS3DC
 9SF3clbbBivDVa2bEXppyj+eLEKlfohCWXTrJK0LxTEcneuDkF4re+BdP3q9cKRz
 FtI/ZVhVnD7+PS1wps7OiTM0iOaIDo9+uFrC6zBTRAiPyrdwh1ApttLdoD6i5D9D
@@ -466,9 +486,10 @@ zsFCZlC0jytRNaqoDGQzANCuDgH/bovTlTKyOzTDgwSORwP0F4zOu4+AxZu+Juw4
 3nextQKBgEAGLuChkztZCVt0W2D8wJYFR7XjezcbsfpoXx9H8htk6u4STu9TwB76
 DxoYj3qiTV2kRRBQQZRAli1TbDOnJuqFMnRL0aPsqebuW2sqY9Hx9G6TxokN8Nc6
 RlTE+CbPcjBgAx+AANL/X2KYoXLAjOrYY5kQD8Qbt8Wkme7m6hiP
------END RSA PRIVATE KEY-----`))
+-----END RSA PRIVATE KEY-----
+*/
 
-var rsaPubKey2, _ = jwtpkg.ParseRSAPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+var rsaPubKey2 = must(jwtpkg.ParseRSAPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4jr/DGbPt0UDGvu6Xo2L
 V0F6Wf8OnyxF2IFPdG5B4X0YS3DC9SF3clbbBivDVa2bEXppyj+eLEKlfohCWXTr
 JK0LxTEcneuDkF4re+BdP3q9cKRzFtI/ZVhVnD7+PS1wps7OiTM0iOaIDo9+uFrC
@@ -476,26 +497,32 @@ JK0LxTEcneuDkF4re+BdP3q9cKRzFtI/ZVhVnD7+PS1wps7OiTM0iOaIDo9+uFrC
 WgqTMC3KrRX/6QJFFfpgyQzFT09WDYnmXl2gS7C2sk4UejygqmVg96JxaIaT3WiQ
 SjxXddjR/krcA9EGNNEkpZB2W6Ux6d63yWsNG9YJUacwI+M2q5ZW964J1s//FiNZ
 ZQIDAQAB
------END PUBLIC KEY-----`))
+-----END PUBLIC KEY-----`)))
 
-var ecKey1, _ = jwtpkg.ParseECPrivateKeyFromPEM([]byte(`-----BEGIN EC PRIVATE KEY-----
+// the private key of ecPubKey1
+/*
+-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIM4zAVusfF+Xl4Z5a5LaspGk+OIwGQweubphSqC1R9+VoAoGCCqGSM49
 AwEHoUQDQgAE3tWSknhfssUVytNbPz3TB7giFfxKtHsFW27Yls+Ohfuui9NW4eEk
 fLOxYkTI9tyoKfh9Dan5kJFA7ZYEwZ0zMQ==
------END EC PRIVATE KEY-----`))
+-----END EC PRIVATE KEY-----
+*/
 
-var ecPubKey1, _ = jwtpkg.ParseECPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+var ecPubKey1 = must(jwtpkg.ParseECPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3tWSknhfssUVytNbPz3TB7giFfxK
 tHsFW27Yls+Ohfuui9NW4eEkfLOxYkTI9tyoKfh9Dan5kJFA7ZYEwZ0zMQ==
------END PUBLIC KEY-----`))
+-----END PUBLIC KEY-----`)))
 
-var ecKey2, _ = jwtpkg.ParseECPrivateKeyFromPEM([]byte(`-----BEGIN EC PRIVATE KEY-----
+// the private key of ecPubKey2
+/*
+-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIKQ7EyFGaYMuFpMLnqK+mBnT9CrWOqzVxsF8wBlGrTq/oAoGCCqGSM49
 AwEHoUQDQgAE8IX3mOtLvBpvrylaRjFpadqGrirXh9dkjJfM/t1dnLu5qPhybMIY
 tEr3Xs8vYp2wyaSTVKsyj9y+t344T5Bhdw==
------END EC PRIVATE KEY-----`))
+-----END EC PRIVATE KEY-----
+*/
 
-var ecPubKey2, _ = jwtpkg.ParseECPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+var ecPubKey2 = must(jwtpkg.ParseECPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE8IX3mOtLvBpvrylaRjFpadqGrirX
 h9dkjJfM/t1dnLu5qPhybMIYtEr3Xs8vYp2wyaSTVKsyj9y+t344T5Bhdw==
------END PUBLIC KEY-----`))
+-----END PUBLIC KEY-----`)))
