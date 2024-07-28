@@ -111,10 +111,10 @@ func LogRequest(verbose bool, sensitiveHeaders ...string) shogoa.Middleware {
 	}
 }
 
-// shortID produces a "unique" 6 bytes long string.
+// shortID produces a "unique" 8 bytes long string.
 // Do not use as a reliable way to get unique IDs, instead use for things like logging.
 func shortID() string {
-	return randid.New(6)
+	return randid.New(8)
 }
 
 // from makes a best effort to compute the request client IP.

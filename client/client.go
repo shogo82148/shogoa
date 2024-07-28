@@ -192,10 +192,10 @@ func drainBody(b io.ReadCloser) (r1, r2 io.ReadCloser, err error) {
 	return io.NopCloser(&buf), io.NopCloser(bytes.NewReader(buf.Bytes())), nil
 }
 
-// shortID produces a "unique" 6 bytes long string.
+// shortID produces a "unique" 8 bytes long string.
 // Do not use as a reliable way to get unique IDs, instead use for things like logging.
 func shortID() string {
-	return randid.New(6)
+	return randid.New(8)
 }
 
 // clientKey is the private type used to store values in the context.
