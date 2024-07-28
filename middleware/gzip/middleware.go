@@ -69,7 +69,7 @@ func (grw *gzipResponseWriter) Write(b []byte) (int, error) {
 
 	// Check if length is above minimum,
 	// if not save to buffer.
-	size := len(b) + grw.buf.Len()
+	size := int64(len(b)) + int64(grw.buf.Len())
 	if size < grw.o.minSize {
 		return grw.buf.Write(b)
 	}
@@ -104,18 +104,16 @@ func (grw *gzipResponseWriter) WriteHeader(n int) {
 	grw.statusCode = n
 }
 
-type (
-	// Option allows to override default parameters.
-	Option func(*options) error
+// Option allows to override default parameters.
+type Option func(*options) error
 
-	// options contains final options
-	options struct {
-		ignoreRange  bool
-		minSize      int
-		contentTypes []string
-		statusCodes  map[int]struct{}
-	}
-)
+// options contains final options
+type options struct {
+	ignoreRange  bool
+	minSize      int64
+	contentTypes []string
+	statusCodes  map[int]struct{}
+}
 
 // defaultContentTypes is the default list of content types for which
 // a Handler considers gzip compression. This list originates from the
@@ -222,7 +220,7 @@ func OnlyStatusCodes(codes ...int) Option {
 }
 
 // MinSize will set a minimum size for compression.
-func MinSize(n int) Option {
+func MinSize(n int64) Option {
 	return func(c *options) error {
 		if n <= 0 {
 			c.minSize = 0
@@ -264,7 +262,7 @@ func Middleware(level int, o ...Option) shogoa.Middleware {
 		}
 	}
 	gzipPool := sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			gz, err := gzip.NewWriterLevel(io.Discard, level)
 			if err != nil {
 				panic(err)
