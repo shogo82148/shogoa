@@ -1,148 +1,129 @@
-package apidsl_test
+package apidsl
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/shogo82148/shogoa/design"
-	"github.com/shogo82148/shogoa/design/apidsl"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
-var _ = Describe("Metadata", func() {
-	var mtd *design.MediaTypeDefinition
-	var api *design.APIDefinition
-	var rd *design.ResourceDefinition
-	var metadataKey string
-	var metadataValue string
+func TestMetadata(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+		val  string
+	}{
+		{
+			name: "blank metadata string",
+			key:  "",
+			val:  "",
+		},
+		{
+			name: "valid metadata string",
+			key:  "struct:tag:json",
+			val:  "myName,omitempty",
+		},
+		{
+			name: "unicode metadata string",
+			key:  "abc123一二三",
+			val:  "˜µ≤≈ç√",
+		},
+	}
 
-	BeforeEach(func() {
-		dslengine.Reset()
-	})
-
-	Context("with Metadata declaration", func() {
-		JustBeforeEach(func() {
-			api = apidsl.API("Example API", func() {
-				apidsl.Metadata(metadataKey, metadataValue)
-				apidsl.BasicAuthSecurity("password")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// declaration design
+			dslengine.Reset()
+			api := API("Example API", func() {
+				Metadata(tt.key, tt.val)
+				BasicAuthSecurity("password")
 			})
 
-			rd = apidsl.Resource("Example Resource", func() {
-				apidsl.Metadata(metadataKey, metadataValue)
-				apidsl.Action("Example Action", func() {
-					apidsl.Metadata(metadataKey, metadataValue)
-					apidsl.Routing(
-						apidsl.GET("/", func() {
-							apidsl.Metadata(metadataKey, metadataValue)
+			rd := Resource("Example Resource", func() {
+				Metadata(tt.key, tt.val)
+				Action("Example Action", func() {
+					Metadata(tt.key, tt.val)
+					Routing(
+						GET("/", func() {
+							Metadata(tt.key, tt.val)
 						}),
 					)
-					apidsl.Security("password", func() {
-						apidsl.Metadata(metadataKey, metadataValue)
+					Security("password", func() {
+						Metadata(tt.key, tt.val)
 					})
 				})
-				apidsl.Response("Example Response", func() {
-					apidsl.Metadata(metadataKey, metadataValue)
+				Response("Example Response", func() {
+					Metadata(tt.key, tt.val)
 				})
 			})
 
-			mtd = apidsl.MediaType("Example MediaType", func() {
-				apidsl.Metadata(metadataKey, metadataValue)
-				apidsl.Attribute("Example Attribute", func() {
-					apidsl.Metadata(metadataKey, metadataValue)
+			mtd := MediaType("Example MediaType", func() {
+				Metadata(tt.key, tt.val)
+				Attribute("Example Attribute", func() {
+					Metadata(tt.key, tt.val)
 				})
 			})
+			_ = dslengine.Run()
 
-			dslengine.Run()
-		})
-
-		Context("with blank metadata string", func() {
-			BeforeEach(func() {
-				metadataKey = ""
-				metadataValue = ""
-			})
-
-			It("has metadata", func() {
-				expected := dslengine.MetadataDefinition{"": {""}}
-				Ω(api.Metadata).To(Equal(expected))
-				Ω(rd.Metadata).To(Equal(expected))
-				Ω(rd.Actions["Example Action"].Metadata).To(Equal(expected))
-				Ω(rd.Actions["Example Action"].Routes[0].Metadata).To(Equal(expected))
-				Ω(rd.Actions["Example Action"].Security.Scheme.Metadata).To(Equal(expected))
-				Ω(rd.Responses["Example Response"].Metadata).To(Equal(expected))
-				Ω(mtd.Metadata).To(Equal(expected))
-
-				mtdAttribute := mtd.Type.ToObject()["Example Attribute"]
-				Ω(mtdAttribute.Metadata).To(Equal(expected))
-			})
-		})
-		Context("with valid metadata string", func() {
-			BeforeEach(func() {
-				metadataKey = "struct:tag:json"
-				metadataValue = "myName,omitempty"
-			})
-
-			It("has metadata", func() {
-				expected := dslengine.MetadataDefinition{"struct:tag:json": {"myName,omitempty"}}
-				Ω(api.Metadata).To(Equal(expected))
-				Ω(rd.Metadata).To(Equal(expected))
-				Ω(rd.Actions["Example Action"].Metadata).To(Equal(expected))
-				Ω(rd.Actions["Example Action"].Routes[0].Metadata).To(Equal(expected))
-				Ω(rd.Actions["Example Action"].Security.Scheme.Metadata).To(Equal(expected))
-				Ω(rd.Responses["Example Response"].Metadata).To(Equal(expected))
-				Ω(mtd.Metadata).To(Equal(expected))
-
-				mtdAttribute := mtd.Type.ToObject()["Example Attribute"]
-				Ω(mtdAttribute.Metadata).To(Equal(expected))
-			})
-		})
-		Context("with unicode metadata string", func() {
-			BeforeEach(func() {
-				metadataKey = "abc123一二三"
-				metadataValue = "˜µ≤≈ç√"
-			})
-
-			It("has metadata", func() {
-				expected := dslengine.MetadataDefinition{"abc123一二三": {"˜µ≤≈ç√"}}
-				Ω(api.Metadata).To(Equal(expected))
-				Ω(rd.Metadata).To(Equal(expected))
-				Ω(rd.Actions["Example Action"].Metadata).To(Equal(expected))
-				Ω(rd.Actions["Example Action"].Routes[0].Metadata).To(Equal(expected))
-				Ω(rd.Actions["Example Action"].Security.Scheme.Metadata).To(Equal(expected))
-				Ω(rd.Responses["Example Response"].Metadata).To(Equal(expected))
-				Ω(mtd.Metadata).To(Equal(expected))
-
-				mtdAttribute := mtd.Type.ToObject()["Example Attribute"]
-				Ω(mtdAttribute.Metadata).To(Equal(expected))
-			})
-		})
-
-	})
-
-	Context("with no Metadata declaration", func() {
-		JustBeforeEach(func() {
-			api = apidsl.API("Example API", func() {})
-
-			rd = apidsl.Resource("Example Resource", func() {
-				apidsl.Action("Example Action", func() {
-				})
-				apidsl.Response("Example Response", func() {
-				})
-			})
-
-			mtd = apidsl.MediaType("Example MediaType", func() {
-				apidsl.Attribute("Example Attribute", func() {
-				})
-			})
-
-			dslengine.Run()
-		})
-		It("has no metadata", func() {
-			Ω(api.Metadata).To(BeNil())
-			Ω(rd.Metadata).To(BeNil())
-			Ω(mtd.Metadata).To(BeNil())
+			// assertion
+			expected := dslengine.MetadataDefinition{tt.key: {tt.val}}
+			if diff := cmp.Diff(expected, api.Metadata); diff != "" {
+				t.Errorf("unexpected metadata(-want/+got):\n%s", diff)
+			}
+			if diff := cmp.Diff(expected, rd.Metadata); diff != "" {
+				t.Errorf("unexpected metadata(-want/+got):\n%s", diff)
+			}
+			if diff := cmp.Diff(expected, rd.Actions["Example Action"].Metadata); diff != "" {
+				t.Errorf("unexpected metadata(-want/+got):\n%s", diff)
+			}
+			if diff := cmp.Diff(expected, rd.Actions["Example Action"].Routes[0].Metadata); diff != "" {
+				t.Errorf("unexpected metadata(-want/+got):\n%s", diff)
+			}
+			if diff := cmp.Diff(expected, rd.Actions["Example Action"].Security.Scheme.Metadata); diff != "" {
+				t.Errorf("unexpected metadata(-want/+got):\n%s", diff)
+			}
+			if diff := cmp.Diff(expected, rd.Responses["Example Response"].Metadata); diff != "" {
+				t.Errorf("unexpected metadata(-want/+got):\n%s", diff)
+			}
+			if diff := cmp.Diff(expected, mtd.Metadata); diff != "" {
+				t.Errorf("unexpected metadata(-want/+got):\n%s", diff)
+			}
 
 			mtdAttribute := mtd.Type.ToObject()["Example Attribute"]
-			Ω(mtdAttribute.Metadata).To(BeNil())
+			if diff := cmp.Diff(expected, mtdAttribute.Metadata); diff != "" {
+				t.Errorf("unexpected metadata(-want/+got):\n%s", diff)
+			}
 		})
-	})
+	}
 
-})
+	t.Run("no Metadata declaration", func(t *testing.T) {
+		// declaration design
+		dslengine.Reset()
+		api := API("Example API", func() {})
+		rd := Resource("Example Resource", func() {
+			Action("Example Action", func() {})
+			Response("Example Response", func() {})
+		})
+		mtd := MediaType("Example MediaType", func() {
+			Attribute("Example Attribute", func() {})
+		})
+
+		_ = dslengine.Run()
+
+		// assertion
+		if api.Metadata != nil {
+			t.Errorf("unexpected metadata: %+v", api.Metadata)
+		}
+		if rd.Metadata != nil {
+			t.Errorf("unexpected metadata: %+v", rd.Metadata)
+		}
+		if mtd.Metadata != nil {
+			t.Errorf("unexpected metadata: %+v", mtd.Metadata)
+		}
+
+		mtdAttribute := mtd.Type.ToObject()["Example Attribute"]
+		if mtdAttribute.Metadata != nil {
+			t.Errorf("unexpected metadata: %+v", mtdAttribute.Metadata)
+		}
+	})
+}
