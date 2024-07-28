@@ -197,12 +197,6 @@ func parseClaimScopes(token *jwt.Token) (map[string]bool, []string, error) {
 // fails during processing.
 var ErrJWTError = shogoa.NewErrorClass("jwt_security_error", 401)
 
-type contextKey int
-
-const (
-	jwtKey contextKey = iota + 1
-)
-
 // partitionKeys sorts keys by their type.
 func partitionKeys(k interface{}) ([]*rsa.PublicKey, []*ecdsa.PublicKey, [][]byte) {
 	var (
