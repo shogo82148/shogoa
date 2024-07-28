@@ -264,7 +264,5 @@ func (r MediaTypeRoot) IterateSets(iterator dslengine.SetIterator) {
 
 // Reset deletes all the keys.
 func (r MediaTypeRoot) Reset() {
-	for k := range r {
-		delete(r, k)
-	}
+	clear(r)
 }
