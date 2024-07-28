@@ -1,491 +1,605 @@
-package gzip_test
+package gzip
 
 import (
-	"bytes"
 	"compress/gzip"
 	"context"
 	"io"
 	"net/http"
-	"strconv"
+	"net/http/httptest"
 	"strings"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/shogo82148/shogoa"
-	gzm "github.com/shogo82148/shogoa/middleware/gzip"
 )
 
-type TestResponseWriter struct {
-	ParentHeader http.Header
-	Body         []byte
-	Status       int
-}
+func TestGzip(t *testing.T) {
+	verifyGzippedResponse := func(t *testing.T, resp *http.Response, body string) {
+		t.Helper()
+		if resp.Header.Get("Content-Encoding") != "gzip" {
+			t.Errorf("unexpected Content-Encoding: %s", resp.Header.Get("Content-Encoding"))
+		}
 
-func (t *TestResponseWriter) Header() http.Header {
-	return t.ParentHeader
-}
+		gr, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer gr.Close()
+		actual, err := io.ReadAll(gr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(actual) != body {
+			t.Errorf("unexpected body: %s", actual)
+		}
+	}
 
-func (t *TestResponseWriter) Write(b []byte) (int, error) {
-	t.Body = append(t.Body, b...)
-	return len(b), nil
-}
-
-func (t *TestResponseWriter) WriteHeader(s int) {
-	t.Status = s
-}
-
-var _ = Describe("Gzip", func() {
-	var ctx context.Context
-	var req *http.Request
-	var rw *TestResponseWriter
-	payload := map[string]interface{}{"payload": 42}
-
-	BeforeEach(func() {
-		var err error
-		req, err = http.NewRequest("POST", "/foo/bar", strings.NewReader(`{"payload":42}`))
+	t.Run("encodes response using gzip", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
 		req.Header.Set("Accept-Encoding", "gzip")
 		req.Header.Set("Range", "bytes=0-1023")
-		Ω(err).ShouldNot(HaveOccurred())
-		rw = &TestResponseWriter{ParentHeader: make(http.Header)}
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
 
-		ctx = shogoa.NewContext(rw, req, nil)
-		shogoa.ContextRequest(ctx).Payload = payload
-	})
-
-	It("encodes response using gzip", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		gzr, err := gzip.NewReader(bytes.NewReader(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, gzr)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
-		Ω(resp.Header().Get("Content-Length")).Should(Equal(""))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("encodes response using gzip (custom status)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("encodes response using gzip (custom status)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.AddStatusCodes(http.StatusBadRequest))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusBadRequest))
-		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0), AddStatusCodes(http.StatusBadRequest))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		gzr, err := gzip.NewReader(bytes.NewReader(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, gzr)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusBadRequest {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("encodes response using gzip (all status)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("encodes response using gzip (all status)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.OnlyStatusCodes())(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusBadRequest))
-		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0), OnlyStatusCodes())(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		gzr, err := gzip.NewReader(bytes.NewReader(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, gzr)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusBadRequest {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("encodes response using gzip (custom type)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("encodes response using gzip (custom type)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
-			resp.Header().Add("Content-Type", "custom/type")
+			resp.Header().Set("Content-Type", "custom/type")
 			resp.WriteHeader(http.StatusOK)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.AddContentTypes("custom/type"))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0), AddContentTypes("custom/type"))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		gzr, err := gzip.NewReader(bytes.NewReader(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, gzr)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("encodes response using gzip (length check)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("encodes response using gzip (length check)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
 			// Use multiple writes.
-			for i := 0; i < 128; i++ {
-				_, err := resp.Write([]byte("gzip me!"))
-				if err != nil {
+			for range 128 {
+				if _, err := resp.Write([]byte("gzip me!")); err != nil {
 					return err
 				}
 			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(512))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(512))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		gzr, err := gzip.NewReader(bytes.NewReader(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, gzr)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal(strings.Repeat("gzip me!", 128)))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyGzippedResponse(t, result, strings.Repeat("gzip me!", 128))
 	})
 
-	It("removes Accept-Ranges header", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("removes Accept-Ranges header", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
-			resp.Header().Add("Accept-Ranges", "some value")
+			resp.Header().Set("Accept-Ranges", "some value")
 			resp.WriteHeader(http.StatusOK)
 			// Use multiple writes.
-			for i := 0; i < 128; i++ {
-				_, err := resp.Write([]byte("gzip me!"))
-				if err != nil {
+			for range 128 {
+				if _, err := resp.Write([]byte("gzip me!")); err != nil {
 					return err
 				}
 			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(512))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
-		Ω(resp.Header().Get("Accept-Ranges")).Should(Equal(""))
+		handler = Middleware(gzip.BestCompression, MinSize(512))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		gzr, err := gzip.NewReader(bytes.NewReader(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, gzr)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal(strings.Repeat("gzip me!", 128)))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		if result.Header.Get("Accept-Ranges") != "" {
+			t.Errorf("unexpected Accept-Ranges header: %s", result.Header.Get("Accept-Ranges"))
+		}
+		verifyGzippedResponse(t, result, strings.Repeat("gzip me!", 128))
 	})
 
-	It("should preserve status code", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("should preserve status code", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusConflict)
 			// Use multiple writes.
-			for i := 0; i < 128; i++ {
-				_, err := resp.Write([]byte("gzip me!"))
-				if err != nil {
+			for range 128 {
+				if _, err := resp.Write([]byte("gzip me!")); err != nil {
 					return err
 				}
 			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(512), gzm.AddStatusCodes(http.StatusConflict))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusConflict))
-		Ω(resp.Header().Get("Content-Encoding")).Should(Equal("gzip"))
-		Ω(resp.Header().Get("Accept-Ranges")).Should(Equal(""))
+		handler = Middleware(gzip.BestCompression, MinSize(512), AddStatusCodes(http.StatusConflict))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		gzr, err := gzip.NewReader(bytes.NewReader(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, gzr)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal(strings.Repeat("gzip me!", 128)))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusConflict {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		if result.Header.Get("Accept-Ranges") != "" {
+			t.Errorf("unexpected Accept-Ranges header: %s", result.Header.Get("Accept-Ranges"))
+		}
+		verifyGzippedResponse(t, result, strings.Repeat("gzip me!", 128))
 	})
-})
+}
 
-var _ = Describe("NotGzip", func() {
-	var ctx context.Context
-	var req *http.Request
-	var rw *TestResponseWriter
-	payload := map[string]interface{}{"payload": 42}
+func TestNotGzip(t *testing.T) {
+	verifyNotGzippedResponse := func(t *testing.T, resp *http.Response, body string) {
+		t.Helper()
 
-	BeforeEach(func() {
-		var err error
-		req, err = http.NewRequest("POST", "/foo/bar", strings.NewReader(`{"payload":42}`))
+		if resp.Header.Get("Content-Encoding") == "gzip" {
+			t.Errorf("unexpected Content-Encoding: %s", resp.Header.Get("Content-Encoding"))
+		}
+		actual, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(actual) != body {
+			t.Errorf("unexpected body: %s", actual)
+		}
+	}
+
+	t.Run("does not encode response (already gzipped)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
 		req.Header.Set("Accept-Encoding", "gzip")
-		req.Header.Set("Range", "bytes=0-10")
-		Ω(err).ShouldNot(HaveOccurred())
-		rw = &TestResponseWriter{ParentHeader: make(http.Header)}
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
 
-		ctx = shogoa.NewContext(rw, req, nil)
-		shogoa.ContextRequest(ctx).Payload = payload
-	})
-
-	It("does not encode response (already gzipped)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.Header().Set("Content-Type", "gzip")
 			resp.WriteHeader(http.StatusOK)
-			resp.Write([]byte("gzip data"))
+			if _, err := resp.Write([]byte("gzip data")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip data"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "gzip data")
 	})
 
-	It("does not encode response (too small)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("does not encode response (too small)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression)(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression)(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		n, err := io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
-		Ω(resp.Header().Get("Content-Length")).Should(Equal(strconv.Itoa(int(n))))
-		Ω(resp.Header().Get("Content-Length")).Should(Equal(strconv.Itoa(len("gzip me!"))))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("does not encode response (wrong status code)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("does not encode response (wrong status code)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusBadRequest)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusBadRequest))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusBadRequest {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("does not encode response (removed status code)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("does not encode response (removed status code)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.OnlyStatusCodes(http.StatusBadRequest))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0), OnlyStatusCodes(http.StatusBadRequest))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("does not encode response (unknown content type)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("does not encode response (unknown content type)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
-			resp.Header().Add("Content-Type", "unknown/contenttype")
+			resp.Header().Add("Content-Type", "unknown/content-type")
 			resp.WriteHeader(http.StatusOK)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("does not encode response (removed type)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("does not encode response (removed type)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.OnlyContentTypes("some/type"))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0), OnlyContentTypes("some/type"))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("does not encode response (has Range header)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("does not encode response (has Range header)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusOK)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0), gzm.IgnoreRange(false))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0), IgnoreRange(false))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("should preserve status code", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("should preserve status code", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusConflict)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression)(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusConflict))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression)(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusConflict {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "gzip me!")
 	})
 
-	It("should preserve status code with no body", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("should preserve status code with no body", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
 			resp.WriteHeader(http.StatusConflict)
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression)(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusConflict))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression)(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal(""))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusConflict {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "")
 	})
 
-	It("should default to OK with no code set", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	t.Run("should default to OK with no code set", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Range", "bytes=0-1023")
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression)(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression)(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "gzip me!")
 	})
 
-})
-
-var _ = Describe("NotGzip", func() {
-	var ctx context.Context
-	var req *http.Request
-	var rw *TestResponseWriter
-	payload := map[string]interface{}{"payload": 42}
-
-	BeforeEach(func() {
-		var err error
-		req, err = http.NewRequest("POST", "/foo/bar", strings.NewReader(`{"payload":42}`))
+	t.Run("does not encode response (wrong Accept-Encoding)", func(t *testing.T) {
+		// setup
+		req := httptest.NewRequest(http.MethodPost, "/foo/bar", strings.NewReader(`{"payload":42}`))
 		req.Header.Set("Accept-Encoding", "nothing")
-		Ω(err).ShouldNot(HaveOccurred())
-		rw = &TestResponseWriter{ParentHeader: make(http.Header)}
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
 
-		ctx = shogoa.NewContext(rw, req, nil)
-		shogoa.ContextRequest(ctx).Payload = payload
-	})
-
-	It("does not encode response (wrong accept-encoding)", func() {
-		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+		// test
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 			resp := shogoa.ContextResponse(ctx)
-			resp.WriteHeader(http.StatusOK)
-			resp.Write([]byte("gzip me!"))
+			if _, err := resp.Write([]byte("gzip me!")); err != nil {
+				return err
+			}
 			return nil
 		}
-		t := gzm.Middleware(gzip.BestCompression, gzm.MinSize(0))(h)
-		err := t(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
-		resp := shogoa.ContextResponse(ctx)
-		Ω(resp.Status).Should(Equal(http.StatusOK))
-		Ω(resp.Header().Get("Content-Encoding")).ShouldNot(Equal("gzip"))
+		handler = Middleware(gzip.BestCompression, MinSize(0))(handler)
+		if err := handler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, bytes.NewBuffer(rw.Body))
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(buf.String()).Should(Equal("gzip me!"))
+		// verify the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusOK {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		verifyNotGzippedResponse(t, result, "gzip me!")
 	})
-})
+}
