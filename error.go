@@ -30,11 +30,11 @@ middleware) also generate an internal error response.
 package shogoa
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/shogo82148/shogoa/internal/randid"
 )
 
 var (
@@ -356,9 +356,5 @@ func asErrorResponse(err error) *ErrorResponse {
 // good trade-off between probability of clashes and length of ID (6 * 4/3 = 8 chars) since clashes
 // are not catastrophic.
 func newErrorID() string {
-	b := make([]byte, 6)
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
-	}
-	return base64.StdEncoding.EncodeToString(b)
+	return randid.New(6)
 }
