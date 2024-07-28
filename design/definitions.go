@@ -324,9 +324,9 @@ type AttributeDefinition struct {
 	// Metadata is a list of key/value pairs
 	Metadata dslengine.MetadataDefinition
 	// Optional member default value
-	DefaultValue interface{}
+	DefaultValue any
 	// Optional member example value
-	Example interface{}
+	Example any
 	// Optional view used to render Attribute (only applies to media type attributes).
 	View string
 	// NonZeroAttributes lists the names of the child attributes that cannot have a
@@ -994,7 +994,7 @@ func (a *AttributeDefinition) HasDefaultValue(attName string) bool {
 
 // SetDefault sets the default for the attribute. It also converts HashVal
 // and ArrayVal to map and slice respectively.
-func (a *AttributeDefinition) SetDefault(def interface{}) {
+func (a *AttributeDefinition) SetDefault(def any) {
 	switch actual := def.(type) {
 	case HashVal:
 		a.DefaultValue = actual.ToMap()
@@ -1007,11 +1007,11 @@ func (a *AttributeDefinition) SetDefault(def interface{}) {
 
 // AddValues adds the Enum values to the attribute's validation definition.
 // It also performs any conversion needed for HashVal and ArrayVal types.
-func (a *AttributeDefinition) AddValues(values []interface{}) {
+func (a *AttributeDefinition) AddValues(values []any) {
 	if a.Validation == nil {
 		a.Validation = &dslengine.ValidationDefinition{}
 	}
-	a.Validation.Values = make([]interface{}, len(values))
+	a.Validation.Values = make([]any, len(values))
 	for i, v := range values {
 		switch actual := v.(type) {
 		case HashVal:
@@ -1058,7 +1058,7 @@ func (a *AttributeDefinition) IsPrimitivePointer(attName string) bool {
 }
 
 // IsInterface returns true if the field generated for the given attribute has
-// an interface type that should not be referenced as a "*interface{}" pointer.
+// an interface type that should not be referenced as a "*any" pointer.
 // The target attribute must be an object.
 func (a *AttributeDefinition) IsInterface(attName string) bool {
 	if !a.Type.IsObject() {
@@ -1085,7 +1085,7 @@ func (a *AttributeDefinition) IsFile(attName string) bool {
 
 // SetExample sets the custom example. SetExample also handles the case when the user doesn't
 // want any example or any auto-generated example.
-func (a *AttributeDefinition) SetExample(example interface{}) bool {
+func (a *AttributeDefinition) SetExample(example any) bool {
 	if example == nil {
 		a.Example = "-" // set it to something else than nil so we know not to generate one
 		return true
@@ -1099,7 +1099,7 @@ func (a *AttributeDefinition) SetExample(example interface{}) bool {
 
 // GenerateExample returns the value of the Example field if not nil. Otherwise it traverses the
 // attribute type and recursively generates an example. The result is saved in the Example field.
-func (a *AttributeDefinition) GenerateExample(rand *RandomGenerator, seen []string) interface{} {
+func (a *AttributeDefinition) GenerateExample(rand *RandomGenerator, seen []string) any {
 	if a.Example != nil {
 		return a.Example
 	}
@@ -1161,10 +1161,10 @@ func (a *AttributeDefinition) IsReadOnly() bool {
 	return false
 }
 
-func (a *AttributeDefinition) arrayExample(rand *RandomGenerator, seen []string) interface{} {
+func (a *AttributeDefinition) arrayExample(rand *RandomGenerator, seen []string) any {
 	ary := a.Type.ToArray()
 	ln := newExampleGenerator(a, rand).ExampleLength()
-	var res []interface{}
+	var res []any
 	for i := 0; i < ln; i++ {
 		ex := ary.ElemType.GenerateExample(rand, seen)
 		if ex != nil {
@@ -1177,10 +1177,10 @@ func (a *AttributeDefinition) arrayExample(rand *RandomGenerator, seen []string)
 	return ary.MakeSlice(res)
 }
 
-func (a *AttributeDefinition) hashExample(rand *RandomGenerator, seen []string) interface{} {
+func (a *AttributeDefinition) hashExample(rand *RandomGenerator, seen []string) any {
 	h := a.Type.ToHash()
 	ln := newExampleGenerator(a, rand).ExampleLength()
-	res := make(map[interface{}]interface{})
+	res := make(map[any]any)
 	for i := 0; i < ln; i++ {
 		k := h.KeyType.GenerateExample(rand, seen)
 		v := h.ElemType.GenerateExample(rand, seen)
@@ -1194,7 +1194,7 @@ func (a *AttributeDefinition) hashExample(rand *RandomGenerator, seen []string) 
 	return h.MakeMap(res)
 }
 
-func (a *AttributeDefinition) objectExample(rand *RandomGenerator, seen []string) interface{} {
+func (a *AttributeDefinition) objectExample(rand *RandomGenerator, seen []string) any {
 	// project media types
 	actual := a
 	if mt, ok := a.Type.(*MediaTypeDefinition); ok {
@@ -1219,7 +1219,7 @@ func (a *AttributeDefinition) objectExample(rand *RandomGenerator, seen []string
 	}
 	sort.Strings(keys)
 
-	res := make(map[string]interface{})
+	res := make(map[string]any)
 	for _, n := range keys {
 		att := aObj[n]
 		if ex := att.GenerateExample(rand, seen); ex != nil {
