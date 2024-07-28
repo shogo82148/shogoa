@@ -1,18 +1,16 @@
-package middleware_test
+package middleware
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"regexp"
-	"strings"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/shogo82148/shogoa"
-	"github.com/shogo82148/shogoa/middleware"
 )
 
 // errorResponse contains the details of a error response. It implements ServiceError.
@@ -26,7 +24,7 @@ type errorResponse struct {
 	// Detail describes the specific error occurrence.
 	Detail string `json:"detail" yaml:"detail" xml:"detail" form:"detail"`
 	// Meta contains additional key/value pairs useful to clients.
-	Meta map[string]interface{} `json:"meta,omitempty" yaml:"meta,omitempty" xml:"meta,omitempty" form:"meta,omitempty"`
+	Meta map[string]any `json:"meta,omitempty" yaml:"meta,omitempty" xml:"meta,omitempty" form:"meta,omitempty"`
 }
 
 // Error returns the error occurrence details.
@@ -38,158 +36,210 @@ func (e *errorResponse) Error() string {
 	return msg
 }
 
-var _ = Describe("ErrorHandler", func() {
-	var service *shogoa.Service
-	var h shogoa.Handler
-	var verbose bool
+func TestErrorHandler(t *testing.T) {
+	t.Run("verbose", func(t *testing.T) {
+		// build a service
+		service := shogoa.New("test")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return errors.New("boom")
+		}
+		errorHandler := ErrorHandler(service, true)(handler)
 
-	var rw *testResponseWriter
+		// run the handler
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		if err := errorHandler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-	BeforeEach(func() {
-		service = nil
-		h = nil
-		verbose = true
-		rw = nil
+		// check the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusInternalServerError {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		if result.Header.Get("Content-Type") != "text/plain" {
+			t.Errorf("unexpected content type: %s", result.Header.Get("Content-Type"))
+		}
+		body, err := io.ReadAll(result.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(body) != `"boom"`+"\n" {
+			t.Errorf("unexpected body: %s", body)
+		}
 	})
 
-	JustBeforeEach(func() {
-		rw = newTestResponseWriter()
-		eh := middleware.ErrorHandler(service, verbose)(h)
-		req, err := http.NewRequest("GET", "/foo", nil)
-		Ω(err).ShouldNot(HaveOccurred())
-		ctx := newContext(service, rw, req, nil)
-		err = eh(ctx, rw, req)
-		Ω(err).ShouldNot(HaveOccurred())
+	t.Run("not verbose", func(t *testing.T) {
+		// build a service
+		service := shogoa.New("test")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return errors.New("boom")
+		}
+		errorHandler := ErrorHandler(service, false)(handler)
+
+		// run the handler
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		if err := errorHandler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+
+		// check the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusInternalServerError {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		if result.Header.Get("Content-Type") != shogoa.ErrorMediaIdentifier {
+			t.Errorf("unexpected content type: %s", result.Header.Get("Content-Type"))
+		}
+		var decoded errorResponse
+		if err := service.Decoder.Decode(&decoded, result.Body, "application/json"); err != nil {
+			t.Fatal(err)
+		}
+		if decoded.Code != "internal" {
+			t.Errorf("unexpected code: %s", decoded.Code)
+		}
+		if ok, err := regexp.MatchString(`Internal Server Error \[.*\]`, decoded.Detail); err != nil || !ok {
+			t.Errorf("unexpected detail: %s", decoded.Detail)
+		}
+		if decoded.Status != http.StatusInternalServerError {
+			t.Errorf("unexpected status: %d", decoded.Status)
+		}
 	})
 
-	Context("with a handler returning a Go error", func() {
+	t.Run("shogoa 500 error", func(t *testing.T) {
+		// build a service
+		shogoaErr := shogoa.ErrInternal("shogoa-500-boom")
+		origID := shogoaErr.(shogoa.ServiceError).Token()
+		service := shogoa.New("test")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return shogoaErr
+		}
+		errorHandler := ErrorHandler(service, false)(handler)
 
-		BeforeEach(func() {
-			service = newService(nil)
-			h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-				return errors.New("boom")
-			}
-		})
+		// run the handler
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		if err := errorHandler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		It("turns Go errors into HTTP 500 responses", func() {
-			Ω(rw.Status).Should(Equal(500))
-			Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{"text/plain"}))
-			Ω(string(rw.Body)).Should(Equal(`"boom"` + "\n"))
-		})
-
-		Context("not verbose", func() {
-			BeforeEach(func() {
-				verbose = false
-			})
-
-			It("hides the error details", func() {
-				var decoded errorResponse
-				Ω(rw.Status).Should(Equal(500))
-				Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
-				err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
-				Ω(err).ShouldNot(HaveOccurred())
-				msg := shogoa.ErrInternal(`Internal Server Error [zzz]`).Error()
-				msg = regexp.QuoteMeta(msg)
-				msg = strings.Replace(msg, "zzz", ".+", 1)
-				endIDidx := strings.Index(msg, "]")
-				msg = `\[.*\]` + msg[endIDidx+1:]
-				Ω(fmt.Sprintf("%v", decoded.Error())).Should(MatchRegexp(msg))
-			})
-
-			Context("and shogoa 500 error", func() {
-				var origID string
-
-				BeforeEach(func() {
-					h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-						e := shogoa.ErrInternal("shogoa-500-boom")
-						origID = e.(shogoa.ServiceError).Token()
-						return e
-					}
-				})
-
-				It("preserves the error ID from the original error", func() {
-					var decoded errorResponse
-					Ω(origID).ShouldNot(Equal(""))
-					Ω(rw.Status).Should(Equal(500))
-					Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
-					err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(decoded.ID).Should(Equal(origID))
-				})
-			})
-
-			Context("and shogoa 504 error", func() {
-				BeforeEach(func() {
-					meaningful := shogoa.NewErrorClass("shogoa-504-with-info", http.StatusGatewayTimeout)
-					h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-						return meaningful("gatekeeper says no")
-					}
-				})
-
-				It("passes the response", func() {
-					var decoded errorResponse
-					Ω(rw.Status).Should(Equal(http.StatusGatewayTimeout))
-					Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
-					err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(decoded.Code).Should(Equal("shogoa-504-with-info"))
-					Ω(decoded.Detail).Should(Equal("gatekeeper says no"))
-				})
-			})
-		})
+		// check the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusInternalServerError {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		if result.Header.Get("Content-Type") != shogoa.ErrorMediaIdentifier {
+			t.Errorf("unexpected content type: %s", result.Header.Get("Content-Type"))
+		}
+		var decoded errorResponse
+		if err := service.Decoder.Decode(&decoded, result.Body, "application/json"); err != nil {
+			t.Fatal(err)
+		}
+		if decoded.ID != origID {
+			t.Errorf("unexpected ID: %s", decoded.ID)
+		}
+		if decoded.Code != "internal" {
+			t.Errorf("unexpected code: %s", decoded.Code)
+		}
+		if ok, err := regexp.MatchString(`Internal Server Error \[.*\]`, decoded.Detail); err != nil || !ok {
+			t.Errorf("unexpected detail: %s", decoded.Detail)
+		}
+		if decoded.Status != http.StatusInternalServerError {
+			t.Errorf("unexpected status: %d", decoded.Status)
+		}
 	})
 
-	Context("with a handler returning a shogoa error", func() {
-		var gerr error
+	t.Run("shogoa 504 error", func(t *testing.T) {
+		// build a service
+		meaningful := shogoa.NewErrorClass("shogoa-504-boom", http.StatusGatewayTimeout)
+		service := shogoa.New("test")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return meaningful("gatekeeper says no")
+		}
+		errorHandler := ErrorHandler(service, false)(handler)
 
-		BeforeEach(func() {
-			service = newService(nil)
-			gerr = shogoa.NewErrorClass("code", 418)("teapot", "foobar", 42)
-			h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-				return gerr
-			}
-		})
+		// run the handler
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		if err := errorHandler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-		It("maps shogoa errors to HTTP responses", func() {
-			var decoded errorResponse
-			Ω(rw.Status).Should(Equal(gerr.(shogoa.ServiceError).ResponseStatus()))
-			Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
-			err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(decoded.Error()).Should(Equal(gerr.Error()))
-		})
+		// check the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusGatewayTimeout {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		if result.Header.Get("Content-Type") != shogoa.ErrorMediaIdentifier {
+			t.Errorf("unexpected content type: %s", result.Header.Get("Content-Type"))
+		}
+		var decoded errorResponse
+		if err := service.Decoder.Decode(&decoded, result.Body, "application/json"); err != nil {
+			t.Fatal(err)
+		}
+		if decoded.Code != "shogoa-504-boom" {
+			t.Errorf("unexpected code: %s", decoded.Code)
+		}
+		if decoded.Detail != "gatekeeper says no" {
+			t.Errorf("unexpected detail: %s", decoded.Detail)
+		}
+		if decoded.Status != http.StatusGatewayTimeout {
+			t.Errorf("unexpected status: %d", decoded.Status)
+		}
 	})
 
-	// TODO: FIXME
-	// Context("with a handler returning a pkg errors wrapped error", func() {
-	// 	var wrappedError error
-	// 	var logger *testLogger
-	// 	verbose = true
-	// 	BeforeEach(func() {
-	// 		logger = new(testLogger)
-	// 		service = newService(logger)
-	// 		wrappedError = pErrors.Wrap(shogoa.ErrInternal("something crazy happened"), "an error")
-	// 		h = func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-	// 			return wrappedError
-	// 		}
-	// 	})
+	t.Run("custom shogoa error", func(t *testing.T) {
+		// build a service
+		gerr := shogoa.NewErrorClass("code", http.StatusTeapot)("teapot", "foobar", 42)
+		service := shogoa.New("test")
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return gerr
+		}
+		errorHandler := ErrorHandler(service, true)(handler)
 
-	// 	It("maps pkg errors to HTTP responses", func() {
-	// 		var decoded errorResponse
-	// 		cause := pErrors.Cause(wrappedError)
-	// 		Ω(rw.Status).Should(Equal(cause.(shogoa.ServiceError).ResponseStatus()))
-	// 		Ω(rw.ParentHeader["Content-Type"]).Should(Equal([]string{shogoa.ErrorMediaIdentifier}))
-	// 		err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
-	// 		Ω(err).ShouldNot(HaveOccurred())
-	// 		Ω(decoded.Error()).Should(Equal(cause.Error()))
-	// 	})
-	// 	It("logs pkg errors stacktrace", func() {
-	// 		var decoded errorResponse
-	// 		err := service.Decoder.Decode(&decoded, bytes.NewBuffer(rw.Body), "application/json")
-	// 		Ω(err).ShouldNot(HaveOccurred())
-	// 		Ω(logger.ErrorEntries).Should(HaveLen(1))
-	// 		data := logger.ErrorEntries[0].Data[1]
-	// 		Ω(data).Should(ContainSubstring("error_handler_test.go"))
-	// 	})
-	// })
-})
+		// run the handler
+		req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+		rw := httptest.NewRecorder()
+		ctx := shogoa.NewContext(rw, req, nil)
+		if err := errorHandler(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
+
+		// check the result
+		result := rw.Result()
+		if result.StatusCode != http.StatusTeapot {
+			t.Errorf("unexpected status code: %d", result.StatusCode)
+		}
+		if result.Header.Get("Content-Type") != shogoa.ErrorMediaIdentifier {
+			t.Errorf("unexpected content type: %s", result.Header.Get("Content-Type"))
+		}
+		var decoded errorResponse
+		if err := service.Decoder.Decode(&decoded, result.Body, "application/json"); err != nil {
+			t.Fatal(err)
+		}
+		if decoded.Code != "code" {
+			t.Errorf("unexpected code: %s", decoded.Code)
+		}
+		if decoded.Detail != "teapot" {
+			t.Errorf("unexpected detail: %s", decoded.Detail)
+		}
+		if decoded.Status != http.StatusTeapot {
+			t.Errorf("unexpected status: %d", decoded.Status)
+		}
+	})
+}
