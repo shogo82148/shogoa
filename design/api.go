@@ -257,7 +257,9 @@ func (r MediaTypeRoot) IterateSets(iterator dslengine.SetIterator) {
 	for i, cid := range canonicalIDs {
 		set[i] = Design.MediaTypes[cid]
 	}
-	iterator(set)
+	if err := iterator(set); err != nil {
+		panic(err)
+	}
 }
 
 // Reset deletes all the keys.
