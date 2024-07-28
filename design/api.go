@@ -3,7 +3,7 @@ package design
 import (
 	"mime"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/shogo82148/shogoa/dslengine"
@@ -252,7 +252,7 @@ func (r MediaTypeRoot) IterateSets(iterator dslengine.SetIterator) {
 		canonicalIDs[i] = canonicalID
 		i++
 	}
-	sort.Strings(canonicalIDs)
+	slices.Sort(canonicalIDs)
 	set := make([]dslengine.Definition, len(canonicalIDs))
 	for i, cid := range canonicalIDs {
 		set[i] = Design.MediaTypes[cid]
