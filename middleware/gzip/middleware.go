@@ -104,18 +104,16 @@ func (grw *gzipResponseWriter) WriteHeader(n int) {
 	grw.statusCode = n
 }
 
-type (
-	// Option allows to override default parameters.
-	Option func(*options) error
+// Option allows to override default parameters.
+type Option func(*options) error
 
-	// options contains final options
-	options struct {
-		ignoreRange  bool
-		minSize      int
-		contentTypes []string
-		statusCodes  map[int]struct{}
-	}
-)
+// options contains final options
+type options struct {
+	ignoreRange  bool
+	minSize      int
+	contentTypes []string
+	statusCodes  map[int]struct{}
+}
 
 // defaultContentTypes is the default list of content types for which
 // a Handler considers gzip compression. This list originates from the
