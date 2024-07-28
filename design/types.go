@@ -26,117 +26,116 @@ const DefaultView = "default"
 
 // It returns the default view - or if not available the link view - or if not available the first
 // view by alphabetical order.
-type (
-	// A Kind defines the JSON type that a DataType represents.
-	Kind uint
 
-	// DataType is the common interface to all types.
-	DataType interface {
-		// Kind of data type, one of the Kind enum.
-		Kind() Kind
-		// Name returns the type name.
-		Name() string
-		// IsPrimitive returns true if the underlying type is one of the primitive types.
-		IsPrimitive() bool
-		// HasAttributes returns true if the underlying type has any attributes.
-		HasAttributes() bool
-		// IsObject returns true if the underlying type is an object, a user type which
-		// is an object or a media type whose type is an object.
-		IsObject() bool
-		// IsArray returns true if the underlying type is an array, a user type which
-		// is an array or a media type whose type is an array.
-		IsArray() bool
-		// IsHash returns true if the underlying type is a hash map, a user type which
-		// is a hash map or a media type whose type is a hash map.
-		IsHash() bool
-		// ToObject returns the underlying object if any (i.e. if IsObject returns true),
-		// nil otherwise.
-		ToObject() Object
-		// ToArray returns the underlying array if any (i.e. if IsArray returns true),
-		// nil otherwise.
-		ToArray() *Array
-		// ToHash returns the underlying hash map if any (i.e. if IsHash returns true),
-		// nil otherwise.
-		ToHash() *Hash
-		// CanHaveDefault returns whether the data type can have a default value.
-		CanHaveDefault() bool
-		// IsCompatible checks whether val has a Go type that is
-		// compatible with the data type.
-		IsCompatible(val interface{}) bool
-		// GenerateExample returns a random value for the given data type.
-		// If the data type has validations then the example value validates them.
-		// seen keeps track of the user and media types that have been traversed via
-		// recursion to prevent infinite loops.
-		GenerateExample(r *RandomGenerator, seen []string) interface{}
-	}
+// A Kind defines the JSON type that a DataType represents.
+type Kind uint
 
-	// DataStructure is the interface implemented by all data structure types.
-	// That is attribute definitions, user types and media types.
-	DataStructure interface {
-		// Definition returns the data structure definition.
-		Definition() *AttributeDefinition
-		// Walk traverses the data structure recursively and calls the given function once
-		// on each attribute starting with the attribute returned by Definition.
-		// User type and media type attributes are traversed once even for recursive
-		// definitions to avoid infinite recursion.
-		// Walk stops and returns the error if the function returns a non-nil error.
-		Walk(func(*AttributeDefinition) error) error
-	}
+// DataType is the common interface to all types.
+type DataType interface {
+	// Kind of data type, one of the Kind enum.
+	Kind() Kind
+	// Name returns the type name.
+	Name() string
+	// IsPrimitive returns true if the underlying type is one of the primitive types.
+	IsPrimitive() bool
+	// HasAttributes returns true if the underlying type has any attributes.
+	HasAttributes() bool
+	// IsObject returns true if the underlying type is an object, a user type which
+	// is an object or a media type whose type is an object.
+	IsObject() bool
+	// IsArray returns true if the underlying type is an array, a user type which
+	// is an array or a media type whose type is an array.
+	IsArray() bool
+	// IsHash returns true if the underlying type is a hash map, a user type which
+	// is a hash map or a media type whose type is a hash map.
+	IsHash() bool
+	// ToObject returns the underlying object if any (i.e. if IsObject returns true),
+	// nil otherwise.
+	ToObject() Object
+	// ToArray returns the underlying array if any (i.e. if IsArray returns true),
+	// nil otherwise.
+	ToArray() *Array
+	// ToHash returns the underlying hash map if any (i.e. if IsHash returns true),
+	// nil otherwise.
+	ToHash() *Hash
+	// CanHaveDefault returns whether the data type can have a default value.
+	CanHaveDefault() bool
+	// IsCompatible checks whether val has a Go type that is
+	// compatible with the data type.
+	IsCompatible(val interface{}) bool
+	// GenerateExample returns a random value for the given data type.
+	// If the data type has validations then the example value validates them.
+	// seen keeps track of the user and media types that have been traversed via
+	// recursion to prevent infinite loops.
+	GenerateExample(r *RandomGenerator, seen []string) interface{}
+}
 
-	// Primitive is the type for null, boolean, integer, number, string, and time.
-	Primitive Kind
+// DataStructure is the interface implemented by all data structure types.
+// That is attribute definitions, user types and media types.
+type DataStructure interface {
+	// Definition returns the data structure definition.
+	Definition() *AttributeDefinition
+	// Walk traverses the data structure recursively and calls the given function once
+	// on each attribute starting with the attribute returned by Definition.
+	// User type and media type attributes are traversed once even for recursive
+	// definitions to avoid infinite recursion.
+	// Walk stops and returns the error if the function returns a non-nil error.
+	Walk(func(*AttributeDefinition) error) error
+}
 
-	// Array is the type for a JSON array.
-	Array struct {
-		ElemType *AttributeDefinition
-	}
+// Primitive is the type for null, boolean, integer, number, string, and time.
+type Primitive Kind
 
-	// ArrayVal is the value of an array used to specify the default value.
-	ArrayVal []interface{}
+// Array is the type for a JSON array.
+type Array struct {
+	ElemType *AttributeDefinition
+}
 
-	// Object is the type for a JSON object.
-	Object map[string]*AttributeDefinition
+// ArrayVal is the value of an array used to specify the default value.
+type ArrayVal []interface{}
 
-	// Hash is the type for a hash map.
-	Hash struct {
-		KeyType  *AttributeDefinition
-		ElemType *AttributeDefinition
-	}
+// Object is the type for a JSON object.
+type Object map[string]*AttributeDefinition
 
-	// HashVal is the value of a hash used to specify the default value.
-	HashVal map[interface{}]interface{}
+// Hash is the type for a hash map.
+type Hash struct {
+	KeyType  *AttributeDefinition
+	ElemType *AttributeDefinition
+}
 
-	// UserTypeDefinition is the type for user defined types that are not media types
-	// (e.g. payload types).
-	UserTypeDefinition struct {
-		// A user type is an attribute definition.
-		*AttributeDefinition
-		// Name of type
-		TypeName string
-	}
+// HashVal is the value of a hash used to specify the default value.
+type HashVal map[interface{}]interface{}
 
-	// MediaTypeDefinition describes the rendering of a resource using property and link
-	// definitions. A property corresponds to a single member of the media type,
-	// it has a name and a type as well as optional validation rules. A link has a
-	// name and a URL that points to a related resource.
-	// Media types also define views which describe which members and links to render when
-	// building the response body for the corresponding view.
-	MediaTypeDefinition struct {
-		// A media type is a type
-		*UserTypeDefinition
-		// Identifier is the RFC 6838 media type identifier.
-		Identifier string
-		// ContentType identifies the value written to the response "Content-Type" header.
-		// Defaults to Identifier.
-		ContentType string
-		// Links list the rendered links indexed by name.
-		Links map[string]*LinkDefinition
-		// Views list the supported views indexed by name.
-		Views map[string]*ViewDefinition
-		// Resource this media type is the canonical representation for if any
-		Resource *ResourceDefinition
-	}
-)
+// UserTypeDefinition is the type for user defined types that are not media types
+// (e.g. payload types).
+type UserTypeDefinition struct {
+	// A user type is an attribute definition.
+	*AttributeDefinition
+	// Name of type
+	TypeName string
+}
+
+// MediaTypeDefinition describes the rendering of a resource using property and link
+// definitions. A property corresponds to a single member of the media type,
+// it has a name and a type as well as optional validation rules. A link has a
+// name and a URL that points to a related resource.
+// Media types also define views which describe which members and links to render when
+// building the response body for the corresponding view.
+type MediaTypeDefinition struct {
+	// A media type is a type
+	*UserTypeDefinition
+	// Identifier is the RFC 6838 media type identifier.
+	Identifier string
+	// ContentType identifies the value written to the response "Content-Type" header.
+	// Defaults to Identifier.
+	ContentType string
+	// Links list the rendered links indexed by name.
+	Links map[string]*LinkDefinition
+	// Views list the supported views indexed by name.
+	Views map[string]*ViewDefinition
+	// Resource this media type is the canonical representation for if any
+	Resource *ResourceDefinition
+}
 
 const (
 	// BooleanKind represents a JSON bool.
