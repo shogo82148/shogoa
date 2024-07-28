@@ -1,127 +1,202 @@
-package middleware_test
+package middleware
 
-// TODO: FIXME
-// import (
-// 	"context"
-// 	"net/http"
-// 	"net/url"
-// 	"strings"
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+	"time"
 
-// 	. "github.com/onsi/ginkgo"
-// 	. "github.com/onsi/gomega"
-// 	"github.com/shogo82148/shogoa"
-// 	"github.com/shogo82148/shogoa/middleware"
-// )
+	"github.com/shogo82148/shogoa"
+)
 
-// var _ = Describe("LogRequest", func() {
-// 	var ctx context.Context
-// 	var rw *testResponseWriter
-// 	var req *http.Request
-// 	var params url.Values
-// 	var logger *testLogger
-// 	var service *shogoa.Service
+func TestLogRequest(t *testing.T) {
+	// newService creates a new shogoa.Service with a JSON logger
+	newService := func(w io.Writer) *shogoa.Service {
+		service := shogoa.New("test")
+		logHandler := slog.NewJSONHandler(w, nil)
+		service.WithLogger(shogoa.NewLogger(logHandler))
+		service.Encoder.Register(shogoa.NewJSONEncoder, "*/*")
+		service.Decoder.Register(shogoa.NewJSONDecoder, "*/*")
+		return service
+	}
 
-// 	payload := map[string]interface{}{"payload": 42}
+	newRequest := func(service *shogoa.Service) (context.Context, http.ResponseWriter, *http.Request) {
+		ctrl := service.NewController("test")
+		req := httptest.NewRequest(http.MethodPost, "/goo?param=value", strings.NewReader(`{"payload":42}`))
+		rw := httptest.NewRecorder()
+		params := url.Values{"query": []string{"value"}}
+		ctx := shogoa.NewContext(rw, req.WithContext(service.Context), params)
+		ctx = ctrl.BaseContext(req.WithContext(ctx))
+		ctx = shogoa.WithAction(ctx, "goo")
+		shogoa.ContextRequest(ctx).Payload = map[string]interface{}{"payload": 42}
+		return ctx, rw, req
+	}
 
-// 	BeforeEach(func() {
-// 		logger = new(testLogger)
-// 		service = newService(logger)
+	t.Run("logs normal request", func(t *testing.T) {
+		var buf bytes.Buffer
+		service := newService(&buf)
 
-// 		var err error
-// 		req, err = http.NewRequest("POST", "/goo?param=value", strings.NewReader(`{"payload":42}`))
-// 		Ω(err).ShouldNot(HaveOccurred())
-// 		rw = new(testResponseWriter)
-// 		params = url.Values{"query": []string{"value"}}
-// 		ctrl := service.NewController("test")
-// 		ctx = shogoa.NewContext(ctrl.Context, rw, req, params)
-// 		shogoa.ContextRequest(ctx).Payload = payload
-// 	})
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return service.Send(ctx, 200, "ok")
+		}
+		logRequest := LogRequest(true)(handler)
+		if err := logRequest(newRequest(service)); err != nil {
+			t.Fatal(err)
+		}
 
-// 	It("logs requests", func() {
-// 		// Add Action name to the context to make sure we log it properly.
-// 		ctx = shogoa.WithAction(ctx, "goo")
+		var entry map[string]any
+		decoder := json.NewDecoder(&buf)
 
-// 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-// 			return service.Send(ctx, 200, "ok")
-// 		}
-// 		lg := middleware.LogRequest(true)(h)
-// 		Ω(lg(ctx, rw, req)).ShouldNot(HaveOccurred())
-// 		Ω(logger.InfoEntries).Should(HaveLen(4))
+		// check the 1st log entry
+		if err := decoder.Decode(&entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry["req_id"] == "" {
+			t.Error("req_id is empty")
+		}
+		if entry["POST"] != "/goo?param=value" {
+			t.Error("POST is not /goo?param=value")
+		}
 
-// 		Ω(logger.InfoEntries[0].Data).Should(HaveLen(10))
-// 		Ω(logger.InfoEntries[0].Data[0]).Should(Equal("req_id"))
-// 		Ω(logger.InfoEntries[0].Data[2]).Should(Equal("POST"))
-// 		Ω(logger.InfoEntries[0].Data[3]).Should(Equal("/goo?param=value"))
+		// check the 2nd log entry
+		if err := decoder.Decode(&entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry["req_id"] == "" {
+			t.Error("req_id is empty")
+		}
+		if entry["query"] != "value" {
+			t.Error("query is not value")
+		}
 
-// 		Ω(logger.InfoEntries[1].Data).Should(HaveLen(4))
-// 		Ω(logger.InfoEntries[1].Data[0]).Should(Equal("req_id"))
-// 		Ω(logger.InfoEntries[1].Data[2]).Should(Equal("query"))
-// 		Ω(logger.InfoEntries[1].Data[3]).Should(Equal("value"))
+		// check the 3rd log entry
+		if err := decoder.Decode(&entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry["req_id"] == "" {
+			t.Error("req_id is empty")
+		}
+		if entry["payload"] != float64(42) {
+			t.Error("payload is not 42")
+		}
 
-// 		Ω(logger.InfoEntries[2].Data).Should(HaveLen(4))
-// 		Ω(logger.InfoEntries[2].Data[0]).Should(Equal("req_id"))
-// 		Ω(logger.InfoEntries[2].Data[2]).Should(Equal("payload"))
-// 		Ω(logger.InfoEntries[2].Data[3]).Should(Equal(42))
+		// check the 4th log entry
+		if err := decoder.Decode(&entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry["req_id"] == "" {
+			t.Error("req_id is empty")
+		}
+		if entry["status"] != float64(200) {
+			t.Error("status is not 200")
+		}
+		if entry["bytes"] != float64(5) {
+			t.Error("bytes is not 5")
+		}
+		if _, err := time.ParseDuration(entry["time"].(string)); err != nil {
+			t.Errorf("time is invalid: %v", err)
+		}
+		if entry["ctrl"] != "test" {
+			t.Errorf("ctrl is not test, got %v", entry["ctrl"])
+		}
+		if entry["action"] != "goo" {
+			t.Errorf("action is not goo, got %v", entry["action"])
+		}
+	})
 
-// 		Ω(logger.InfoEntries[3].Data).Should(HaveLen(12))
-// 		Ω(logger.InfoEntries[3].Data[0]).Should(Equal("req_id"))
-// 		Ω(logger.InfoEntries[3].Data[2]).Should(Equal("status"))
-// 		Ω(logger.InfoEntries[3].Data[3]).Should(Equal(200))
-// 		Ω(logger.InfoEntries[3].Data[4]).Should(Equal("bytes"))
-// 		Ω(logger.InfoEntries[3].Data[5]).Should(Equal(5))
-// 		Ω(logger.InfoEntries[3].Data[6]).Should(Equal("time"))
-// 		Ω(logger.InfoEntries[3].Data[8]).Should(Equal("ctrl"))
-// 		Ω(logger.InfoEntries[3].Data[9]).Should(Equal("test"))
-// 		Ω(logger.InfoEntries[3].Data[10]).Should(Equal("action"))
-// 		Ω(logger.InfoEntries[3].Data[11]).Should(Equal("goo"))
-// 	})
+	t.Run("logs error codes", func(t *testing.T) {
+		var buf bytes.Buffer
+		service := newService(&buf)
 
-// 	It("logs error codes", func() {
-// 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-// 			return shogoa.MissingParamError("foo")
-// 		}
-// 		rw.ParentHeader = make(http.Header)
-// 		lg := middleware.LogRequest(false)(middleware.ErrorHandler(service, false)(h))
-// 		Ω(lg(ctx, rw, req)).ShouldNot(HaveOccurred())
-// 		Ω(logger.InfoEntries).Should(HaveLen(2))
-// 		Ω(logger.InfoEntries[0].Data).Should(HaveLen(10))
-// 		Ω(logger.InfoEntries[0].Data[0]).Should(Equal("req_id"))
-// 		Ω(logger.InfoEntries[0].Data[2]).Should(Equal("POST"))
-// 		Ω(logger.InfoEntries[0].Data[3]).Should(Equal("/goo?param=value"))
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return shogoa.MissingParamError("foo")
+		}
+		handler = ErrorHandler(service, false)(handler)
+		handler = LogRequest(false)(handler)
+		if err := handler(newRequest(service)); err != nil {
+			t.Fatal(err)
+		}
 
-// 		Ω(logger.InfoEntries[1].Data).Should(HaveLen(14))
-// 		Ω(logger.InfoEntries[1].Data[0]).Should(Equal("req_id"))
-// 		Ω(logger.InfoEntries[1].Data[2]).Should(Equal("status"))
-// 		Ω(logger.InfoEntries[1].Data[3]).Should(Equal(400))
-// 		Ω(logger.InfoEntries[1].Data[4]).Should(Equal("error"))
-// 		Ω(logger.InfoEntries[1].Data[5]).Should(HaveLen(8)) // Error ID
-// 		Ω(logger.InfoEntries[1].Data[6]).Should(Equal("bytes"))
-// 		Ω(logger.InfoEntries[1].Data[7]).Should(Equal(124))
-// 		Ω(logger.InfoEntries[1].Data[8]).Should(Equal("time"))
-// 		Ω(logger.InfoEntries[1].Data[10]).Should(Equal("ctrl"))
-// 		Ω(logger.InfoEntries[1].Data[11]).Should(Equal("test"))
-// 		Ω(logger.InfoEntries[1].Data[12]).Should(Equal("action"))
-// 		Ω(logger.InfoEntries[1].Data[13]).Should(Equal("<unknown>"))
-// 	})
+		var entry map[string]any
+		decoder := json.NewDecoder(&buf)
 
-// 	It("hides secret headers", func() {
-// 		// Add Action name to the context to make sure we log it properly.
-// 		ctx = shogoa.WithAction(ctx, "goo")
+		// check the 1st log entry
+		if err := decoder.Decode(&entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry["req_id"] == "" {
+			t.Error("req_id is empty")
+		}
+		if entry["POST"] != "/goo?param=value" {
+			t.Error("POST is not /goo?param=value")
+		}
 
-// 		h := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-// 			return service.Send(ctx, 200, "ok")
-// 		}
-// 		lg := middleware.LogRequest(true, "SECRET")(h)
-// 		req.Header.Add("Secret", "super secret things")
-// 		req.Header.Add("Not so secret", "public")
-// 		Ω(lg(ctx, rw, req)).ShouldNot(HaveOccurred())
-// 		Ω(logger.InfoEntries).Should(HaveLen(5))
+		// check the 2nd log entry
+		if err := decoder.Decode(&entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry["req_id"] == "" {
+			t.Error("req_id is empty")
+		}
+		if entry["status"] != float64(http.StatusBadRequest) {
+			t.Errorf("status is not %d, got %v", http.StatusBadRequest, entry["status"])
+		}
+		if entry["error"] == "" {
+			t.Error("error is empty")
+		}
+		if entry["bytes"] != float64(124) {
+			t.Errorf("bytes is not 124, got %v", entry["bytes"])
+		}
+		if _, err := time.ParseDuration(entry["time"].(string)); err != nil {
+			t.Errorf("time is invalid: %v", err)
+		}
+		if entry["ctrl"] != "test" {
+			t.Errorf("ctrl is not test, got %v", entry["ctrl"])
+		}
+		if entry["action"] != "goo" {
+			t.Errorf("action is not goo, got %v", entry["action"])
+		}
+	})
 
-// 		Ω(logger.InfoEntries[1].Data[2]).Should(Equal("Not so secret"))
-// 		Ω(logger.InfoEntries[1].Data[3]).Should(Equal("public"))
+	t.Run("hides secret headers", func(t *testing.T) {
+		var buf bytes.Buffer
+		service := newService(&buf)
 
-// 		Ω(logger.InfoEntries[1].Data[4]).Should(Equal("Secret"))
-// 		Ω(logger.InfoEntries[1].Data[5]).Should(Equal("<hidden>"))
+		handler := func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+			return service.Send(ctx, 200, "ok")
+		}
+		logRequest := LogRequest(true, "Secret")(handler)
+		ctx, rw, req := newRequest(service)
+		req.Header.Add("Secret", "super secret things")
+		req.Header.Add("Not-So-Secret", "public")
+		if err := logRequest(ctx, rw, req); err != nil {
+			t.Fatal(err)
+		}
 
-// 	})
-// })
+		var entry map[string]any
+		decoder := json.NewDecoder(&buf)
+
+		// check the 1st log entry
+		if err := decoder.Decode(&entry); err != nil {
+			t.Fatal(err)
+		}
+
+		// check the 2nd log entry
+		if err := decoder.Decode(&entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry["Not-So-Secret"] != "public" {
+			t.Errorf("Not-So-Secret is not public, got %v", entry["Not-So-Secret"])
+		}
+		if entry["Secret"] != "<hidden>" {
+			t.Errorf("Secret is not <hidden>, got %v", entry["Secret"])
+		}
+	})
+}
