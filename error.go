@@ -30,11 +30,11 @@ middleware) also generate an internal error response.
 package shogoa
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/shogo82148/shogoa/internal/randid"
 )
 
 var (
@@ -352,13 +352,9 @@ func asErrorResponse(err error) *ErrorResponse {
 }
 
 // If you're curious - simplifying a bit - the probability of 2 values being equal for n 6-bytes
-// values is n^2 / 2^49. For n = 1 million this gives around 1 chance in 500. 6 bytes seems to be a
+// values is n^2 / 2^49. For n = 1 million this gives around 1 chance in 500. 8 bytes seems to be a
 // good trade-off between probability of clashes and length of ID (6 * 4/3 = 8 chars) since clashes
 // are not catastrophic.
 func newErrorID() string {
-	b := make([]byte, 6)
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
-	}
-	return base64.StdEncoding.EncodeToString(b)
+	return randid.New(8)
 }
