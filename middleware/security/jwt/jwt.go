@@ -53,7 +53,7 @@ import (
 // defined in the design, e.g.:
 //
 //	app.UseJWT(jwt.New("secret", validationHandler, app.NewJWTSecurity()))
-func New(validationKeys interface{}, validationFunc shogoa.Middleware, scheme *shogoa.JWTSecurity) shogoa.Middleware {
+func New(validationKeys any, validationFunc shogoa.Middleware, scheme *shogoa.JWTSecurity) shogoa.Middleware {
 	var rsaKeys []*rsa.PublicKey
 	var hmacKeys [][]byte
 
@@ -176,7 +176,7 @@ func parseClaimScopes(token *jwt.Token) (map[string]bool, []string, error) {
 					scopesInClaim[scope] = true
 					scopesInClaimList = append(scopesInClaimList, scope)
 				}
-			case []interface{}:
+			case []any:
 				for _, scope := range scopes {
 					if val, ok := scope.(string); ok {
 						scopesInClaim[val] = true
@@ -198,7 +198,7 @@ func parseClaimScopes(token *jwt.Token) (map[string]bool, []string, error) {
 var ErrJWTError = shogoa.NewErrorClass("jwt_security_error", 401)
 
 // partitionKeys sorts keys by their type.
-func partitionKeys(k interface{}) ([]*rsa.PublicKey, []*ecdsa.PublicKey, [][]byte) {
+func partitionKeys(k any) ([]*rsa.PublicKey, []*ecdsa.PublicKey, [][]byte) {
 	var (
 		rsaKeys   []*rsa.PublicKey
 		ecdsaKeys []*ecdsa.PublicKey
@@ -231,7 +231,7 @@ func partitionKeys(k interface{}) ([]*rsa.PublicKey, []*ecdsa.PublicKey, [][]byt
 
 func validateRSAKeys(rsaKeys []*rsa.PublicKey, algo, incomingToken string) (token *jwt.Token, err error) {
 	for _, pubkey := range rsaKeys {
-		token, err = jwt.Parse(incomingToken, func(token *jwt.Token) (interface{}, error) {
+		token, err = jwt.Parse(incomingToken, func(token *jwt.Token) (any, error) {
 			if !strings.HasPrefix(token.Method.Alg(), algo) {
 				return nil, ErrJWTError(fmt.Sprintf("Unexpected signing method: %v", token.Header["alg"]))
 			}
@@ -246,7 +246,7 @@ func validateRSAKeys(rsaKeys []*rsa.PublicKey, algo, incomingToken string) (toke
 
 func validateECDSAKeys(ecdsaKeys []*ecdsa.PublicKey, algo, incomingToken string) (token *jwt.Token, err error) {
 	for _, pubkey := range ecdsaKeys {
-		token, err = jwt.Parse(incomingToken, func(token *jwt.Token) (interface{}, error) {
+		token, err = jwt.Parse(incomingToken, func(token *jwt.Token) (any, error) {
 			if !strings.HasPrefix(token.Method.Alg(), algo) {
 				return nil, ErrJWTError(fmt.Sprintf("Unexpected signing method: %v", token.Header["alg"]))
 			}
@@ -261,7 +261,7 @@ func validateECDSAKeys(ecdsaKeys []*ecdsa.PublicKey, algo, incomingToken string)
 
 func validateHMACKeys(hmacKeys [][]byte, algo, incomingToken string) (token *jwt.Token, err error) {
 	for _, key := range hmacKeys {
-		token, err = jwt.Parse(incomingToken, func(token *jwt.Token) (interface{}, error) {
+		token, err = jwt.Parse(incomingToken, func(token *jwt.Token) (any, error) {
 			if !strings.HasPrefix(token.Method.Alg(), algo) {
 				return nil, ErrJWTError(fmt.Sprintf("Unexpected signing method: %v", token.Header["alg"]))
 			}
