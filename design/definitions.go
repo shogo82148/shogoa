@@ -451,7 +451,7 @@ func (a *APIDefinition) DependsOn() []dslengine.Root {
 	return nil
 }
 
-// IterateSets calls the given iterator possing in the API definition, user types, media types and
+// IterateSets calls the given iterator passing in the API definition, user types, media types and
 // finally resources.
 func (a *APIDefinition) IterateSets(iterator dslengine.SetIterator) {
 	// First run the top level API DSL to initialize responses and
