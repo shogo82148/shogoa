@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -12,6 +10,7 @@ import (
 	"time"
 
 	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/internal/randid"
 )
 
 type reqIDKeyType struct{}
@@ -112,14 +111,10 @@ func LogRequest(verbose bool, sensitiveHeaders ...string) shogoa.Middleware {
 	}
 }
 
-// shortID produces a "unique" 6 bytes long string.
+// shortID produces a "unique" 8 bytes long string.
 // Do not use as a reliable way to get unique IDs, instead use for things like logging.
 func shortID() string {
-	b := make([]byte, 6)
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
-	}
-	return base64.StdEncoding.EncodeToString(b)
+	return randid.New(8)
 }
 
 // from makes a best effort to compute the request client IP.

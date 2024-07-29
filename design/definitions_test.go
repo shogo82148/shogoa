@@ -1,539 +1,473 @@
-package design_test
+package design
 
 import (
-	"path"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
-var _ = Describe("Inherit", func() {
-	var child, parent *design.AttributeDefinition
+func TestAttributeDefinition_Inherit(t *testing.T) {
+	t.Run("does not change with a empty parent", func(t *testing.T) {
+		parent := &AttributeDefinition{Type: Object{}}
+		child := &AttributeDefinition{Type: Object{
+			"c": &AttributeDefinition{Type: String},
+		}}
 
-	BeforeEach(func() {
-		parent = &design.AttributeDefinition{Type: design.Object{}}
-		child = &design.AttributeDefinition{Type: design.Object{}}
-	})
-
-	JustBeforeEach(func() {
 		child.Inherit(parent)
-	})
-
-	Context("with a empty parent", func() {
-		const attName = "c"
-		BeforeEach(func() {
-			child.Type.(design.Object)[attName] = &design.AttributeDefinition{Type: design.String}
-		})
-
-		It("does not change", func() {
-			obj := child.Type.(design.Object)
-			Ω(obj).Should(HaveLen(1))
-			Ω(obj).Should(HaveKey(attName))
-		})
-	})
-
-	Context("with a parent that defines no inherited attribute", func() {
-		const (
-			attName = "c"
-			def     = "default"
-		)
-
-		BeforeEach(func() {
-			child.Type.(design.Object)[attName] = &design.AttributeDefinition{Type: design.String}
-			parent.Type.(design.Object)["other"] = &design.AttributeDefinition{Type: design.String, DefaultValue: def}
-		})
-
-		It("does not change", func() {
-			obj := child.Type.(design.Object)
-			Ω(obj).Should(HaveLen(1))
-			Ω(obj).Should(HaveKey(attName))
-			Ω(obj[attName].DefaultValue).Should(BeNil())
-		})
-	})
-
-	Context("with a parent that defines an inherited attribute", func() {
-		const (
-			attName = "c"
-			def     = "default"
-		)
-
-		BeforeEach(func() {
-			child.Type.(design.Object)[attName] = &design.AttributeDefinition{Type: design.String}
-			parent.Type.(design.Object)[attName] = &design.AttributeDefinition{Type: design.String, DefaultValue: def, Metadata: map[string][]string{"swagger:read-only": nil}}
-		})
-
-		It("inherits the default value and readOnly value", func() {
-			obj := child.Type.(design.Object)
-			Ω(obj).Should(HaveLen(1))
-			Ω(obj).Should(HaveKey(attName))
-			Ω(obj[attName].DefaultValue).Should(Equal(def))
-			Ω(obj[attName].IsReadOnly()).Should(BeTrue())
-		})
-	})
-
-	Context("with recursive type definitions", func() {
-		BeforeEach(func() {
-			po := design.Object{}
-			parent = &design.AttributeDefinition{Type: po}
-			child = &design.AttributeDefinition{Type: &design.UserTypeDefinition{AttributeDefinition: parent}}
-			po["recurse"] = child
-		})
-
-		It("does not recurse infinitely", func() {})
-	})
-
-})
-
-var _ = Describe("IsRequired", func() {
-	var required string
-	var attName string
-
-	var attribute *design.AttributeDefinition
-	var res bool
-
-	JustBeforeEach(func() {
-		integer := &design.AttributeDefinition{Type: design.Integer}
-		attribute = &design.AttributeDefinition{
-			Type:       design.Object{required: integer},
-			Validation: &dslengine.ValidationDefinition{Required: []string{required}},
+		obj := child.Type.(Object)
+		if _, ok := obj["c"]; !ok {
+			t.Error("child does not inherit parent")
 		}
-		res = attribute.IsRequired(attName)
 	})
 
-	Context("called on a required field", func() {
-		BeforeEach(func() {
-			attName = "required"
-			required = "required"
-		})
-
-		It("returns true", func() {
-			Ω(res).Should(BeTrue())
-		})
-	})
-
-	Context("called on a non-required field", func() {
-		BeforeEach(func() {
-			attName = "non-required"
-			required = "required"
-		})
-
-		It("returns false", func() {
-			Ω(res).Should(BeFalse())
-		})
-	})
-})
-
-var _ = Describe("IterateHeaders", func() {
-	It("works when Parent.Headers is nil", func() {
-		// create a Resource with no headers, Action with one header
-		resource := &design.ResourceDefinition{}
-		action := &design.ActionDefinition{
-			Parent: resource,
-			Headers: &design.AttributeDefinition{
-				Type: design.Object{
-					"a": &design.AttributeDefinition{Type: design.String},
-				},
+	t.Run("does not change with a parent that defines no inherited attributes", func(t *testing.T) {
+		parent := &AttributeDefinition{Type: Object{
+			"other": &AttributeDefinition{
+				Type:         String,
+				DefaultValue: "default",
 			},
+		}}
+		child := &AttributeDefinition{Type: Object{
+			"c": &AttributeDefinition{Type: String},
+		}}
+
+		child.Inherit(parent)
+		obj := child.Type.(Object)
+		if _, ok := obj["c"]; !ok {
+			t.Error("child does not inherit parent")
 		}
-		names := []string{}
-		// iterator that collects header names
-		it := func(name string, _ bool, _ *design.AttributeDefinition) error {
-			names = append(names, name)
-			return nil
-		}
-		Ω(action.IterateHeaders(it)).Should(Succeed(), "despite action.Parent.Headers being nil")
-		Ω(names).Should(ConsistOf("a"))
 	})
 
-})
-var _ = Describe("Finalize ActionDefinition", func() {
-	Context("with an action with no response", func() {
-		var action *design.ActionDefinition
+	t.Run("inherit with a parent that defines an inherited attribute", func(t *testing.T) {
+		parent := &AttributeDefinition{Type: Object{
+			"c": &AttributeDefinition{
+				Type:         String,
+				DefaultValue: "default",
+				Metadata:     map[string][]string{"swagger:read-only": nil},
+			},
+		}}
+		child := &AttributeDefinition{Type: Object{
+			"c": &AttributeDefinition{Type: String},
+		}}
 
-		BeforeEach(func() {
-			// create a Resource with responses, Action with no response
-			resource := &design.ResourceDefinition{
-				Responses: map[string]*design.ResponseDefinition{
-					"NotFound": {Name: "NotFound", Status: 404},
-				},
-			}
-			action = &design.ActionDefinition{Parent: resource}
-		})
-
-		It("does not panic and merges the resource responses", func() {
-			Ω(action.Finalize).ShouldNot(Panic())
-			Ω(action.Responses).Should(HaveKey("NotFound"))
-		})
+		child.Inherit(parent)
+		obj := child.Type.(Object)
+		if obj["c"].DefaultValue != "default" {
+			t.Errorf("child does not inherit parent: DefaultValue: %v", obj["c"].DefaultValue)
+		}
+		if !obj["c"].IsReadOnly() {
+			t.Error("child does not inherit parent: ReadOnly")
+		}
 	})
-})
+}
 
-var _ = Describe("FullPath", func() {
+func TestAttributeDefinition_IsRequired(t *testing.T) {
+	integer := &AttributeDefinition{Type: Integer}
+	attribute := &AttributeDefinition{
+		Type: Object{"required": integer},
+		Validation: &dslengine.ValidationDefinition{
+			Required: []string{"required"},
+		},
+	}
+	if !attribute.IsRequired("required") {
+		t.Error("required field is not required")
+	}
+	if attribute.IsRequired("non-required") {
+		t.Error("non-required field is required")
+	}
+}
 
-	Context("Given a base resource and a resource with an action with a route", func() {
-		var resource, parentResource *design.ResourceDefinition
-		var action *design.ActionDefinition
-		var route *design.RouteDefinition
+func TestActionDefinition_IterateHeaders(t *testing.T) {
+	resource := &ResourceDefinition{}
+	action := &ActionDefinition{
+		Parent: resource,
+		Headers: &AttributeDefinition{
+			Type: Object{
+				"a": &AttributeDefinition{Type: String},
+			},
+		},
+	}
 
-		var actionPath string
-		var resourcePath string
-		var parentResourcePath string
+	names := []string{}
+	// iterator tha collects header names
+	it := func(name string, _ bool, _ *AttributeDefinition) error {
+		names = append(names, name)
+		return nil
+	}
+	if err := action.IterateHeaders(it); err != nil {
+		t.Fatal(err)
+	}
+	if len(names) != 1 {
+		t.Errorf("got %d names, expected 1", len(names))
+	}
+	if names[0] != "a" {
+		t.Errorf("got %s, expected a", names[0])
+	}
+}
 
-		JustBeforeEach(func() {
-			showAct := &design.ActionDefinition{}
-			showRoute := &design.RouteDefinition{
-				Path:   parentResourcePath,
+func TestActionDefinition_Finalize(t *testing.T) {
+	resource := &ResourceDefinition{
+		Responses: map[string]*ResponseDefinition{
+			"NotFound": {Name: "NotFound", Status: 404},
+		},
+	}
+	action := &ActionDefinition{Parent: resource}
+
+	action.Finalize()
+	if _, ok := action.Responses["NotFound"]; !ok {
+		t.Error("does not merge the resource responses")
+	}
+}
+
+func TestRouteDefinition_FullPath(t *testing.T) {
+	Design.Reset()
+
+	tests := []struct {
+		name               string
+		actionPath         string
+		resourcePath       string
+		parentResourcePath string
+		want               string
+	}{
+		{
+			name:               "with relative path",
+			actionPath:         "/action",
+			resourcePath:       "/resource",
+			parentResourcePath: "/parent",
+			want:               "/parent/resource/action",
+		},
+		{
+			name:               "an action with absolute route",
+			actionPath:         "//action",
+			resourcePath:       "/resource",
+			parentResourcePath: "/parent",
+			want:               "/action",
+		},
+		{
+			name:               "a resource with absolute route",
+			actionPath:         "/action",
+			resourcePath:       "//resource",
+			parentResourcePath: "/parent",
+			want:               "/resource/action",
+		},
+		{
+			name:               "with trailing slashes",
+			actionPath:         "/action/",
+			resourcePath:       "/resource",
+			parentResourcePath: "/parent",
+			want:               "/parent/resource/action/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			showAct := &ActionDefinition{}
+			showRoute := &RouteDefinition{
+				Path:   tt.parentResourcePath,
 				Parent: showAct,
 			}
-			showAct.Routes = []*design.RouteDefinition{showRoute}
-			parentResource = &design.ResourceDefinition{}
-			parentResource.Actions = map[string]*design.ActionDefinition{"show": showAct}
-			parentResource.Name = "foo"
-			design.Design.Resources = map[string]*design.ResourceDefinition{"foo": parentResource}
+			showAct.Routes = []*RouteDefinition{showRoute}
+			parentResource := &ResourceDefinition{
+				Name:    "foo",
+				Actions: map[string]*ActionDefinition{"show": showAct},
+			}
 			showAct.Parent = parentResource
+			Design.Resources = map[string]*ResourceDefinition{"foo": parentResource}
 
-			action = &design.ActionDefinition{}
-			route = &design.RouteDefinition{
-				Path:   actionPath,
+			action := &ActionDefinition{}
+			route := &RouteDefinition{
+				Path:   tt.actionPath,
 				Parent: action,
 			}
-			action.Routes = []*design.RouteDefinition{route}
-			resource = &design.ResourceDefinition{}
-			resource.Actions = map[string]*design.ActionDefinition{"action": action}
-			resource.BasePath = resourcePath
-			resource.ParentName = parentResource.Name
+			action.Routes = []*RouteDefinition{route}
+			resource := &ResourceDefinition{
+				Actions:    map[string]*ActionDefinition{"action": action},
+				BasePath:   tt.resourcePath,
+				ParentName: parentResource.Name,
+			}
 			action.Parent = resource
-		})
 
-		AfterEach(func() {
-			design.Design.Resources = nil
-		})
-
-		Context("with relative routes", func() {
-			BeforeEach(func() {
-				actionPath = "/action"
-				resourcePath = "/resource"
-				parentResourcePath = "/parent"
-			})
-
-			It("FullPath concatenates them", func() {
-				Ω(route.FullPath()).Should(Equal(path.Join(parentResourcePath, resourcePath, actionPath)))
-			})
-
-			Context("with an action with absolute route", func() {
-				BeforeEach(func() {
-					actionPath = "//action"
-				})
-
-				It("FullPath uses it", func() {
-					Ω(route.FullPath()).Should(Equal(actionPath[1:]))
-				})
-			})
-
-			Context("with n resource with absolute route", func() {
-				BeforeEach(func() {
-					resourcePath = "//resource"
-				})
-
-				It("FullPath uses it", func() {
-					Ω(route.FullPath()).Should(Equal(resourcePath[1:] + "/" + actionPath[1:]))
-				})
-			})
-		})
-
-		Context("with trailing slashes", func() {
-			BeforeEach(func() {
-				actionPath = "/action/"
-				resourcePath = "/resource"
-				parentResourcePath = "/parent"
-			})
-
-			It("Keeps trailing slashes", func() {
-				Ω(route.FullPath()).Should(Equal("/parent/resource/action/"))
-			})
-		})
-	})
-})
-
-var _ = Describe("AllParams", func() {
-	Context("Given a resource with a parent and an action with a route", func() {
-		var (
-			resource, parent *design.ResourceDefinition
-			action           *design.ActionDefinition
-			allParams        design.Object
-			pathParams       design.Object
-		)
-
-		BeforeEach(func() {
-			// Parent resource
-			{
-				baseParams := &design.AttributeDefinition{Type: design.Object{
-					"pbasepath":  &design.AttributeDefinition{Type: design.String},
-					"pbasequery": &design.AttributeDefinition{Type: design.String},
-				}}
-				parent = &design.ResourceDefinition{
-					Name:                "parent",
-					CanonicalActionName: "canonical",
-					BasePath:            "/:pbasepath",
-					Params:              baseParams,
-				}
-				canParams := &design.AttributeDefinition{Type: design.Object{
-					"canpath":  &design.AttributeDefinition{Type: design.String},
-					"canquery": &design.AttributeDefinition{Type: design.String},
-				}}
-				canonical := &design.ActionDefinition{
-					Name:   "canonical",
-					Parent: parent,
-					Params: canParams,
-				}
-				croute := &design.RouteDefinition{
-					Path:   "/:canpath",
-					Parent: canonical,
-				}
-				canonical.Routes = []*design.RouteDefinition{croute}
-				parent.Actions = map[string]*design.ActionDefinition{"canonical": canonical}
-			}
-
-			// Resource
-			{
-				baseParams := &design.AttributeDefinition{Type: design.Object{
-					"basepath":  &design.AttributeDefinition{Type: design.String},
-					"basequery": &design.AttributeDefinition{Type: design.String},
-				}}
-				resource = &design.ResourceDefinition{
-					Name:       "child",
-					ParentName: "parent",
-					BasePath:   "/:basepath",
-					Params:     baseParams,
-				}
-			}
-
-			// Action
-			{
-				params := &design.AttributeDefinition{Type: design.Object{
-					"path":     &design.AttributeDefinition{Type: design.String},
-					"query":    &design.AttributeDefinition{Type: design.String},
-					"basepath": &design.AttributeDefinition{Type: design.String},
-				}}
-				action = &design.ActionDefinition{
-					Name:   "action",
-					Parent: resource,
-					Params: params,
-				}
-				route := &design.RouteDefinition{
-					Path:   "/:path",
-					Parent: action,
-				}
-				action.Routes = []*design.RouteDefinition{route}
-				resource.Actions = map[string]*design.ActionDefinition{"action": action}
-			}
-			design.Design.Resources = map[string]*design.ResourceDefinition{"resource": resource, "parent": parent}
-			design.Design.BasePath = "/:apipath"
-			params := design.Object{
-				"apipath":  &design.AttributeDefinition{Type: design.String},
-				"apiquery": &design.AttributeDefinition{Type: design.String},
-			}
-			design.Design.Params = &design.AttributeDefinition{Type: params}
-		})
-
-		JustBeforeEach(func() {
-			allParams = action.AllParams().Type.ToObject()
-			pathParams = action.PathParams().Type.ToObject()
-			Ω(allParams).ShouldNot(BeNil())
-			Ω(pathParams).ShouldNot(BeNil())
-		})
-
-		AfterEach(func() {
-			design.Design.Params = nil
-			design.Design.Resources = nil
-			design.Design.BasePath = ""
-		})
-
-		It("AllParams returns both path and query parameters of the action and the resource", func() {
-			for p := range action.Params.Type.ToObject() {
-				Ω(allParams).Should(HaveKey(p))
-			}
-			for p := range resource.Params.Type.ToObject() {
-				Ω(allParams).Should(HaveKey(p))
+			got := route.FullPath()
+			if got != tt.want {
+				t.Errorf("got %s, want %s", got, tt.want)
 			}
 		})
+	}
+}
 
-		It("AllParams returns the path parameters of the action, the resource, the parent resource and the API", func() {
-			for _, p := range []string{"path", "basepath", "canpath", "pbasepath", "apipath"} {
-				Ω(allParams).Should(HaveKey(p))
-			}
-		})
+func TestActionDefinition_AllParams(t *testing.T) {
+	Design.Reset()
 
-		It("AllParams does NOT return the query parameters of the parent resource canonical action", func() {
-			for _, p := range []string{"canquery", "pbasequery"} {
-				Ω(allParams).ShouldNot(HaveKey(p))
-			}
-		})
+	// Parent resource
+	parent := func() *ResourceDefinition {
+		baseParams := &AttributeDefinition{
+			Type: Object{
+				"pbasepath":  &AttributeDefinition{Type: String},
+				"pbasequery": &AttributeDefinition{Type: String},
+			},
+		}
+		parent := &ResourceDefinition{
+			Name:                "parent",
+			CanonicalActionName: "canonical",
+			BasePath:            "/:pbasepath",
+			Params:              baseParams,
+		}
+		canParams := &AttributeDefinition{
+			Type: Object{
+				"canpath":  &AttributeDefinition{Type: String},
+				"canquery": &AttributeDefinition{Type: String},
+			},
+		}
+		canonical := &ActionDefinition{
+			Name:   "canonical",
+			Parent: parent,
+			Params: canParams,
+		}
+		croute := &RouteDefinition{
+			Path:   "/:canpath",
+			Parent: canonical,
+		}
+		canonical.Routes = []*RouteDefinition{croute}
+		parent.Actions = map[string]*ActionDefinition{"canonical": canonical}
+		return parent
+	}()
 
-		It("AllParams does return the query parameters of the parent API", func() {
-			for _, p := range []string{"apiquery"} {
-				Ω(allParams).Should(HaveKey(p))
-			}
-		})
+	// Resource
+	resource := func() *ResourceDefinition {
+		baseParams := &AttributeDefinition{
+			Type: Object{
+				"basepath":  &AttributeDefinition{Type: String},
+				"basequery": &AttributeDefinition{Type: String},
+			},
+		}
+		resource := &ResourceDefinition{
+			Name:       "child",
+			ParentName: "parent",
+			BasePath:   "/:basepath",
+			Params:     baseParams,
+		}
+		return resource
+	}()
 
-		It("PathParams returns the path parameters recursively", func() {
-			Ω(pathParams).Should(HaveLen(5))
-			for _, p := range []string{"path", "basepath", "canpath", "pbasepath", "apipath"} {
-				Ω(pathParams).Should(HaveKey(p))
-			}
-		})
-	})
-})
+	// Action
+	action := func() *ActionDefinition {
+		params := &AttributeDefinition{
+			Type: Object{
+				"path":     &AttributeDefinition{Type: String},
+				"query":    &AttributeDefinition{Type: String},
+				"basepath": &AttributeDefinition{Type: String},
+			},
+		}
+		action := &ActionDefinition{
+			Name:   "action",
+			Parent: resource,
+			Params: params,
+		}
+		route := &RouteDefinition{
+			Path:   "/:path",
+			Parent: action,
+		}
+		action.Routes = []*RouteDefinition{route}
+		resource.Actions = map[string]*ActionDefinition{"action": action}
+		return action
+	}()
 
-var _ = Describe("PathParams", func() {
-	Context("Given a resource with a nil base params", func() {
-		var (
-			resource   *design.ResourceDefinition
-			pathParams design.Object
-		)
+	Design.Resources = map[string]*ResourceDefinition{
+		"resource": resource,
+		"parent":   parent,
+	}
+	Design.BasePath = "/:apipath"
+	Design.Params = &AttributeDefinition{
+		Type: Object{
+			"apipath":  &AttributeDefinition{Type: String},
+			"apiquery": &AttributeDefinition{Type: String},
+		},
+	}
 
-		BeforeEach(func() {
-			resource = &design.ResourceDefinition{
-				Name:     "resource",
-				BasePath: "/:basepath",
-			}
-			design.Design.Resources = map[string]*design.ResourceDefinition{"resource": resource}
-		})
+	// check all params
+	allParams := action.AllParams().Type.ToObject()
+	keys := []string{
+		"apipath",
+		"apiquery",
+		"basepath",
+		"basequery",
+		"canpath",
+		"path",
+		"pbasepath",
+		"query",
+	}
+	if len(allParams) != len(keys) {
+		t.Errorf("got %d keys, expected %d", len(allParams), len(keys))
+	}
+	for _, key := range keys {
+		if _, ok := allParams[key]; !ok {
+			t.Errorf("missing key %q", key)
+		}
+	}
 
-		AfterEach(func() {
-			design.Design.Resources = nil
-		})
+	// check the path params
+	pathParams := action.PathParams().Type.ToObject()
+	keys = []string{
+		"path", "basepath", "canpath", "pbasepath", "apipath",
+	}
+	if len(pathParams) != len(keys) {
+		t.Errorf("got %d keys, expected %d", len(pathParams), len(keys))
+	}
+	for _, key := range keys {
+		if _, ok := pathParams[key]; !ok {
+			t.Errorf("missing key %q", key)
+		}
+	}
+}
 
-		JustBeforeEach(func() {
-			pathParams = resource.PathParams().Type.ToObject()
-			Ω(pathParams).ShouldNot(BeNil())
-		})
+func TestResourceDefinition_PathParams(t *testing.T) {
+	t.Run("Given a resource with a nil base params", func(t *testing.T) {
+		Design.Reset()
 
-		It("returns an empty attribute", func() {
-			Ω(pathParams).Should(BeEmpty())
-		})
+		resource := &ResourceDefinition{
+			Name:     "resource",
+			BasePath: "/:basepath",
+		}
+		Design.Resources = map[string]*ResourceDefinition{"resource": resource}
+
+		pathParams := resource.PathParams().Type.ToObject()
+		if len(pathParams) != 0 {
+			t.Errorf("got %d keys, expected 0", len(pathParams))
+		}
 	})
 
-	Context("Given a resource defining a subset of all base path params", func() {
-		var (
-			resource   *design.ResourceDefinition
-			pathParams design.Object
-		)
+	t.Run("Given a resource defining a subset of all base path params", func(t *testing.T) {
+		Design.Reset()
 
-		BeforeEach(func() {
-			params := design.Object{"basepath": &design.AttributeDefinition{Type: design.String}}
-			resource = &design.ResourceDefinition{
-				Name:     "resource",
-				BasePath: "/:basepath/:sub",
-				Params:   &design.AttributeDefinition{Type: params},
-			}
-			design.Design.Resources = map[string]*design.ResourceDefinition{"resource": resource}
-		})
+		params := Object{
+			"basepath": &AttributeDefinition{Type: String},
+		}
+		resource := &ResourceDefinition{
+			Name:     "resource",
+			BasePath: "/:basepath/:sub",
+			Params:   &AttributeDefinition{Type: params},
+		}
+		Design.Resources = map[string]*ResourceDefinition{"resource": resource}
 
-		JustBeforeEach(func() {
-			pathParams = resource.PathParams().Type.ToObject()
-			Ω(pathParams).ShouldNot(BeNil())
-		})
-
-		AfterEach(func() {
-			design.Design.Resources = nil
-		})
-
-		It("returns an empty attribute", func() {
-			Ω(pathParams).Should(HaveLen(1))
-			Ω(pathParams).Should(HaveKey("basepath"))
-		})
+		pathParams := resource.PathParams().Type.ToObject()
+		if len(pathParams) != 1 {
+			t.Errorf("got %d keys, expected 1", len(pathParams))
+		}
+		if _, ok := pathParams["basepath"]; !ok {
+			t.Error("missing key basepath")
+		}
 	})
-})
+}
 
-var _ = Describe("IterateSets", func() {
-
-	var api *design.APIDefinition
-
-	BeforeEach(func() {
-		api = &design.APIDefinition{}
-		api.Name = "Test"
-	})
-
-	Context("ResourceDefinition", func() {
-		// a function that collects resource definitions for validation
-		var valFunc = func(validate func([]*design.ResourceDefinition)) func(s dslengine.DefinitionSet) error {
-			return func(s dslengine.DefinitionSet) error {
-				if len(s) == 0 {
-					return nil
-				}
-
-				if _, ok := s[0].(*design.ResourceDefinition); !ok {
-					return nil
-				}
-
-				resources := make([]*design.ResourceDefinition, len(s))
-				for i, res := range s {
-					resources[i] = res.(*design.ResourceDefinition)
-				}
-
-				validate(resources)
-
+func TestAPIDefinition_IterateSets(t *testing.T) {
+	// a function that collects resource definitions for validation
+	valFunc := func(validate func([]*ResourceDefinition)) func(dslengine.DefinitionSet) error {
+		return func(s dslengine.DefinitionSet) error {
+			if len(s) == 0 {
 				return nil
 			}
+
+			if _, ok := s[0].(*ResourceDefinition); !ok {
+				return nil
+			}
+
+			resources := make([]*ResourceDefinition, len(s))
+			for i, res := range s {
+				resources[i] = res.(*ResourceDefinition)
+			}
+
+			validate(resources)
+
+			return nil
+		}
+	}
+	t.Run("should order nested resources", func(t *testing.T) {
+		var inspected bool
+		validate := func(s []*ResourceDefinition) {
+			if s[0].Name != "Z" {
+				t.Errorf("got %s, expected Z", s[0].Name)
+			}
+			if s[1].Name != "Y" {
+				t.Errorf("got %s, expected Y", s[1].Name)
+			}
+			if s[2].Name != "X" {
+				t.Errorf("got %s, expected X", s[2].Name)
+			}
+			if s[3].Name != "W" {
+				t.Errorf("got %s, expected W", s[3].Name)
+			}
+			if s[4].Name != "V" {
+				t.Errorf("got %s, expected V", s[4].Name)
+			}
+			inspected = true
 		}
 
-		It("should order nested resources", func() {
-			inspected := false
-			api.Resources = make(map[string]*design.ResourceDefinition)
-
-			api.Resources["V"] = &design.ResourceDefinition{Name: "V", ParentName: "W"}
-			api.Resources["W"] = &design.ResourceDefinition{Name: "W", ParentName: "X"}
-			api.Resources["X"] = &design.ResourceDefinition{Name: "X", ParentName: "Y"}
-			api.Resources["Y"] = &design.ResourceDefinition{Name: "Y", ParentName: "Z"}
-			api.Resources["Z"] = &design.ResourceDefinition{Name: "Z"}
-
-			validate := func(s []*design.ResourceDefinition) {
-				Ω(s[0].Name).Should(Equal("Z"))
-				Ω(s[1].Name).Should(Equal("Y"))
-				Ω(s[2].Name).Should(Equal("X"))
-				Ω(s[3].Name).Should(Equal("W"))
-				Ω(s[4].Name).Should(Equal("V"))
-				inspected = true
-			}
-
-			api.IterateSets(valFunc(validate))
-
-			Ω(inspected).Should(BeTrue())
-		})
-
-		It("should order multiple nested resources", func() {
-			inspected := false
-			api.Resources = make(map[string]*design.ResourceDefinition)
-
-			api.Resources["A"] = &design.ResourceDefinition{Name: "A"}
-			api.Resources["B"] = &design.ResourceDefinition{Name: "B", ParentName: "A"}
-			api.Resources["C"] = &design.ResourceDefinition{Name: "C", ParentName: "A"}
-			api.Resources["I"] = &design.ResourceDefinition{Name: "I"}
-			api.Resources["J"] = &design.ResourceDefinition{Name: "J", ParentName: "K"}
-			api.Resources["K"] = &design.ResourceDefinition{Name: "K", ParentName: "I"}
-			api.Resources["X"] = &design.ResourceDefinition{Name: "X"}
-			api.Resources["Y"] = &design.ResourceDefinition{Name: "Y"}
-			api.Resources["Z"] = &design.ResourceDefinition{Name: "Z"}
-
-			validate := func(s []*design.ResourceDefinition) {
-				Ω(s[0].Name).Should(Equal("A"))
-				Ω(s[1].Name).Should(Equal("B"))
-				Ω(s[2].Name).Should(Equal("C"))
-				Ω(s[3].Name).Should(Equal("I"))
-				Ω(s[4].Name).Should(Equal("K"))
-				Ω(s[5].Name).Should(Equal("J"))
-				Ω(s[6].Name).Should(Equal("X"))
-				Ω(s[7].Name).Should(Equal("Y"))
-				Ω(s[8].Name).Should(Equal("Z"))
-				inspected = true
-			}
-
-			api.IterateSets(valFunc(validate))
-
-			Ω(inspected).Should(BeTrue())
-		})
+		api := &APIDefinition{
+			Name: "Test",
+			Resources: map[string]*ResourceDefinition{
+				"V": {Name: "V", ParentName: "W"},
+				"W": {Name: "W", ParentName: "X"},
+				"X": {Name: "X", ParentName: "Y"},
+				"Y": {Name: "Y", ParentName: "Z"},
+				"Z": {Name: "Z"},
+			},
+		}
+		api.IterateSets(valFunc(validate))
+		if !inspected {
+			t.Error("did not iterate over the resources")
+		}
 	})
 
-})
+	t.Run("should order multiple nested resources", func(t *testing.T) {
+		var inspected bool
+		validate := func(s []*ResourceDefinition) {
+			if s[0].Name != "A" {
+				t.Errorf("got %s, expected A", s[0].Name)
+			}
+			if s[1].Name != "B" {
+				t.Errorf("got %s, expected B", s[1].Name)
+			}
+			if s[2].Name != "C" {
+				t.Errorf("got %s, expected C", s[2].Name)
+			}
+			if s[3].Name != "I" {
+				t.Errorf("got %s, expected I", s[3].Name)
+			}
+			if s[4].Name != "K" {
+				t.Errorf("got %s, expected K", s[4].Name)
+			}
+			if s[5].Name != "J" {
+				t.Errorf("got %s, expected J", s[5].Name)
+			}
+			if s[6].Name != "X" {
+				t.Errorf("got %s, expected X", s[6].Name)
+			}
+			if s[7].Name != "Y" {
+				t.Errorf("got %s, expected Y", s[7].Name)
+			}
+			if s[8].Name != "Z" {
+				t.Errorf("got %s, expected Z", s[8].Name)
+			}
+			inspected = true
+		}
+
+		api := &APIDefinition{
+			Name: "Test",
+			Resources: map[string]*ResourceDefinition{
+				"A": {Name: "A"},
+				"B": {Name: "B", ParentName: "A"},
+				"C": {Name: "C", ParentName: "A"},
+				"I": {Name: "I"},
+				"J": {Name: "J", ParentName: "K"},
+				"K": {Name: "K", ParentName: "I"},
+				"X": {Name: "X"},
+				"Y": {Name: "Y"},
+				"Z": {Name: "Z"},
+			},
+		}
+		api.IterateSets(valFunc(validate))
+		if !inspected {
+			t.Error("did not iterate over the resources")
+		}
+	})
+}

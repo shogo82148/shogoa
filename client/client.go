@@ -3,14 +3,13 @@ package client
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"io"
 	"net/http"
 	"net/http/httputil"
 	"time"
 
 	"github.com/shogo82148/shogoa"
+	"github.com/shogo82148/shogoa/internal/randid"
 )
 
 // Doer defines the Do method of the http client.
@@ -193,14 +192,10 @@ func drainBody(b io.ReadCloser) (r1, r2 io.ReadCloser, err error) {
 	return io.NopCloser(&buf), io.NopCloser(bytes.NewReader(buf.Bytes())), nil
 }
 
-// shortID produces a "unique" 6 bytes long string.
+// shortID produces a "unique" 8 bytes long string.
 // Do not use as a reliable way to get unique IDs, instead use for things like logging.
 func shortID() string {
-	b := make([]byte, 6)
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
-	}
-	return base64.StdEncoding.EncodeToString(b)
+	return randid.New(8)
 }
 
 // clientKey is the private type used to store values in the context.
