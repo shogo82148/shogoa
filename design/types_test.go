@@ -40,6 +40,7 @@ func TestDataType_IsObject(t *testing.T) {
 				AttributeDefinition: &design.AttributeDefinition{Type: nil},
 			},
 		},
+		want:     false,
 		{
 			name:     "object",
 			dataType: &design.Object{},
