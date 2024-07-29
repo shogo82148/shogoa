@@ -59,6 +59,7 @@ func TestDataType_IsObject(t *testing.T) {
 func TestMediaTypeDefinition_Project(t *testing.T) {
 	t.Run("with a media type with multiple views", func(t *testing.T) {
 		design.Design.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
 
 		mt := &design.MediaTypeDefinition{
 			Identifier: "vnd.application/foo",
@@ -175,45 +176,48 @@ func TestMediaTypeDefinition_Project(t *testing.T) {
 		})
 	})
 
-	// t.Run("with a media type with a links attribute", func(t *testing.T) {
-	// 	dslengine.Reset()
-	// 	mt := &design.MediaTypeDefinition{
-	// 		UserTypeDefinition: &design.UserTypeDefinition{
-	// 			AttributeDefinition: &design.AttributeDefinition{
-	// 				Type: design.Object{
-	// 					"att1":  &design.AttributeDefinition{Type: design.Integer},
-	// 					"links": &design.AttributeDefinition{Type: design.String},
-	// 				},
-	// 			},
-	// 			TypeName: "Foo",
-	// 		},
-	// 		Identifier: "vnd.application/foo",
-	// 		Views: map[string]*design.ViewDefinition{
-	// 			"default": {
-	// 				Name: "default",
-	// 				AttributeDefinition: &design.AttributeDefinition{
-	// 					Type: design.Object{
-	// 						"att1":  &design.AttributeDefinition{Type: design.String},
-	// 						"links": &design.AttributeDefinition{Type: design.String},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}
+	t.Run("with a media type with a links attribute", func(t *testing.T) {
+		design.Design.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
+		mt := &design.MediaTypeDefinition{
+			UserTypeDefinition: &design.UserTypeDefinition{
+				AttributeDefinition: &design.AttributeDefinition{
+					Type: design.Object{
+						"att1":  &design.AttributeDefinition{Type: design.Integer},
+						"links": &design.AttributeDefinition{Type: design.String},
+					},
+				},
+				TypeName: "Foo",
+			},
+			Identifier: "vnd.application/foo",
+			Views: map[string]*design.ViewDefinition{
+				"default": {
+					Name: "default",
+					AttributeDefinition: &design.AttributeDefinition{
+						Type: design.Object{
+							"att1":  &design.AttributeDefinition{Type: design.String},
+							"links": &design.AttributeDefinition{Type: design.String},
+						},
+					},
+				},
+			},
+		}
 
-	// 	projected, _, err := mt.Project("default")
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	att := projected.Type.ToObject()["links"]
-	// 	if att.Type.Kind() != design.StringKind {
-	// 		t.Errorf("invalid links type: %v", att.Type)
-	// 	}
-	// })
+		projected, _, err := mt.Project("default")
+		if err != nil {
+			t.Fatal(err)
+		}
+		att := projected.Type.ToObject()["links"]
+		if att.Type.Kind() != design.StringKind {
+			t.Errorf("invalid links type: %v", att.Type)
+		}
+	})
 
 	t.Run("with media types with view attributes with a cyclical dependency", func(t *testing.T) {
 		design.Design.Reset()
 		dslengine.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
+
 		apidsl.API("test", func() {})
 		mt := apidsl.MediaType("vnd.application/MT1", func() {
 			apidsl.TypeName("Mt1")
