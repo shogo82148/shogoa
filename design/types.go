@@ -26,117 +26,116 @@ const DefaultView = "default"
 
 // It returns the default view - or if not available the link view - or if not available the first
 // view by alphabetical order.
-type (
-	// A Kind defines the JSON type that a DataType represents.
-	Kind uint
 
-	// DataType is the common interface to all types.
-	DataType interface {
-		// Kind of data type, one of the Kind enum.
-		Kind() Kind
-		// Name returns the type name.
-		Name() string
-		// IsPrimitive returns true if the underlying type is one of the primitive types.
-		IsPrimitive() bool
-		// HasAttributes returns true if the underlying type has any attributes.
-		HasAttributes() bool
-		// IsObject returns true if the underlying type is an object, a user type which
-		// is an object or a media type whose type is an object.
-		IsObject() bool
-		// IsArray returns true if the underlying type is an array, a user type which
-		// is an array or a media type whose type is an array.
-		IsArray() bool
-		// IsHash returns true if the underlying type is a hash map, a user type which
-		// is a hash map or a media type whose type is a hash map.
-		IsHash() bool
-		// ToObject returns the underlying object if any (i.e. if IsObject returns true),
-		// nil otherwise.
-		ToObject() Object
-		// ToArray returns the underlying array if any (i.e. if IsArray returns true),
-		// nil otherwise.
-		ToArray() *Array
-		// ToHash returns the underlying hash map if any (i.e. if IsHash returns true),
-		// nil otherwise.
-		ToHash() *Hash
-		// CanHaveDefault returns whether the data type can have a default value.
-		CanHaveDefault() bool
-		// IsCompatible checks whether val has a Go type that is
-		// compatible with the data type.
-		IsCompatible(val interface{}) bool
-		// GenerateExample returns a random value for the given data type.
-		// If the data type has validations then the example value validates them.
-		// seen keeps track of the user and media types that have been traversed via
-		// recursion to prevent infinite loops.
-		GenerateExample(r *RandomGenerator, seen []string) interface{}
-	}
+// A Kind defines the JSON type that a DataType represents.
+type Kind uint
 
-	// DataStructure is the interface implemented by all data structure types.
-	// That is attribute definitions, user types and media types.
-	DataStructure interface {
-		// Definition returns the data structure definition.
-		Definition() *AttributeDefinition
-		// Walk traverses the data structure recursively and calls the given function once
-		// on each attribute starting with the attribute returned by Definition.
-		// User type and media type attributes are traversed once even for recursive
-		// definitions to avoid infinite recursion.
-		// Walk stops and returns the error if the function returns a non-nil error.
-		Walk(func(*AttributeDefinition) error) error
-	}
+// DataType is the common interface to all types.
+type DataType interface {
+	// Kind of data type, one of the Kind enum.
+	Kind() Kind
+	// Name returns the type name.
+	Name() string
+	// IsPrimitive returns true if the underlying type is one of the primitive types.
+	IsPrimitive() bool
+	// HasAttributes returns true if the underlying type has any attributes.
+	HasAttributes() bool
+	// IsObject returns true if the underlying type is an object, a user type which
+	// is an object or a media type whose type is an object.
+	IsObject() bool
+	// IsArray returns true if the underlying type is an array, a user type which
+	// is an array or a media type whose type is an array.
+	IsArray() bool
+	// IsHash returns true if the underlying type is a hash map, a user type which
+	// is a hash map or a media type whose type is a hash map.
+	IsHash() bool
+	// ToObject returns the underlying object if any (i.e. if IsObject returns true),
+	// nil otherwise.
+	ToObject() Object
+	// ToArray returns the underlying array if any (i.e. if IsArray returns true),
+	// nil otherwise.
+	ToArray() *Array
+	// ToHash returns the underlying hash map if any (i.e. if IsHash returns true),
+	// nil otherwise.
+	ToHash() *Hash
+	// CanHaveDefault returns whether the data type can have a default value.
+	CanHaveDefault() bool
+	// IsCompatible checks whether val has a Go type that is
+	// compatible with the data type.
+	IsCompatible(val any) bool
+	// GenerateExample returns a random value for the given data type.
+	// If the data type has validations then the example value validates them.
+	// seen keeps track of the user and media types that have been traversed via
+	// recursion to prevent infinite loops.
+	GenerateExample(r *RandomGenerator, seen []string) any
+}
 
-	// Primitive is the type for null, boolean, integer, number, string, and time.
-	Primitive Kind
+// DataStructure is the interface implemented by all data structure types.
+// That is attribute definitions, user types and media types.
+type DataStructure interface {
+	// Definition returns the data structure definition.
+	Definition() *AttributeDefinition
+	// Walk traverses the data structure recursively and calls the given function once
+	// on each attribute starting with the attribute returned by Definition.
+	// User type and media type attributes are traversed once even for recursive
+	// definitions to avoid infinite recursion.
+	// Walk stops and returns the error if the function returns a non-nil error.
+	Walk(func(*AttributeDefinition) error) error
+}
 
-	// Array is the type for a JSON array.
-	Array struct {
-		ElemType *AttributeDefinition
-	}
+// Primitive is the type for null, boolean, integer, number, string, and time.
+type Primitive Kind
 
-	// ArrayVal is the value of an array used to specify the default value.
-	ArrayVal []interface{}
+// Array is the type for a JSON array.
+type Array struct {
+	ElemType *AttributeDefinition
+}
 
-	// Object is the type for a JSON object.
-	Object map[string]*AttributeDefinition
+// ArrayVal is the value of an array used to specify the default value.
+type ArrayVal []any
 
-	// Hash is the type for a hash map.
-	Hash struct {
-		KeyType  *AttributeDefinition
-		ElemType *AttributeDefinition
-	}
+// Object is the type for a JSON object.
+type Object map[string]*AttributeDefinition
 
-	// HashVal is the value of a hash used to specify the default value.
-	HashVal map[interface{}]interface{}
+// Hash is the type for a hash map.
+type Hash struct {
+	KeyType  *AttributeDefinition
+	ElemType *AttributeDefinition
+}
 
-	// UserTypeDefinition is the type for user defined types that are not media types
-	// (e.g. payload types).
-	UserTypeDefinition struct {
-		// A user type is an attribute definition.
-		*AttributeDefinition
-		// Name of type
-		TypeName string
-	}
+// HashVal is the value of a hash used to specify the default value.
+type HashVal map[any]any
 
-	// MediaTypeDefinition describes the rendering of a resource using property and link
-	// definitions. A property corresponds to a single member of the media type,
-	// it has a name and a type as well as optional validation rules. A link has a
-	// name and a URL that points to a related resource.
-	// Media types also define views which describe which members and links to render when
-	// building the response body for the corresponding view.
-	MediaTypeDefinition struct {
-		// A media type is a type
-		*UserTypeDefinition
-		// Identifier is the RFC 6838 media type identifier.
-		Identifier string
-		// ContentType identifies the value written to the response "Content-Type" header.
-		// Defaults to Identifier.
-		ContentType string
-		// Links list the rendered links indexed by name.
-		Links map[string]*LinkDefinition
-		// Views list the supported views indexed by name.
-		Views map[string]*ViewDefinition
-		// Resource this media type is the canonical representation for if any
-		Resource *ResourceDefinition
-	}
-)
+// UserTypeDefinition is the type for user defined types that are not media types
+// (e.g. payload types).
+type UserTypeDefinition struct {
+	// A user type is an attribute definition.
+	*AttributeDefinition
+	// Name of type
+	TypeName string
+}
+
+// MediaTypeDefinition describes the rendering of a resource using property and link
+// definitions. A property corresponds to a single member of the media type,
+// it has a name and a type as well as optional validation rules. A link has a
+// name and a URL that points to a related resource.
+// Media types also define views which describe which members and links to render when
+// building the response body for the corresponding view.
+type MediaTypeDefinition struct {
+	// A media type is a type
+	*UserTypeDefinition
+	// Identifier is the RFC 6838 media type identifier.
+	Identifier string
+	// ContentType identifies the value written to the response "Content-Type" header.
+	// Defaults to Identifier.
+	ContentType string
+	// Links list the rendered links indexed by name.
+	Links map[string]*LinkDefinition
+	// Views list the supported views indexed by name.
+	Views map[string]*ViewDefinition
+	// Resource this media type is the canonical representation for if any
+	Resource *ResourceDefinition
+}
 
 const (
 	// BooleanKind represents a JSON bool.
@@ -151,7 +150,7 @@ const (
 	DateTimeKind
 	// UUIDKind represents a JSON string that is parsed as a Go uuid.UUID
 	UUIDKind
-	// AnyKind represents a generic interface{}.
+	// AnyKind represents a generic any.
 	AnyKind
 	// ArrayKind represents a JSON array.
 	ArrayKind
@@ -188,7 +187,7 @@ const (
 	// UUID expects an RFC4122 formatted value.
 	UUID = Primitive(UUIDKind)
 
-	// Any is the type for an arbitrary JSON value (interface{} in Go).
+	// Any is the type for an arbitrary JSON value (any in Go).
 	Any = Primitive(AnyKind)
 
 	// File is the type for a file. This type can only be used in a multipart definition.
@@ -254,7 +253,7 @@ func (p Primitive) CanHaveDefault() (ok bool) {
 }
 
 // IsCompatible returns true if val is compatible with p.
-func (p Primitive) IsCompatible(val interface{}) bool {
+func (p Primitive) IsCompatible(val any) bool {
 	if p != Boolean && p != Integer && p != Number && p != String && p != DateTime && p != UUID && p != Any {
 		panic("unknown primitive type") // bug
 	}
@@ -287,7 +286,7 @@ func (p Primitive) IsCompatible(val interface{}) bool {
 var anyPrimitive = []Primitive{Boolean, Integer, Number, DateTime, UUID}
 
 // GenerateExample returns an instance of the given data type.
-func (p Primitive) GenerateExample(r *RandomGenerator, seen []string) interface{} {
+func (p Primitive) GenerateExample(r *RandomGenerator, seen []string) any {
 	switch p {
 	case Boolean:
 		return r.Bool()
@@ -353,7 +352,7 @@ func (a *Array) CanHaveDefault() bool {
 }
 
 // IsCompatible returns true if val is compatible with p.
-func (a *Array) IsCompatible(val interface{}) bool {
+func (a *Array) IsCompatible(val any) bool {
 	k := reflect.TypeOf(val).Kind()
 	if k != reflect.Array && k != reflect.Slice {
 		return false
@@ -369,9 +368,9 @@ func (a *Array) IsCompatible(val interface{}) bool {
 }
 
 // GenerateExample produces a random array value.
-func (a *Array) GenerateExample(r *RandomGenerator, seen []string) interface{} {
+func (a *Array) GenerateExample(r *RandomGenerator, seen []string) any {
 	count := r.Int()%3 + 1
-	res := make([]interface{}, count)
+	res := make([]any, count)
 	for i := 0; i < count; i++ {
 		res[i] = a.ElemType.Type.GenerateExample(r, seen)
 	}
@@ -379,8 +378,8 @@ func (a *Array) GenerateExample(r *RandomGenerator, seen []string) interface{} {
 }
 
 // MakeSlice examines the key type from the Array and create a slice with builtin type if possible.
-// The idea is to avoid generating []interface{} and produce more known types.
-func (a *Array) MakeSlice(s []interface{}) interface{} {
+// The idea is to avoid generating []any and produce more known types.
+func (a *Array) MakeSlice(s []any) any {
 	slice := reflect.MakeSlice(toReflectType(a), 0, len(s))
 	for _, item := range s {
 		slice = reflect.Append(slice, reflect.ValueOf(item))
@@ -429,13 +428,13 @@ func (o Object) Merge(other Object) {
 }
 
 // IsCompatible returns true if val is compatible with p.
-func (o Object) IsCompatible(val interface{}) bool {
+func (o Object) IsCompatible(val any) bool {
 	k := reflect.TypeOf(val).Kind()
 	return k == reflect.Map || k == reflect.Struct
 }
 
 // GenerateExample returns a random value of the object.
-func (o Object) GenerateExample(r *RandomGenerator, seen []string) interface{} {
+func (o Object) GenerateExample(r *RandomGenerator, seen []string) any {
 	// ensure fixed ordering
 	keys := make([]string, 0, len(o))
 	for n := range o {
@@ -443,7 +442,7 @@ func (o Object) GenerateExample(r *RandomGenerator, seen []string) interface{} {
 	}
 	sort.Strings(keys)
 
-	res := make(map[string]interface{})
+	res := make(map[string]any)
 	for _, n := range keys {
 		att := o[n]
 		res[n] = att.Type.GenerateExample(r, seen)
@@ -492,7 +491,7 @@ func (h *Hash) CanHaveDefault() bool {
 }
 
 // IsCompatible returns true if val is compatible with p.
-func (h *Hash) IsCompatible(val interface{}) bool {
+func (h *Hash) IsCompatible(val any) bool {
 	k := reflect.TypeOf(val).Kind()
 	if k != reflect.Map {
 		return false
@@ -509,9 +508,9 @@ func (h *Hash) IsCompatible(val interface{}) bool {
 }
 
 // GenerateExample returns a random hash value.
-func (h *Hash) GenerateExample(r *RandomGenerator, seen []string) interface{} {
+func (h *Hash) GenerateExample(r *RandomGenerator, seen []string) any {
 	count := r.Int()%3 + 1
-	pair := map[interface{}]interface{}{}
+	pair := map[any]any{}
 	for i := 0; i < count; i++ {
 		pair[h.KeyType.Type.GenerateExample(r, seen)] = h.ElemType.Type.GenerateExample(r, seen)
 	}
@@ -519,8 +518,8 @@ func (h *Hash) GenerateExample(r *RandomGenerator, seen []string) interface{} {
 }
 
 // MakeMap examines the key type from a Hash and create a map with builtin type if possible.
-// The idea is to avoid generating map[interface{}]interface{}, which cannot be handled by json.Marshal.
-func (h *Hash) MakeMap(m map[interface{}]interface{}) interface{} {
+// The idea is to avoid generating map[any]any, which cannot be handled by json.Marshal.
+func (h *Hash) MakeMap(m map[any]any) any {
 	hash := reflect.MakeMap(toReflectType(h))
 	for key, value := range m {
 		hash.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(value))
@@ -643,8 +642,8 @@ func hasFile(dt DataType, seen map[string]struct{}) bool {
 }
 
 // ToSlice converts an ArrayVal to a slice.
-func (a ArrayVal) ToSlice() []interface{} {
-	arr := make([]interface{}, len(a))
+func (a ArrayVal) ToSlice() []any {
+	arr := make([]any, len(a))
 	for i, elem := range a {
 		switch actual := elem.(type) {
 		case ArrayVal:
@@ -659,8 +658,8 @@ func (a ArrayVal) ToSlice() []interface{} {
 }
 
 // ToMap converts a HashVal to a map.
-func (h HashVal) ToMap() map[interface{}]interface{} {
-	mp := make(map[interface{}]interface{}, len(h))
+func (h HashVal) ToMap() map[any]any {
+	mp := make(map[any]any, len(h))
 	for k, v := range h {
 		switch actual := v.(type) {
 		case ArrayVal:
@@ -717,7 +716,7 @@ func (u *UserTypeDefinition) ToHash() *Hash { return u.Type.ToHash() }
 func (u *UserTypeDefinition) CanHaveDefault() bool { return u.Type.CanHaveDefault() }
 
 // IsCompatible returns true if val is compatible with u.
-func (u *UserTypeDefinition) IsCompatible(val interface{}) bool {
+func (u *UserTypeDefinition) IsCompatible(val any) bool {
 	return u.Type == nil || u.Type.IsCompatible(val)
 }
 
@@ -1085,7 +1084,7 @@ func toReflectType(dtype DataType) reflect.Type {
 	case DateTimeKind:
 		return reflect.TypeOf(time.Time{})
 	case ObjectKind, UserTypeKind, MediaTypeKind:
-		return reflect.TypeOf(map[string]interface{}{})
+		return reflect.TypeOf(map[string]any{})
 	case ArrayKind:
 		return reflect.SliceOf(toReflectType(dtype.ToArray().ElemType.Type))
 	case HashKind:
@@ -1095,10 +1094,10 @@ func toReflectType(dtype DataType) reflect.Type {
 		if !hash.KeyType.Type.IsObject() {
 			ktype = toReflectType(hash.KeyType.Type)
 		} else {
-			ktype = reflect.TypeOf([]interface{}{}).Elem()
+			ktype = reflect.TypeOf([]any{}).Elem()
 		}
 		return reflect.MapOf(ktype, toReflectType(hash.ElemType.Type))
 	default:
-		return reflect.TypeOf([]interface{}{}).Elem()
+		return reflect.TypeOf([]any{}).Elem()
 	}
 }
