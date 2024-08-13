@@ -281,3 +281,51 @@ func TestMediaTypeDefinition_Project(t *testing.T) {
 		}
 	})
 }
+
+func TestUserTypes(t *testing.T) {
+	t.Run("with an object not using user types", func(t *testing.T) {
+		userTypes := design.UserTypes(design.Object{
+			"foo": &design.AttributeDefinition{Type: design.String},
+		})
+		if len(userTypes) != 0 {
+			t.Errorf("unexpected user types: %v", userTypes)
+		}
+	})
+
+	t.Run("with an object with an attribute using a user type", func(t *testing.T) {
+		ut := &design.UserTypeDefinition{
+			TypeName:            "foo",
+			AttributeDefinition: &design.AttributeDefinition{Type: design.String},
+		}
+		userTypes := design.UserTypes(design.Object{
+			"foo": &design.AttributeDefinition{Type: ut},
+		})
+		if len(userTypes) != 1 {
+			t.Errorf("unexpected user types: %v", userTypes)
+		}
+		if userTypes[ut.TypeName] != ut {
+			t.Errorf("unexpected user type: %v", userTypes[ut.TypeName])
+		}
+	})
+
+	t.Run("with an object with an attribute using recursive user types", func(t *testing.T) {
+		childut := &design.UserTypeDefinition{
+			TypeName:            "child",
+			AttributeDefinition: &design.AttributeDefinition{Type: design.String},
+		}
+		ut := &design.UserTypeDefinition{
+			TypeName:            "parent",
+			AttributeDefinition: &design.AttributeDefinition{Type: design.Object{"child": &design.AttributeDefinition{Type: childut}}},
+		}
+		userTypes := design.UserTypes(design.Object{"foo": &design.AttributeDefinition{Type: ut}})
+		if len(userTypes) != 2 {
+			t.Errorf("unexpected user types: %v", userTypes)
+		}
+		if userTypes[ut.TypeName] != ut {
+			t.Errorf("unexpected user type: %v", userTypes[ut.TypeName])
+		}
+		if userTypes[childut.TypeName] != childut {
+			t.Errorf("unexpected user type: %v", userTypes[childut.TypeName])
+		}
+	})
+}
