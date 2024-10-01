@@ -2,365 +2,375 @@ package apidsl_test
 
 import (
 	"strconv"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/design/apidsl"
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
-var _ = Describe("Action", func() {
-	var name string
-	var dsl func()
-	var action *design.ActionDefinition
-
-	BeforeEach(func() {
+func TestAction(t *testing.T) {
+	t.Run("with only a name and a route", func(t *testing.T) {
 		dslengine.Reset()
-		name = ""
-		dsl = nil
-	})
-
-	JustBeforeEach(func() {
 		apidsl.Resource("res", func() {
-			apidsl.Action(name, dsl)
+			apidsl.Action("foo", nil)
 		})
-		dslengine.Run()
-		if r, ok := design.Design.Resources["res"]; ok {
-			action = r.Actions[name]
+		if err := dslengine.Run(); err == nil {
+			t.Error("expected error")
 		}
 	})
 
-	Context("with only a name and a route", func() {
-		BeforeEach(func() {
-			name = "foo"
+	t.Run("with a name and DSL defining a route", func(t *testing.T) {
+		dslengine.Reset()
+		route := apidsl.GET("/:id")
+		apidsl.Resource("res", func() {
+			apidsl.Action("foo", func() {
+				apidsl.Routing(route)
+			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("produces an invalid action", func() {
-			Ω(dslengine.Errors).Should(HaveOccurred())
-		})
+		action := design.Design.Resources["res"].Actions["foo"]
+		if action.Name != "foo" {
+			t.Errorf("expected action name to be foo, got %s", action.Name)
+		}
+		if err := action.Validate(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(action.Routes) != 1 {
+			t.Errorf("expected action to have a route, got %v", action.Routes)
+		}
+		if action.Routes[0] != route {
+			t.Errorf("expected action to have a route, got %v", action.Routes)
+		}
 	})
 
-	Context("with a name and DSL defining a route", func() {
-		var route = apidsl.GET("/:id")
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() { apidsl.Routing(route) }
-		})
-
-		It("produces a valid action definition with the route and default status of 200 set", func() {
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-			Ω(action).ShouldNot(BeNil())
-			Ω(action.Name).Should(Equal(name))
-			Ω(action.Validate()).ShouldNot(HaveOccurred())
-			Ω(action.Routes).ShouldNot(BeNil())
-			Ω(action.Routes).Should(HaveLen(1))
-			Ω(action.Routes[0]).Should(Equal(route))
-		})
-
-		Context("with an empty params DSL", func() {
-			BeforeEach(func() {
-				olddsl := dsl
-				dsl = func() { olddsl(); apidsl.Params(func() {}) }
-				name = "foo"
-			})
-
-			It("produces a valid action", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
+	t.Run("with an empty params DSL", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Resource("res", func() {
+			apidsl.Action("foo", func() {
+				apidsl.Routing(apidsl.GET("/:id"))
+				apidsl.Params(func() {})
 			})
 		})
-
-		Context("with a metadata", func() {
-			BeforeEach(func() {
-				metadatadsl := func() { apidsl.Metadata("swagger:extension:x-get", `{"foo":"bar"}`) }
-				route = apidsl.GET("/:id", metadatadsl)
-				name = "foo"
-			})
-
-			It("produces a valid action definition with the route with the metadata", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				Ω(action).ShouldNot(BeNil())
-				Ω(action.Name).Should(Equal(name))
-				Ω(action.Validate()).ShouldNot(HaveOccurred())
-				Ω(action.Routes).ShouldNot(BeNil())
-				Ω(action.Routes).Should(HaveLen(1))
-				Ω(action.Routes[0]).Should(Equal(route))
-				Ω(action.Routes[0].Metadata).ShouldNot(BeNil())
-				Ω(action.Routes[0].Metadata).Should(Equal(
-					dslengine.MetadataDefinition{"swagger:extension:x-get": []string{`{"foo":"bar"}`}},
-				))
-			})
-		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 	})
 
-	Context("with a string payload", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
+	t.Run("with a metadata", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Resource("res", func() {
+			apidsl.Action("foo", func() {
+				apidsl.Routing(apidsl.GET("/:id", func() {
+					apidsl.Metadata("swagger:extension:x-get", `{"foo": "bar"}`)
+				}))
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		action := design.Design.Resources["res"].Actions["foo"]
+		if action.Name != "foo" {
+			t.Errorf("expected action name to be foo, got %s", action.Name)
+		}
+		if err := action.Validate(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(action.Routes) != 1 {
+			t.Errorf("expected action to have a route, got %v", action.Routes)
+		}
+		want := dslengine.MetadataDefinition{
+			"swagger:extension:x-get": []string{`{"foo": "bar"}`},
+		}
+		if diff := cmp.Diff(want, action.Routes[0].Metadata); diff != "" {
+			t.Errorf("unexpected metadata: %s", diff)
+		}
+	})
+
+	t.Run("with a string payload", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Resource("res", func() {
+			apidsl.Action("foo", func() {
 				apidsl.Routing(apidsl.GET("/:id"))
 				apidsl.Payload(design.String)
-			}
+			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("produces a valid action with the given properties", func() {
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-			Ω(action).ShouldNot(BeNil())
-			Ω(action.Validate()).ShouldNot(HaveOccurred())
-			Ω(action.Payload).ShouldNot(BeNil())
-			Ω(action.Payload.Type).Should(Equal(design.String))
-		})
+		action := design.Design.Resources["res"].Actions["foo"]
+		if err := action.Validate(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if action.Payload == nil {
+			t.Errorf("expected action to have a payload, got nil")
+		}
+		if action.Payload.Type != design.String {
+			t.Errorf("expected action to have a string payload, got %s", action.Payload.Type)
+		}
 	})
 
-	Context("with a name and DSL defining a description, route, headers, payload and responses", func() {
-		const typeName = "typeName"
-		const description = "description"
-		const headerName = "Foo"
-
-		BeforeEach(func() {
-			apidsl.Type(typeName, func() {
-				apidsl.Attribute("name")
-			})
-			name = "foo"
-			dsl = func() {
-				apidsl.Description(description)
+	t.Run("with a name and DSL defining a description, route, headers, payload and responses", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("typeName", func() {
+			apidsl.Attribute("name")
+		})
+		apidsl.Resource("res", func() {
+			apidsl.Action("foo", func() {
+				apidsl.Description("description")
 				apidsl.Routing(apidsl.GET("/:id"))
-				apidsl.Headers(func() { apidsl.Header(headerName) })
-				apidsl.Payload(typeName)
+				apidsl.Headers(func() { apidsl.Header("Foo") })
+				apidsl.Payload("typeName")
 				apidsl.Response(design.NoContent)
-			}
+			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("produces a valid action with the given properties", func() {
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-			Ω(action).ShouldNot(BeNil())
-			Ω(action.Validate()).ShouldNot(HaveOccurred())
-			Ω(action.Name).Should(Equal(name))
-			Ω(action.Description).Should(Equal(description))
-			Ω(action.Routes).Should(HaveLen(1))
-			Ω(action.Responses).ShouldNot(BeNil())
-			Ω(action.Responses).Should(HaveLen(1))
-			Ω(action.Responses).Should(HaveKey("NoContent"))
-			Ω(action.Headers).ShouldNot(BeNil())
-			Ω(action.Headers.Type).Should(BeAssignableToTypeOf(design.Object{}))
-			Ω(action.Headers.Type.(design.Object)).Should(HaveLen(1))
-			Ω(action.Headers.Type.(design.Object)).Should(HaveKey(headerName))
-		})
+		action := design.Design.Resources["res"].Actions["foo"]
+		if err := action.Validate(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if action.Name != "foo" {
+			t.Errorf("expected action name to be foo, got %s", action.Name)
+		}
+		if action.Description != "description" {
+			t.Errorf("expected action description to be description, got %s", action.Description)
+		}
+		if len(action.Routes) != 1 {
+			t.Errorf("expected action to have a route, got %v", action.Routes)
+		}
+		if len(action.Responses) != 1 {
+			t.Errorf("expected action to have a response, got %v", action.Responses)
+		}
+		if _, ok := action.Responses["NoContent"]; !ok {
+			t.Errorf("expected action to have a response, got %v", action.Responses)
+		}
+		headers := action.Headers.Type.(design.Object)
+		if len(headers) != 1 {
+			t.Errorf("expected action to have a header, got %v", headers)
+		}
+		if _, ok := headers["Foo"]; !ok {
+			t.Errorf("expected action to have a header, got %v", headers)
+		}
 	})
 
-	Context("with multiple headers sections", func() {
-		const typeName = "typeName"
-		const headerName = "Foo"
-		const headerName2 = "Foo2"
-
-		BeforeEach(func() {
-			apidsl.Type(typeName, func() {
-				apidsl.Attribute("name")
-			})
-			name = "foo"
-			dsl = func() {
+	t.Run("with multiple headers sections", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("typeName", func() {
+			apidsl.Attribute("name")
+		})
+		apidsl.Resource("res", func() {
+			apidsl.Action("foo", func() {
 				apidsl.Routing(apidsl.GET("/:id"))
 				apidsl.Headers(func() {
-					apidsl.Header(headerName)
-					apidsl.Required(headerName)
+					apidsl.Header("Foo")
+					apidsl.Required("Foo")
 				})
 				apidsl.Headers(func() {
-					apidsl.Header(headerName2)
-					apidsl.Required(headerName2)
+					apidsl.Header("Foo2")
+					apidsl.Required("Foo2")
 				})
-			}
+			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("produces a valid action with all required headers accounted for", func() {
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-			Ω(action).ShouldNot(BeNil())
-			Ω(action.Validate()).ShouldNot(HaveOccurred())
-			Ω(action.Name).Should(Equal(name))
-			Ω(action.Headers).ShouldNot(BeNil())
-			Ω(action.Headers.Type.(design.Object)).Should(HaveKey(headerName))
-			Ω(action.Headers.Type).Should(BeAssignableToTypeOf(design.Object{}))
-			Ω(action.Headers.Type.(design.Object)).Should(HaveLen(2))
-			Ω(action.Headers.Type.(design.Object)).Should(HaveKey(headerName))
-			Ω(action.Headers.Type.(design.Object)).Should(HaveKey(headerName2))
-			Ω(action.Headers.Validation).ShouldNot(BeNil())
-			Ω(action.Headers.Validation.Required).Should(Equal([]string{headerName, headerName2}))
-		})
+		action := design.Design.Resources["res"].Actions["foo"]
+		if err := action.Validate(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if action.Name != "foo" {
+			t.Errorf("expected action name to be foo, got %s", action.Name)
+		}
+		headers := action.Headers.Type.(design.Object)
+		if len(headers) != 2 {
+			t.Errorf("expected action to have two headers, got %v", headers)
+		}
+		if _, ok := headers["Foo"]; !ok {
+			t.Errorf("expected action to have a header, got %v", headers)
+		}
+		if _, ok := headers["Foo2"]; !ok {
+			t.Errorf("expected action to have a header, got %v", headers)
+		}
+		want := []string{"Foo", "Foo2"}
+		if diff := cmp.Diff(want, action.Headers.Validation.Required); diff != "" {
+			t.Errorf("unexpected required headers: %s", diff)
+		}
 	})
 
-	Context("using a response with a media type modifier", func() {
-		const mtID = "application/vnd.app.foo+json"
-
-		BeforeEach(func() {
-			apidsl.MediaType(mtID, func() {
-				apidsl.Attributes(func() { apidsl.Attribute("foo") })
-				apidsl.View("default", func() { apidsl.Attribute("foo") })
-			})
-			name = "foo"
-			dsl = func() {
+	t.Run("using a response with a media type modifier", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.MediaType("application/vnd.app.foo+json", func() {
+			apidsl.Attributes(func() { apidsl.Attribute("foo") })
+			apidsl.View("default", func() { apidsl.Attribute("foo") })
+		})
+		apidsl.Resource("res", func() {
+			apidsl.Action("foo", func() {
 				apidsl.Routing(apidsl.GET("/:id"))
-				apidsl.Response(design.OK, mtID)
-			}
-		})
-
-		It("produces a response that keeps the modifier", func() {
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-			Ω(action).ShouldNot(BeNil())
-			Ω(action.Validate()).ShouldNot(HaveOccurred())
-			Ω(action.Responses).ShouldNot(BeNil())
-			Ω(action.Responses).Should(HaveLen(1))
-			Ω(action.Responses).Should(HaveKey("OK"))
-			resp := action.Responses["OK"]
-			Ω(resp.MediaType).Should(Equal(mtID))
-		})
-	})
-
-	Context("using a response template", func() {
-		const tmplName = "tmpl"
-		const respMediaType = "media"
-		const respStatus = 200
-		const respName = "respName"
-
-		BeforeEach(func() {
-			name = "foo"
-			apidsl.API("test", func() {
-				apidsl.ResponseTemplate(tmplName, func(status, name string) {
-					st, err := strconv.Atoi(status)
-					if err != nil {
-						dslengine.ReportError(err.Error())
-						return
-					}
-					apidsl.Status(st)
-				})
+				apidsl.Response(design.OK, "application/vnd.app.foo+json")
 			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		Context("called correctly", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Routing(apidsl.GET("/:id"))
-					apidsl.Response(tmplName, strconv.Itoa(respStatus), respName, func() {
-						apidsl.Media(respMediaType)
-					})
+		action := design.Design.Resources["res"].Actions["foo"]
+		if err := action.Validate(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(action.Responses) != 1 {
+			t.Errorf("expected action to have a response, got %v", action.Responses)
+		}
+		resp := action.Responses["OK"]
+		if resp.MediaType != "application/vnd.app.foo+json" {
+			t.Errorf("expected response to have a media type, got %s", resp.MediaType)
+		}
+	})
+
+	t.Run("using a response template", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.API("test", func() {
+			apidsl.ResponseTemplate("tmpl", func(status, name string) {
+				st, err := strconv.Atoi(status)
+				if err != nil {
+					dslengine.ReportError(err.Error())
+					return
 				}
-			})
-
-			It("defines the response definition using the template", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				Ω(action).ShouldNot(BeNil())
-				Ω(action.Responses).ShouldNot(BeNil())
-				Ω(action.Responses).Should(HaveLen(1))
-				Ω(action.Responses).Should(HaveKey(tmplName))
-				resp := action.Responses[tmplName]
-				Ω(resp.Name).Should(Equal(tmplName))
-				Ω(resp.Status).Should(Equal(respStatus))
-				Ω(resp.MediaType).Should(Equal(respMediaType))
+				apidsl.Status(st)
 			})
 		})
+		apidsl.Resource("res", func() {
+			apidsl.Action("foo", func() {
+				apidsl.Routing(apidsl.GET("/:id"))
+				apidsl.Response("tmpl", "200", "respName", func() {
+					apidsl.Media("media")
+				})
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		Context("called incorrectly", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Routing(apidsl.GET("/id"))
-					apidsl.Response(tmplName, "not an integer", respName, func() {
-						apidsl.Media(respMediaType)
-					})
+		action := design.Design.Resources["res"].Actions["foo"]
+		if err := action.Validate(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if len(action.Responses) != 1 {
+			t.Errorf("expected action to have a response, got %v", action.Responses)
+		}
+		resp := action.Responses["tmpl"]
+		if resp.Name != "tmpl" {
+			t.Errorf("expected response to have a name, got %s", resp.Name)
+		}
+		if resp.Status != 200 {
+			t.Errorf("expected response to have a status, got %d", resp.Status)
+		}
+		if resp.MediaType != "media" {
+			t.Errorf("expected response to have a media type, got %s", resp.MediaType)
+		}
+	})
+
+	t.Run("using a response template, called incorrectly", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.API("test", func() {
+			apidsl.ResponseTemplate("tmpl", func(status, name string) {
+				st, err := strconv.Atoi(status)
+				if err != nil {
+					dslengine.ReportError(err.Error())
+					return
 				}
-			})
-
-			It("fails", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
+				apidsl.Status(st)
 			})
 		})
-	})
-})
-
-var _ = Describe("Payload", func() {
-	Context("with a payload definition", func() {
-		BeforeEach(func() {
-			dslengine.Reset()
-
-			apidsl.Resource("foo", func() {
-				apidsl.Action("bar", func() {
-					apidsl.Routing(apidsl.GET(""))
-					apidsl.Payload(func() {
-						apidsl.Member("name")
-						apidsl.Required("name")
-					})
+		apidsl.Resource("res", func() {
+			apidsl.Action("foo", func() {
+				apidsl.Routing(apidsl.GET("/:id"))
+				apidsl.Response("tmpl", "not an integer", "respName", func() {
+					apidsl.Media("media")
 				})
 			})
 		})
-
-		JustBeforeEach(func() {
-			dslengine.Run()
-		})
-
-		It("generates the payload type", func() {
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-			Ω(design.Design).ShouldNot(BeNil())
-			Ω(design.Design.Resources).Should(HaveKey("foo"))
-			Ω(design.Design.Resources["foo"].Actions).Should(HaveKey("bar"))
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload).ShouldNot(BeNil())
-		})
+		if err := dslengine.Run(); err == nil {
+			t.Error("expected error")
+		}
 	})
+}
 
-	Context("with an array", func() {
-		BeforeEach(func() {
-			dslengine.Reset()
-
-			apidsl.Resource("foo", func() {
-				apidsl.Action("bar", func() {
-					apidsl.Routing(apidsl.GET(""))
-					apidsl.Payload(apidsl.ArrayOf(design.Integer))
+func TestPayload(t *testing.T) {
+	t.Run("with a payload definition", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Resource("foo", func() {
+			apidsl.Action("bar", func() {
+				apidsl.Routing(apidsl.GET(""))
+				apidsl.Payload(func() {
+					apidsl.Member("name")
+					apidsl.Required("name")
 				})
 			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		JustBeforeEach(func() {
-			dslengine.Run()
-		})
-
-		It("sets the payload type", func() {
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-			Ω(design.Design).ShouldNot(BeNil())
-			Ω(design.Design.Resources).Should(HaveKey("foo"))
-			Ω(design.Design.Resources["foo"].Actions).Should(HaveKey("bar"))
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload).ShouldNot(BeNil())
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload.Type).ShouldNot(BeNil())
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload.Type.IsArray()).Should(BeTrue())
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload.Type.ToArray().ElemType).ShouldNot(BeNil())
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload.Type.ToArray().ElemType.Type).Should(Equal(design.Integer))
-		})
+		action := design.Design.Resources["foo"].Actions["bar"]
+		if action.Payload == nil {
+			t.Error("expected payload to be defined")
+		}
 	})
 
-	Context("with a hash", func() {
-		BeforeEach(func() {
-			dslengine.Reset()
-
-			apidsl.Resource("foo", func() {
-				apidsl.Action("bar", func() {
-					apidsl.Routing(apidsl.GET(""))
-					apidsl.Payload(apidsl.HashOf(design.String, design.Integer))
-				})
+	t.Run("with an array", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Resource("foo", func() {
+			apidsl.Action("bar", func() {
+				apidsl.Routing(apidsl.GET(""))
+				apidsl.Payload(apidsl.ArrayOf(design.Integer))
 			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		JustBeforeEach(func() {
-			dslengine.Run()
-		})
-
-		It("sets the payload type", func() {
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-			Ω(design.Design).ShouldNot(BeNil())
-			Ω(design.Design.Resources).Should(HaveKey("foo"))
-			Ω(design.Design.Resources["foo"].Actions).Should(HaveKey("bar"))
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload).ShouldNot(BeNil())
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload.Type).ShouldNot(BeNil())
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload.Type.IsHash()).Should(BeTrue())
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload.Type.ToHash().ElemType).ShouldNot(BeNil())
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload.Type.ToHash().KeyType).ShouldNot(BeNil())
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload.Type.ToHash().ElemType.Type).Should(Equal(design.Integer))
-			Ω(design.Design.Resources["foo"].Actions["bar"].Payload.Type.ToHash().KeyType.Type).Should(Equal(design.String))
-		})
+		action := design.Design.Resources["foo"].Actions["bar"]
+		if !action.Payload.IsArray() {
+			t.Error("expected payload to be an array")
+		}
+		array := action.Payload.ToArray()
+		if array.ElemType.Type != design.Integer {
+			t.Errorf("expected payload to have an integer element type, got %s", array.ElemType.Type)
+		}
 	})
 
-})
+	t.Run("with a hash", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Resource("foo", func() {
+			apidsl.Action("bar", func() {
+				apidsl.Routing(apidsl.GET(""))
+				apidsl.Payload(apidsl.HashOf(design.String, design.Integer))
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		action := design.Design.Resources["foo"].Actions["bar"]
+		if !action.Payload.IsHash() {
+			t.Error("expected payload to be a hash")
+		}
+		hash := action.Payload.ToHash()
+		if hash.KeyType.Type != design.String {
+			t.Errorf("expected payload to have a string key type, got %s", hash.KeyType.Type)
+		}
+		if hash.ElemType.Type != design.Integer {
+			t.Errorf("expected payload to have an integer element type, got %s", hash.ElemType.Type)
+		}
+	})
+}
