@@ -1,122 +1,83 @@
 package design_test
 
 import (
-	"fmt"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/shogo82148/shogoa/design"
 )
 
-var _ = Describe("SecuritySchemeDefinition", func() {
-	var scheme, host, tokenURL, authorizationURL string
-
-	var def *design.SecuritySchemeDefinition
-
-	BeforeEach(func() {
-		def = nil
-		tokenURL = ""
-		authorizationURL = ""
-		scheme = ""
-		host = ""
-	})
-
-	JustBeforeEach(func() {
-		design.Design.Schemes = []string{scheme}
-		design.Design.Host = host
-		def = &design.SecuritySchemeDefinition{
-			TokenURL:         tokenURL,
-			AuthorizationURL: authorizationURL,
+func TestSecuritySchemeDefinition(t *testing.T) {
+	t.Run("with valid token and authorization URLs", func(t *testing.T) {
+		def := &design.SecuritySchemeDefinition{
+			TokenURL:         "http://example.com/token",
+			AuthorizationURL: "http://example.com/auth",
+		}
+		if err := def.Validate(); err != nil {
+			t.Errorf("Validate() = %v; want nil", err)
 		}
 	})
 
-	Context("with valid token and authorization URLs", func() {
-		BeforeEach(func() {
-			tokenURL = "http://valid.com/token"
-			authorizationURL = "http://valid.com/auth"
-		})
-
-		It("validates", func() {
-			Ω(def.Validate()).ShouldNot(HaveOccurred())
-		})
+	t.Run("with an invalid token URL", func(t *testing.T) {
+		def := &design.SecuritySchemeDefinition{
+			TokenURL:         ":",
+			AuthorizationURL: "http://example.com/auth",
+		}
+		if err := def.Validate(); err == nil {
+			t.Error("Validate() = nil; want an error")
+		}
 	})
 
-	Context("with an invalid token URL", func() {
-		BeforeEach(func() {
-			tokenURL = ":"
-			authorizationURL = "http://valid.com/auth"
-		})
-
-		It("does not validate", func() {
-			err := def.Validate()
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring(tokenURL))
-		})
+	t.Run("with an absolute token URL", func(t *testing.T) {
+		def := &design.SecuritySchemeDefinition{
+			TokenURL: "http://example.com/token",
+		}
+		def.Finalize()
+		if def.TokenURL != "http://example.com/token" {
+			t.Errorf("Finalize() = %q; want %q", def.TokenURL, "http://example.com/token")
+		}
 	})
 
-	Context("with an absolute token URL", func() {
-		BeforeEach(func() {
-			tokenURL = "http://valid.com/auth"
-		})
-
-		It("Finalize does not modify it", func() {
-			priorURL := def.TokenURL
-			def.Finalize()
-			Ω(def.TokenURL).Should(Equal(priorURL))
-		})
+	t.Run("with a relative token URL", func(t *testing.T) {
+		design.Design.Schemes = []string{"http"}
+		design.Design.Host = "example.com"
+		def := &design.SecuritySchemeDefinition{
+			TokenURL: "/token",
+		}
+		def.Finalize()
+		if def.TokenURL != "http://example.com/token" {
+			t.Errorf("Finalize() = %q; want %q", def.TokenURL, "http://example.com/token")
+		}
 	})
 
-	Context("with a relative token URL", func() {
-		BeforeEach(func() {
-			scheme = "http"
-			host = "foo.com"
-			tokenURL = "/auth"
-		})
-
-		It("Finalize makes it absolute", func() {
-			priorURL := def.TokenURL
-			def.Finalize()
-			Ω(def.TokenURL).Should(Equal(fmt.Sprintf("%s://%s%s", scheme, host, priorURL)))
-		})
+	t.Run("with an invalid authorization URL", func(t *testing.T) {
+		def := &design.SecuritySchemeDefinition{
+			TokenURL:         "http://example.com/token",
+			AuthorizationURL: ":",
+		}
+		if err := def.Validate(); err == nil {
+			t.Error("Validate() = nil; want an error")
+		}
 	})
 
-	Context("with an invalid authorization URL", func() {
-		BeforeEach(func() {
-			tokenURL = "http://valid.com/auth"
-			authorizationURL = ":"
-		})
-
-		It("does not validate", func() {
-			err := def.Validate()
-			Ω(err).Should(HaveOccurred())
-			Ω(err.Error()).Should(ContainSubstring(authorizationURL))
-		})
+	t.Run("with an absolute authorization URL", func(t *testing.T) {
+		def := &design.SecuritySchemeDefinition{
+			AuthorizationURL: "http://example.com/auth",
+		}
+		def.Finalize()
+		if def.AuthorizationURL != "http://example.com/auth" {
+			t.Errorf("Finalize() = %q; want %q", def.AuthorizationURL, "http://example.com/auth")
+		}
 	})
 
-	Context("with an absolute authorization URL", func() {
-		BeforeEach(func() {
-			authorizationURL = "http://valid.com/auth"
-		})
-
-		It("Finalize does not modify it", func() {
-			priorURL := def.AuthorizationURL
-			def.Finalize()
-			Ω(def.AuthorizationURL).Should(Equal(priorURL))
-		})
+	t.Run("with a relative authorization URL", func(t *testing.T) {
+		design.Design.Schemes = []string{"http"}
+		design.Design.Host = "example.com"
+		def := &design.SecuritySchemeDefinition{
+			AuthorizationURL: "/auth",
+		}
+		def.Finalize()
+		if def.AuthorizationURL != "http://example.com/auth" {
+			t.Errorf("Finalize() = %q; want %q", def.AuthorizationURL, "http://example.com/auth")
+		}
 	})
-
-	Context("with a relative authorization URL", func() {
-		BeforeEach(func() {
-			scheme = "http"
-			host = "foo.com"
-			authorizationURL = "/auth"
-		})
-
-		It("Finalize makes it absolute", func() {
-			priorURL := def.AuthorizationURL
-			def.Finalize()
-			Ω(def.AuthorizationURL).Should(Equal(fmt.Sprintf("%s://%s%s", scheme, host, priorURL)))
-		})
-	})
-
-})
+}
