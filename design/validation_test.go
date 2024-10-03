@@ -1,486 +1,377 @@
 package design_test
 
 import (
-	"go/build"
-	"os"
-	"path"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/design/apidsl"
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
-var _ = Describe("Validation", func() {
-	Context("with a type attribute", func() {
-		const attName = "attName"
-		var dsl func()
+func TestValidation(t *testing.T) {
+	t.Run("with a type attribute", func(t *testing.T) {
 
-		var att *design.AttributeDefinition
-
-		JustBeforeEach(func() {
+		t.Run("with a valid enum validation", func(t *testing.T) {
 			dslengine.Reset()
 			apidsl.Type("bar", func() {
-				dsl()
+				apidsl.Attribute("attName", design.String, func() {
+					apidsl.Enum("red", "blue")
+				})
 			})
-			dslengine.Run()
-			if dslengine.Errors == nil {
-				Ω(design.Design.Types).ShouldNot(BeNil())
-				Ω(design.Design.Types).Should(HaveKey("bar"))
-				Ω(design.Design.Types["bar"]).ShouldNot(BeNil())
-				Ω(design.Design.Types["bar"].Type).Should(BeAssignableToTypeOf(design.Object{}))
-				o := design.Design.Types["bar"].Type.(design.Object)
-				Ω(o).Should(HaveKey(attName))
-				att = o[attName]
+			if err := dslengine.Run(); err != nil {
+				t.Fatal(err)
+			}
+			want := []any{"red", "blue"}
+			o := design.Design.Types["bar"].Type.(design.Object)
+			att := o["attName"]
+			if diff := cmp.Diff(want, att.Validation.Values); diff != "" {
+				t.Errorf("att.Validation.Values mismatch (-want +got):\n%s", diff)
 			}
 		})
 
-		Context("with a valid enum validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.String, func() {
-						apidsl.Enum("red", "blue")
-					})
-				}
-			})
-
-			It("records the validation", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				Ω(att.Validation).ShouldNot(BeNil())
-				Ω(att.Validation.Values).Should(Equal([]interface{}{"red", "blue"}))
-			})
-		})
-
-		Context("with an incompatible enum validation type", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.Integer, func() {
-						apidsl.Enum(1, "blue")
-					})
-				}
-			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
-			})
-		})
-
-		Context("with a default value that doesn't exist in enum", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.Integer, func() {
-						apidsl.Enum(1, 2, 3)
-						apidsl.Default(4)
-					})
-				}
-			})
-			It("produces an error", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
-				Ω(dslengine.Errors.Error()).Should(Equal(
-					`type "bar": field attName - default value 4 is not one of the accepted values: []interface {}{1, 2, 3}`))
-			})
-		})
-
-		Context("with a valid format validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.String, func() {
-						apidsl.Format("email")
-					})
-				}
-			})
-
-			It("records the validation", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				Ω(att.Validation).ShouldNot(BeNil())
-				Ω(att.Validation.Format).Should(Equal("email"))
-			})
-		})
-
-		Context("with an invalid format validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.String, func() {
-						apidsl.Format("emailz")
-					})
-				}
-			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
-			})
-		})
-
-		Context("with a valid pattern validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.String, func() {
-						apidsl.Pattern("^foo$")
-					})
-				}
-			})
-
-			It("records the validation", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				Ω(att.Validation).ShouldNot(BeNil())
-				Ω(att.Validation.Pattern).Should(Equal("^foo$"))
-			})
-		})
-
-		Context("with an invalid pattern validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.String, func() {
-						apidsl.Pattern("[invalid")
-					})
-				}
-			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
-			})
-		})
-
-		Context("with an invalid format validation type", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.Integer, func() {
-						apidsl.Format("email")
-					})
-				}
-			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
-			})
-		})
-
-		Context("with a valid min value validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.Integer, func() {
-						apidsl.Minimum(2)
-					})
-				}
-			})
-
-			It("records the validation", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				Ω(att.Validation).ShouldNot(BeNil())
-				Ω(*att.Validation.Minimum).Should(Equal(2.0))
-			})
-		})
-
-		Context("with an invalid min value validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.String, func() {
-						apidsl.Minimum(2)
-					})
-				}
-			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
-			})
-		})
-
-		Context("with a valid max value validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.Integer, func() {
-						apidsl.Maximum(2)
-					})
-				}
-			})
-
-			It("records the validation", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				Ω(att.Validation).ShouldNot(BeNil())
-				Ω(*att.Validation.Maximum).Should(Equal(2.0))
-			})
-		})
-
-		Context("with an invalid max value validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.String, func() {
-						apidsl.Maximum(2)
-					})
-				}
-			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
-			})
-		})
-
-		Context("with a valid min length validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, apidsl.ArrayOf(design.Integer), func() {
-						apidsl.MinLength(2)
-					})
-				}
-			})
-
-			It("records the validation", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				Ω(att.Validation).ShouldNot(BeNil())
-				Ω(*att.Validation.MinLength).Should(Equal(2))
-			})
-		})
-
-		Context("with an invalid min length validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.Integer, func() {
-						apidsl.MinLength(2)
-					})
-				}
-			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
-			})
-		})
-
-		Context("with a valid max length validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.String, func() {
-						apidsl.MaxLength(2)
-					})
-				}
-			})
-
-			It("records the validation", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				Ω(att.Validation).ShouldNot(BeNil())
-				Ω(*att.Validation.MaxLength).Should(Equal(2))
-			})
-		})
-
-		Context("with an invalid max length validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.Integer, func() {
-						apidsl.MaxLength(2)
-					})
-				}
-			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
-			})
-		})
-
-		Context("with a required field validation", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Attribute(attName, design.String)
-					apidsl.Required(attName)
-				}
-			})
-
-			It("records the validation", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				Ω(design.Design.Types["bar"].Validation).ShouldNot(BeNil())
-				Ω(design.Design.Types["bar"].Validation.Required).Should(Equal([]string{attName}))
-			})
-		})
-	})
-
-	Context("actions with different http methods", func() {
-		It("should be valid because methods are different", func() {
+		t.Run("with an incompatible enum validation type", func(t *testing.T) {
 			dslengine.Reset()
-
-			apidsl.Resource("one", func() {
-				apidsl.Action("first", func() {
-					apidsl.Routing(apidsl.GET("/:first"))
-				})
-				apidsl.Action("second", func() {
-					apidsl.Routing(apidsl.DELETE("/:second"))
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.Integer, func() {
+					apidsl.Enum(1, "blue")
 				})
 			})
-
-			dslengine.Run()
-
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
+			err := dslengine.Run()
+			if err == nil {
+				t.Fatal("expected an error")
+			}
 		})
+
+		t.Run("with a default value that doesn't exist in enum", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.Integer, func() {
+					apidsl.Enum(1, 2, 3)
+					apidsl.Default(4)
+				})
+			})
+			err := dslengine.Run()
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+
+		t.Run("with a valid format validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.String, func() {
+					apidsl.Format("email")
+				})
+			})
+			if err := dslengine.Run(); err != nil {
+				t.Fatal(err)
+			}
+			want := "email"
+			o := design.Design.Types["bar"].Type.(design.Object)
+			att := o["attName"]
+			if diff := cmp.Diff(want, att.Validation.Format); diff != "" {
+				t.Errorf("att.Validation.Format mismatch (-want +got):\n%s", diff)
+			}
+		})
+
+		t.Run("with an invalid format validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.String, func() {
+					apidsl.Format("invalid")
+				})
+			})
+			err := dslengine.Run()
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+
+		t.Run("with a valid pattern validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.String, func() {
+					apidsl.Pattern("^foo$")
+				})
+			})
+			if err := dslengine.Run(); err != nil {
+				t.Fatal(err)
+			}
+			o := design.Design.Types["bar"].Type.(design.Object)
+			att := o["attName"]
+			if att.Validation.Pattern != "^foo$" {
+				t.Errorf("att.Validation.Pattern = %q; want %q", att.Validation.Pattern, "^foo$")
+			}
+		})
+
+		t.Run("with an invalid pattern validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.String, func() {
+					apidsl.Pattern("[invalid")
+				})
+			})
+			err := dslengine.Run()
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+
+		t.Run("with an invalid format validation type", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.Integer, func() {
+					apidsl.Format("email")
+				})
+			})
+			err := dslengine.Run()
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+
+		t.Run("with a valid min value validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.Integer, func() {
+					apidsl.Minimum(2)
+				})
+			})
+			if err := dslengine.Run(); err != nil {
+				t.Fatal(err)
+			}
+			o := design.Design.Types["bar"].Type.(design.Object)
+			att := o["attName"]
+			if *att.Validation.Minimum != 2 {
+				t.Errorf("att.Validation.Minimum = %f; want 2", *att.Validation.Minimum)
+			}
+		})
+
+		t.Run("with an invalid min value validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.String, func() {
+					apidsl.Minimum(2)
+				})
+			})
+			err := dslengine.Run()
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+
+		t.Run("with a valid max value validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.Integer, func() {
+					apidsl.Maximum(2)
+				})
+			})
+			if err := dslengine.Run(); err != nil {
+				t.Fatal(err)
+			}
+			o := design.Design.Types["bar"].Type.(design.Object)
+			att := o["attName"]
+			if *att.Validation.Maximum != 2 {
+				t.Errorf("att.Validation.Maximum = %f; want 2", *att.Validation.Maximum)
+			}
+		})
+
+		t.Run("with an invalid max value validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.String, func() {
+					apidsl.Maximum(2)
+				})
+			})
+			err := dslengine.Run()
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+
+		t.Run("with a valid min length validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", apidsl.ArrayOf(design.Integer), func() {
+					apidsl.MinLength(2)
+				})
+			})
+			if err := dslengine.Run(); err != nil {
+				t.Fatal(err)
+			}
+			o := design.Design.Types["bar"].Type.(design.Object)
+			att := o["attName"]
+			if *att.Validation.MinLength != 2 {
+				t.Errorf("att.Validation.MinLength = %d; want 2", *att.Validation.MinLength)
+			}
+		})
+
+		t.Run("with an invalid min length validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.Integer, func() {
+					apidsl.MinLength(2)
+				})
+			})
+			err := dslengine.Run()
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+
+		t.Run("with a valid max length validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.String, func() {
+					apidsl.MaxLength(2)
+				})
+			})
+			if err := dslengine.Run(); err != nil {
+				t.Fatal(err)
+			}
+			o := design.Design.Types["bar"].Type.(design.Object)
+			att := o["attName"]
+			if *att.Validation.MaxLength != 2 {
+				t.Errorf("att.Validation.MaxLength = %d; want 2", *att.Validation.MaxLength)
+			}
+		})
+
+		t.Run("with an invalid max length validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.Integer, func() {
+					apidsl.MaxLength(2)
+				})
+			})
+			err := dslengine.Run()
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+		})
+
+		t.Run("with a required field validation", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Type("bar", func() {
+				apidsl.Attribute("attName", design.String)
+				apidsl.Required("attName")
+			})
+			if err := dslengine.Run(); err != nil {
+				t.Fatal(err)
+			}
+			validation := design.Design.Types["bar"].Validation
+			if diff := cmp.Diff([]string{"attName"}, validation.Required); diff != "" {
+				t.Errorf("validation.Required mismatch (-want +got):\n%s", diff)
+			}
+		})
+
 	})
 
-	Context("with an action", func() {
-		var dsl func()
+	t.Run("actions with different http methods", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Resource("one", func() {
+			apidsl.Action("first", func() {
+				apidsl.Routing(apidsl.GET("/:first"))
+			})
+			apidsl.Action("second", func() {
+				apidsl.Routing(apidsl.DELETE("/:second"))
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+	})
 
-		JustBeforeEach(func() {
+	t.Run("with an action", func(t *testing.T) {
+
+		t.Run("which has a file type param", func(t *testing.T) {
 			dslengine.Reset()
 			apidsl.Resource("foo", func() {
 				apidsl.Action("bar", func() {
 					apidsl.Routing(apidsl.GET("/buz"))
-					dsl()
+					apidsl.Params(func() {
+						apidsl.Param("file", design.File) // action params cannot be a file
+					})
 				})
 			})
-			dslengine.Run()
+			if err := dslengine.Run(); err == nil {
+				t.Fatal("expected an error")
+			}
 		})
 
-		Context("which has a file type param", func() {
-			BeforeEach(func() {
-				dsl = func() {
+		t.Run("which has a file array type param", func(t *testing.T) {
+			dslengine.Reset()
+			apidsl.Resource("foo", func() {
+				apidsl.Action("bar", func() {
+					apidsl.Routing(apidsl.GET("/buz"))
 					apidsl.Params(func() {
-						apidsl.Param("file", design.File)
+						apidsl.Param("file_array", apidsl.ArrayOf(design.File)) // action params cannot be a file array
 					})
-				}
+				})
 			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors.Error()).Should(Equal(
-					`resource "foo" action "bar": Param file has an invalid type, action params cannot be a file`,
-				))
-			})
+			if err := dslengine.Run(); err == nil {
+				t.Fatal("expected an error")
+			}
 		})
 
-		Context("which has a file array type param", func() {
-			BeforeEach(func() {
-				dsl = func() {
-					apidsl.Params(func() {
-						apidsl.Param("file_array", apidsl.ArrayOf(design.File))
-					})
-				}
-			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors.Error()).Should(Equal(
-					`resource "foo" action "bar": Param file_array has an invalid type, action params cannot be a file array`,
-				))
-			})
-		})
-
-		Context("which has a payload contains a file", func() {
+		t.Run("which has a payload contains a file", func(t *testing.T) {
 			dslengine.Reset()
 			var payload = apidsl.Type("qux", func() {
 				apidsl.Attribute("file", design.File)
 				apidsl.Required("file")
 			})
-			dslengine.Run()
+			apidsl.Resource("foo", func() {
+				apidsl.Action("bar", func() {
+					apidsl.Routing(apidsl.GET("/buz"))
+					apidsl.Payload(payload) // action payloads cannot contain a file
+				})
+			})
+			if err := dslengine.Run(); err == nil {
+				t.Fatal("expected an error")
+			}
+		})
 
-			BeforeEach(func() {
-				dsl = func() {
+		t.Run("which has a payload contains a file and multipart form", func(t *testing.T) {
+			dslengine.Reset()
+			var payload = apidsl.Type("qux", func() {
+				apidsl.Attribute("file", design.File)
+				apidsl.Required("file")
+			})
+			apidsl.Resource("foo", func() {
+				apidsl.Action("bar", func() {
+					apidsl.Routing(apidsl.GET("/buz"))
 					apidsl.Payload(payload)
-				}
-			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors.Error()).Should(Equal(
-					`resource "foo" action "bar": Payload qux contains an invalid type, action payloads cannot contain a file`,
-				))
-			})
-
-			Context("and multipart form", func() {
-				BeforeEach(func() {
-					dsl = func() {
-						apidsl.Payload(payload)
-						apidsl.MultipartForm()
-					}
-				})
-
-				It("produces no error", func() {
-					Ω(dslengine.Errors).ShouldNot(HaveOccurred())
+					apidsl.MultipartForm()
 				})
 			})
+			if err := dslengine.Run(); err != nil {
+				t.Fatal(err)
+			}
 		})
 
-		Context("which has a response contains a file", func() {
-			BeforeEach(func() {
-				dslengine.Reset()
-				var response = apidsl.MediaType("application/vnd.shogoa.example", func() {
-					apidsl.TypeName("quux")
-					apidsl.Attributes(func() {
-						apidsl.Attribute("file", design.File)
-						apidsl.Required("file")
-					})
-					apidsl.View("default", func() {
-						apidsl.Attribute("file")
-					})
+		t.Run("which has a response contains a file", func(t *testing.T) {
+			dslengine.Reset()
+			var response = apidsl.MediaType("application/vnd.shogoa.example", func() {
+				apidsl.TypeName("quux")
+				apidsl.Attributes(func() {
+					apidsl.Attribute("file", design.File)
+					apidsl.Required("file")
 				})
-				dslengine.Run()
-				dsl = func() {
-					apidsl.Response(design.OK, response)
-				}
+				apidsl.View("default", func() {
+					apidsl.Attribute("file")
+				})
 			})
-
-			It("produces an error", func() {
-				Ω(dslengine.Errors.Error()).Should(Equal(
-					`resource "foo" action "bar": Response OK contains an invalid type, action responses cannot contain a file`,
-				))
+			apidsl.Resource("foo", func() {
+				apidsl.Action("bar", func() {
+					apidsl.Routing(apidsl.GET("/buz"))
+					apidsl.Response(design.OK, response) // action responses cannot contain a file
+				})
 			})
+			if err := dslengine.Run(); err == nil {
+				t.Fatal("expected an error")
+			}
 		})
+
 	})
-
-	Describe("EncoderDefinition", func() {
-		var (
-			enc           *design.EncodingDefinition
-			oldGoPath     string
-			oldWorkingDir string
-			cellarPath    string
-		)
-
-		BeforeEach(func() {
-			enc = &design.EncodingDefinition{MIMETypes: []string{"application/foo"}, Encoder: true, PackagePath: "github.com/shogo82148/shogoa/encoding/foo"}
-			oldGoPath = build.Default.GOPATH
-
-			var err error
-			oldWorkingDir, err = os.Getwd()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			cellarPath = path.Join(oldWorkingDir, "tmp_gopath/src/github.com/shogo82148/shogoa_fake_cellar")
-			Ω(os.MkdirAll(cellarPath, 0777)).ShouldNot(HaveOccurred())
-		})
-
-		JustBeforeEach(func() {
-			build.Default.GOPATH = path.Join(oldWorkingDir, "tmp_gopath")
-			Ω(os.Chdir(cellarPath)).ShouldNot(HaveOccurred())
-		})
-
-		AfterEach(func() {
-			build.Default.GOPATH = oldGoPath
-			os.Chdir(oldWorkingDir)
-			Ω(os.RemoveAll("tmp_gopath")).ShouldNot(HaveOccurred())
-		})
-
-		Context("with package is not found", func() {
-			It("returns a validation error", func() {
-				Ω(len(enc.Validate().Errors)).Should(Equal(1))
-				Ω(enc.Validate().Errors[0].Error()).Should(MatchRegexp("^invalid Go package path"))
-			})
-		})
-
-		// FIXME @shogo82148
-		// Context("with package in gopath", func() {
-		// 	BeforeEach(func() {
-		// 		packagePath := path.Join(cellarPath, "../shogoa/encoding/foo")
-
-		// 		Ω(os.MkdirAll(packagePath, 0777)).ShouldNot(HaveOccurred())
-		// 		Ω(ioutil.WriteFile(path.Join(packagePath, "encoding.go"), []byte("package foo"), 0777)).ShouldNot(HaveOccurred())
-		// 	})
-
-		// 	It("validates EncoderDefinition", func() {
-		// 		Ω(enc.Validate().Errors).Should(BeNil())
-		// 	})
-		// })
-
-		// Context("with package in vendor", func() {
-		// 	BeforeEach(func() {
-		// 		packagePath := path.Join(cellarPath, "vendor/github.com/shogo82148/shogoa/encoding/foo")
-
-		// 		Ω(os.MkdirAll(packagePath, 0777)).ShouldNot(HaveOccurred())
-		// 		Ω(ioutil.WriteFile(path.Join(packagePath, "encoding.go"), []byte("package foo"), 0777)).ShouldNot(HaveOccurred())
-		// 	})
-
-		// 	It("validates EncoderDefinition", func() {
-		// 		Ω(enc.Validate().Errors).Should(BeNil())
-		// 	})
-		// })
-	})
-})
+}
