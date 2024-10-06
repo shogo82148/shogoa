@@ -42,6 +42,7 @@ func (t *TestCD) DependsOn() []dslengine.Root {
 	return nil
 }
 
+// AllSets implements Root.
 func (t *TestCD) AllSets() iter.Seq[dslengine.DefinitionSet] {
 	return func(yield func(dslengine.DefinitionSet) bool) {
 		yield(dslengine.DefinitionSet{t})
