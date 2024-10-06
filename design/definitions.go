@@ -510,16 +510,11 @@ func (a *APIDefinition) AllSets() iter.Seq[dslengine.DefinitionSet] {
 			return
 		}
 
-		// And now that we have everything - the resources. The resource
-		// lifecycle handlers dispatch to their children elements, like Actions,
-		// etc.. We must process parent resources first to ensure that query
-		// string and path parameters are initialized by the time a child
-		// resource action parameters are categorized.
+		// And now that we have everything - the resources.
 		resources := make([]*ResourceDefinition, 0, len(a.Resources))
 		for res := range a.AllResources() {
 			resources = append(resources, res)
 		}
-		sort.Sort(byParent(resources))
 		defs := make([]dslengine.Definition, len(resources))
 		for i, r := range resources {
 			defs[i] = r
@@ -748,7 +743,10 @@ func (a *APIDefinition) MediaTypeWithIdentifier(id string) *MediaTypeDefinition 
 	return nil
 }
 
-// AllResources returns an iterator over all the resources sorted in alphabetical order.
+// AllResources returns an iterator over all the resources.
+// If there is a parent-child relationship between resources,
+// they are sorted in the order of parent first and child second.
+// Sibling resources are sorted in alphabetical order by name.
 func (a *APIDefinition) AllResources() iter.Seq[*ResourceDefinition] {
 	res := make([]*ResourceDefinition, 0, len(a.Resources))
 	for _, r := range a.Resources {
@@ -757,13 +755,19 @@ func (a *APIDefinition) AllResources() iter.Seq[*ResourceDefinition] {
 
 	// Iterate parent resources first so that action parameters are
 	// finalized prior to child actions needing them.
+	parent := func(r *ResourceDefinition) *ResourceDefinition {
+		if r.ParentName == "" {
+			return nil
+		}
+		return a.Resources[r.ParentName]
+	}
 	isParent := func(p, c *ResourceDefinition) bool {
-		par := c.Parent()
+		par := parent(c)
 		for par != nil {
 			if par == p {
 				return true
 			}
-			par = par.Parent()
+			par = parent(par)
 		}
 		return false
 	}

@@ -397,21 +397,43 @@ func TestAPIDefinition_AllUserTypes(t *testing.T) {
 }
 
 func TestAPIDefinition_AllResources(t *testing.T) {
-	api := &APIDefinition{
-		Resources: map[string]*ResourceDefinition{
-			"example":  {Name: "example"},
-			"example2": {Name: "example2"},
-		},
-	}
+	t.Run("sort by name", func(t *testing.T) {
+		api := &APIDefinition{
+			Resources: map[string]*ResourceDefinition{
+				"A": {Name: "A"},
+				"B": {Name: "B"},
+				"C": {Name: "C"},
+			},
+		}
 
-	got := []string{}
-	for res := range api.AllResources() {
-		got = append(got, res.Name)
-	}
-	want := []string{"example", "example2"}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("unexpected resources (-want, +got):\n%s", diff)
-	}
+		got := []string{}
+		for res := range api.AllResources() {
+			got = append(got, res.Name)
+		}
+		want := []string{"A", "B", "C"}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected resources (-want, +got):\n%s", diff)
+		}
+	})
+
+	t.Run("parent is first", func(t *testing.T) {
+		api := &APIDefinition{
+			Resources: map[string]*ResourceDefinition{
+				"A": {Name: "A", ParentName: "B"},
+				"B": {Name: "B", ParentName: "C"},
+				"C": {Name: "C"},
+			},
+		}
+
+		got := []string{}
+		for res := range api.AllResources() {
+			got = append(got, res.Name)
+		}
+		want := []string{"C", "B", "A"}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected resources (-want, +got):\n%s", diff)
+		}
+	})
 }
 
 func TestAPIDefinition_AllSets(t *testing.T) {
