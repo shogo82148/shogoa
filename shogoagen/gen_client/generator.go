@@ -352,11 +352,10 @@ func (g *Generator) generateResourceClient(pkgDir string, res *design.ResourceDe
 	}
 	g.genfiles = append(g.genfiles, filename)
 
-	err = res.IterateFileServers(func(fs *design.FileServerDefinition) error {
-		return g.generateFileServer(file, fs, funcs)
-	})
-	if err != nil {
-		return err
+	for fs := range res.AllFileServers() {
+		if err := g.generateFileServer(file, fs, funcs); err != nil {
+			return err
+		}
 	}
 
 	err = res.IterateActions(func(action *design.ActionDefinition) error {

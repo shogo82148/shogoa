@@ -3,6 +3,7 @@ package design
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
@@ -355,6 +356,238 @@ func TestResourceDefinition_PathParams(t *testing.T) {
 		}
 		if _, ok := pathParams["basepath"]; !ok {
 			t.Error("missing key basepath")
+		}
+	})
+}
+
+func TestResourceDefinition_AllActions(t *testing.T) {
+	resource := &ResourceDefinition{
+		Actions: map[string]*ActionDefinition{
+			"action1": {Name: "action1"},
+			"action2": {Name: "action2"},
+		},
+	}
+
+	got := []string{}
+	for act := range resource.AllActions() {
+		got = append(got, act.Name)
+	}
+	want := []string{"action1", "action2"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected actions (-want, +got):\n%s", diff)
+	}
+}
+
+func TestResourceDefinition_AllFileServers(t *testing.T) {
+	resource := &ResourceDefinition{
+		FileServers: []*FileServerDefinition{
+			{FilePath: "/C"},
+			{FilePath: "/B"},
+			{FilePath: "/A"},
+		},
+	}
+
+	got := []string{}
+	for fs := range resource.AllFileServers() {
+		got = append(got, fs.FilePath)
+	}
+	want := []string{"/A", "/B", "/C"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected file servers (-want, +got):\n%s", diff)
+	}
+}
+
+func TestAPIDefinition_AllMediaTypes(t *testing.T) {
+	api := &APIDefinition{
+		MediaTypes: map[string]*MediaTypeDefinition{
+			"application/example":  {Identifier: "application/example"},
+			"application/example2": {Identifier: "application/example2"},
+		},
+	}
+
+	got := []string{}
+	for mt := range api.AllMediaTypes() {
+		got = append(got, mt.Identifier)
+	}
+	want := []string{"application/example", "application/example2"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected media types (-want, +got):\n%s", diff)
+	}
+}
+
+func TestAPIDefinition_AllUserTypes(t *testing.T) {
+	api := &APIDefinition{
+		Types: map[string]*UserTypeDefinition{
+			"example":  {TypeName: "example"},
+			"example2": {TypeName: "example2"},
+		},
+	}
+
+	got := []string{}
+	for ut := range api.AllUserTypes() {
+		got = append(got, ut.TypeName)
+	}
+	want := []string{"example", "example2"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected user types (-want, +got):\n%s", diff)
+	}
+}
+
+func TestAPIDefinition_AllResponses(t *testing.T) {
+	api := &APIDefinition{
+		Responses: map[string]*ResponseDefinition{
+			"example":  {Name: "example"},
+			"example2": {Name: "example2"},
+		},
+	}
+
+	got := []string{}
+	for res := range api.AllResponses() {
+		got = append(got, res.Name)
+	}
+	want := []string{"example", "example2"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected responses (-want, +got):\n%s", diff)
+	}
+}
+
+func TestAPIDefinition_AllResources(t *testing.T) {
+	t.Run("sort by name", func(t *testing.T) {
+		api := &APIDefinition{
+			Resources: map[string]*ResourceDefinition{
+				"A": {Name: "A"},
+				"B": {Name: "B"},
+				"C": {Name: "C"},
+			},
+		}
+
+		got := []string{}
+		for res := range api.AllResources() {
+			got = append(got, res.Name)
+		}
+		want := []string{"A", "B", "C"}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected resources (-want, +got):\n%s", diff)
+		}
+	})
+
+	t.Run("parent is first", func(t *testing.T) {
+		api := &APIDefinition{
+			Resources: map[string]*ResourceDefinition{
+				"A": {Name: "A", ParentName: "B"},
+				"B": {Name: "B", ParentName: "C"},
+				"C": {Name: "C"},
+			},
+		}
+
+		got := []string{}
+		for res := range api.AllResources() {
+			got = append(got, res.Name)
+		}
+		want := []string{"C", "B", "A"}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected resources (-want, +got):\n%s", diff)
+		}
+	})
+}
+
+func TestAPIDefinition_AllSets(t *testing.T) {
+	t.Run("should order nested resources", func(t *testing.T) {
+		api := &APIDefinition{
+			Name: "Test",
+			Resources: map[string]*ResourceDefinition{
+				"V": {Name: "V", ParentName: "W"},
+				"W": {Name: "W", ParentName: "X"},
+				"X": {Name: "X", ParentName: "Y"},
+				"Y": {Name: "Y", ParentName: "Z"},
+				"Z": {Name: "Z"},
+			},
+		}
+
+		var resources []*ResourceDefinition
+		for s := range api.AllSets() {
+			if len(s) == 0 {
+				continue
+			}
+			if _, ok := s[0].(*ResourceDefinition); !ok {
+				continue
+			}
+			resources = make([]*ResourceDefinition, len(s))
+			for i, res := range s {
+				resources[i] = res.(*ResourceDefinition)
+			}
+		}
+
+		if resources[0].Name != "Z" {
+			t.Errorf("got %s, expected Z", resources[0].Name)
+		}
+		if resources[1].Name != "Y" {
+			t.Errorf("got %s, expected Y", resources[1].Name)
+		}
+		if resources[2].Name != "X" {
+			t.Errorf("got %s, expected X", resources[2].Name)
+		}
+		if resources[3].Name != "W" {
+			t.Errorf("got %s, expected W", resources[3].Name)
+		}
+		if resources[4].Name != "V" {
+			t.Errorf("got %s, expected V", resources[4].Name)
+		}
+	})
+
+	t.Run("should order multiple nested resources", func(t *testing.T) {
+		api := &APIDefinition{
+			Name: "Test",
+			Resources: map[string]*ResourceDefinition{
+				"A": {Name: "A"},
+				"B": {Name: "B", ParentName: "A"},
+				"C": {Name: "C", ParentName: "A"},
+				"I": {Name: "I"},
+				"J": {Name: "J", ParentName: "K"},
+				"K": {Name: "K", ParentName: "I"},
+				"X": {Name: "X"},
+				"Y": {Name: "Y"},
+				"Z": {Name: "Z"},
+			},
+		}
+
+		var resources []*ResourceDefinition
+		for s := range api.AllSets() {
+			if len(s) == 0 {
+				continue
+			}
+			if _, ok := s[0].(*ResourceDefinition); !ok {
+				continue
+			}
+			resources = make([]*ResourceDefinition, len(s))
+			for i, res := range s {
+				resources[i] = res.(*ResourceDefinition)
+			}
+		}
+
+		if resources[0].Name != "A" {
+			t.Errorf("got %s, expected A", resources[0].Name)
+		}
+		if resources[1].Name != "B" {
+			t.Errorf("got %s, expected B", resources[1].Name)
+		}
+		if resources[2].Name != "C" {
+			t.Errorf("got %s, expected C", resources[2].Name)
+		}
+		if resources[3].Name != "I" {
+			t.Errorf("got %s, expected I", resources[3].Name)
+		}
+		if resources[4].Name != "K" {
+			t.Errorf("got %s, expected K", resources[4].Name)
+		}
+		if resources[5].Name != "J" {
+			t.Errorf("got %s, expected J", resources[5].Name)
+		}
+		if resources[6].Name != "X" {
+			t.Errorf("got %s, expected X", resources[6].Name)
+		}
+		if resources[7].Name != "Y" {
+			t.Errorf("got %s, expected Y", resources[7].Name)
 		}
 	})
 }

@@ -1,6 +1,7 @@
 package apidsl_test
 
 import (
+	"iter"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -39,6 +40,13 @@ func (t *TestCD) DSLName() string {
 // DependsOn returns the DSL dependencies.
 func (t *TestCD) DependsOn() []dslengine.Root {
 	return nil
+}
+
+// AllSets implements Root.
+func (t *TestCD) AllSets() iter.Seq[dslengine.DefinitionSet] {
+	return func(yield func(dslengine.DefinitionSet) bool) {
+		yield(dslengine.DefinitionSet{t})
+	}
 }
 
 // IterateSets implement Root

@@ -3,8 +3,10 @@ package design
 import (
 	"errors"
 	"fmt"
+	"iter"
 	"net/http"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 
@@ -344,24 +346,39 @@ type ContainerDefinition interface {
 }
 
 // ResourceIterator is the type of functions given to IterateResources.
+//
+// Deprecated: Use [iter.Seq] instead.
 type ResourceIterator func(r *ResourceDefinition) error
 
 // MediaTypeIterator is the type of functions given to IterateMediaTypes.
+//
+// Deprecated: Use [iter.Seq] instead.
 type MediaTypeIterator func(m *MediaTypeDefinition) error
 
 // UserTypeIterator is the type of functions given to IterateUserTypes.
+//
+// Deprecated: Use [iter.Seq] instead.
 type UserTypeIterator func(m *UserTypeDefinition) error
 
 // ActionIterator is the type of functions given to IterateActions.
+//
+// Deprecated: Use [iter.Seq] instead.
 type ActionIterator func(a *ActionDefinition) error
 
-// FileServerIterator is the type of functions given to IterateFileServers.
-type FileServerIterator func(f *FileServerDefinition) error
-
 // HeaderIterator is the type of functions given to IterateHeaders.
+//
+// Deprecated: Use [iter.Seq] instead.
 type HeaderIterator func(name string, isRequired bool, h *AttributeDefinition) error
 
+// HeaderDefinition defines a header parameter.
+type HeaderDefinition struct {
+	IsRequired bool
+	Attribute  *AttributeDefinition
+}
+
 // ResponseIterator is the type of functions given to IterateResponses.
+//
+// Deprecated: Use [iter.Seq] instead.
 type ResponseIterator func(r *ResponseDefinition) error
 
 // NewAPIDefinition returns a new design with built-in response templates.
@@ -451,8 +468,62 @@ func (a *APIDefinition) DependsOn() []dslengine.Root {
 	return nil
 }
 
+// AllSets returns an iterator that yields the API definition, user types, media types and
+// finally resources.
+func (a *APIDefinition) AllSets() iter.Seq[dslengine.DefinitionSet] {
+	return func(yield func(dslengine.DefinitionSet) bool) {
+		// First run the top level API DSL to initialize responses and
+		// response templates needed by resources.
+		if !yield(dslengine.DefinitionSet{a}) {
+			return
+		}
+
+		// Then run the user type DSLs
+		typeAttributes := make([]dslengine.Definition, 0, len(a.Types))
+		for u := range a.AllUserTypes() {
+			typeAttributes = append(typeAttributes, u.AttributeDefinition)
+		}
+		if !yield(typeAttributes) {
+			return
+		}
+
+		// Then the media type DSLs
+		mediaTypes := make([]dslengine.Definition, 0, len(a.MediaTypes))
+		for mt := range a.AllMediaTypes() {
+			mediaTypes = append(mediaTypes, mt)
+		}
+		if !yield(mediaTypes) {
+			return
+		}
+
+		// Then, the Security schemes definitions
+		securitySchemes := make([]dslengine.Definition, 0, len(a.SecuritySchemes))
+		for _, scheme := range a.SecuritySchemes {
+			securitySchemes = append(securitySchemes, dslengine.Definition(scheme))
+		}
+		if !yield(securitySchemes) {
+			return
+		}
+
+		// And now that we have everything - the resources.
+		resources := make([]*ResourceDefinition, 0, len(a.Resources))
+		for res := range a.AllResources() {
+			resources = append(resources, res)
+		}
+		defs := make([]dslengine.Definition, len(resources))
+		for i, r := range resources {
+			defs[i] = r
+		}
+		if !yield(defs) {
+			return
+		}
+	}
+}
+
 // IterateSets calls the given iterator passing in the API definition, user types, media types and
 // finally resources.
+//
+// Deprecated: Use [APIDefinition.AllSets] instead.
 func (a *APIDefinition) IterateSets(iterator dslengine.SetIterator) {
 	// First run the top level API DSL to initialize responses and
 	// response templates needed by resources.
@@ -531,9 +602,28 @@ func (a *APIDefinition) PathParams() *AttributeDefinition {
 	return &AttributeDefinition{Type: obj}
 }
 
+// AllMediaTypes returns an iterator that yields all the media types sorted in alphabetical order.
+func (a *APIDefinition) AllMediaTypes() iter.Seq[*MediaTypeDefinition] {
+	names := make([]string, 0, len(a.MediaTypes))
+	for name := range a.MediaTypes {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(*MediaTypeDefinition) bool) {
+		for _, name := range names {
+			if !yield(a.MediaTypes[name]) {
+				return
+			}
+		}
+	}
+}
+
 // IterateMediaTypes calls the given iterator passing in each media type sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateMediaTypes returns that
 // error.
+//
+// Deprecated: Use [AllMediaTypes] instead.
 func (a *APIDefinition) IterateMediaTypes(it MediaTypeIterator) error {
 	names := make([]string, len(a.MediaTypes))
 	i := 0
@@ -550,9 +640,28 @@ func (a *APIDefinition) IterateMediaTypes(it MediaTypeIterator) error {
 	return nil
 }
 
+// AllUserTypes returns an iterator that yields all the user types sorted in alphabetical order.
+func (a *APIDefinition) AllUserTypes() iter.Seq[*UserTypeDefinition] {
+	names := make([]string, 0, len(a.Types))
+	for name := range a.Types {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(*UserTypeDefinition) bool) {
+		for _, name := range names {
+			if !yield(a.Types[name]) {
+				return
+			}
+		}
+	}
+}
+
 // IterateUserTypes calls the given iterator passing in each user type sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateUserTypes returns that
 // error.
+//
+// Deprecated: Use [APIDefinition.AllUserTypes] instead.
 func (a *APIDefinition) IterateUserTypes(it UserTypeIterator) error {
 	names := make([]string, len(a.Types))
 	i := 0
@@ -569,9 +678,28 @@ func (a *APIDefinition) IterateUserTypes(it UserTypeIterator) error {
 	return nil
 }
 
+// AllResponses returns an iterator that yields all responses sorted in alphabetical order.
+func (a *APIDefinition) AllResponses() iter.Seq[*ResponseDefinition] {
+	names := make([]string, 0, len(a.Responses))
+	for name := range a.Responses {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(*ResponseDefinition) bool) {
+		for _, name := range names {
+			if !yield(a.Responses[name]) {
+				return
+			}
+		}
+	}
+}
+
 // IterateResponses calls the given iterator passing in each response sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateResponses returns that
 // error.
+//
+// Deprecated: Use [APIDefinition.AllResponses] instead.
 func (a *APIDefinition) IterateResponses(it ResponseIterator) error {
 	names := make([]string, len(a.Responses))
 	i := 0
@@ -610,9 +738,51 @@ func (a *APIDefinition) MediaTypeWithIdentifier(id string) *MediaTypeDefinition 
 	return nil
 }
 
+// AllResources returns an iterator over all the resources.
+// If there is a parent-child relationship between resources,
+// they are sorted in the order of parent first and child second.
+// Sibling resources are sorted in alphabetical order by name.
+func (a *APIDefinition) AllResources() iter.Seq[*ResourceDefinition] {
+	res := make([]*ResourceDefinition, 0, len(a.Resources))
+	for _, r := range a.Resources {
+		res = append(res, r)
+	}
+
+	// Iterate parent resources first so that action parameters are
+	// finalized prior to child actions needing them.
+	parent := func(r *ResourceDefinition) *ResourceDefinition {
+		if r.ParentName == "" {
+			return nil
+		}
+		return a.Resources[r.ParentName]
+	}
+	isParent := func(p, c *ResourceDefinition) bool {
+		par := parent(c)
+		for par != nil {
+			if par == p {
+				return true
+			}
+			par = parent(par)
+		}
+		return false
+	}
+	slices.SortFunc(res, func(a, b *ResourceDefinition) int {
+		if isParent(a, b) {
+			return -1
+		}
+		if isParent(b, a) {
+			return 1
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
+	return slices.Values(res)
+}
+
 // IterateResources calls the given iterator passing in each resource sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateResources returns that
 // error.
+//
+// Deprecated: Use [AllResources] instead.
 func (a *APIDefinition) IterateResources(it ResourceIterator) error {
 	res := make([]*ResourceDefinition, len(a.Resources))
 	i := 0
@@ -727,9 +897,28 @@ func (r *ResourceDefinition) PathParams() *AttributeDefinition {
 	return &AttributeDefinition{Type: obj}
 }
 
+// AllActions returns an iterator that yields all the resource actions sorted in alphabetical order.
+func (r *ResourceDefinition) AllActions() iter.Seq[*ActionDefinition] {
+	names := make([]string, 0, len(r.Actions))
+	for name := range r.Actions {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(*ActionDefinition) bool) {
+		for _, name := range names {
+			if !yield(r.Actions[name]) {
+				return
+			}
+		}
+	}
+}
+
 // IterateActions calls the given iterator passing in each resource action sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateActions returns that
 // error.
+//
+// Deprecated: Use [AllActions] instead.
 func (r *ResourceDefinition) IterateActions(it ActionIterator) error {
 	names := make([]string, len(r.Actions))
 	i := 0
@@ -746,22 +935,25 @@ func (r *ResourceDefinition) IterateActions(it ActionIterator) error {
 	return nil
 }
 
-// IterateFileServers calls the given iterator passing each resource file server sorted by file
-// path. Iteration stops if an iterator returns an error and in this case IterateFileServers returns
-// that error.
-func (r *ResourceDefinition) IterateFileServers(it FileServerIterator) error {
-	sort.Sort(ByFilePath(r.FileServers))
-	for _, f := range r.FileServers {
-		if err := it(f); err != nil {
-			return err
-		}
-	}
-	return nil
+// AllFileServers return an iterator that yields all the resource file servers sorted by file path.
+func (r *ResourceDefinition) AllFileServers() iter.Seq[*FileServerDefinition] {
+	servers := slices.Clone(r.FileServers)
+	slices.SortFunc(servers, func(a, b *FileServerDefinition) int {
+		return strings.Compare(a.FilePath, b.FilePath)
+	})
+	return slices.Values(servers)
+}
+
+// AllHeaders returns an iterator that yields all the resource headers sorted in alphabetical order.
+func (r *ResourceDefinition) AllHeaders() iter.Seq2[string, *HeaderDefinition] {
+	return newHeaderSeq(r.Headers, r.Headers.IsRequired)
 }
 
 // IterateHeaders calls the given iterator passing in each response sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateHeaders returns that
 // error.
+//
+// Deprecated: Use [ResourceDefinition.AllHeaders] instead.
 func (r *ResourceDefinition) IterateHeaders(it HeaderIterator) error {
 	return iterateHeaders(r.Headers, r.Headers.IsRequired, it)
 }
@@ -865,7 +1057,7 @@ func (r *ResourceDefinition) PreflightPaths() []string {
 		}
 		return nil
 	})
-	r.IterateFileServers(func(fs *FileServerDefinition) error {
+	for fs := range r.AllFileServers() {
 		found := false
 		fp := fs.RequestPath
 		for _, p := range paths {
@@ -877,8 +1069,7 @@ func (r *ResourceDefinition) PreflightPaths() []string {
 		if !found {
 			paths = append(paths, fp)
 		}
-		return nil
-	})
+	}
 	return paths
 }
 
@@ -892,15 +1083,14 @@ func (r *ResourceDefinition) DSL() func() {
 // and sets the fallbacks for security schemes.
 func (r *ResourceDefinition) Finalize() {
 	meta := r.Metadata["swagger:generate"]
-	r.IterateFileServers(func(f *FileServerDefinition) error {
+	for f := range r.AllFileServers() {
 		if meta != nil {
 			if _, ok := f.Metadata["swagger:generate"]; !ok {
 				f.Metadata["swagger:generate"] = meta
 			}
 		}
 		f.Finalize()
-		return nil
-	})
+	}
 	r.IterateActions(func(a *ActionDefinition) error {
 		if meta != nil {
 			if _, ok := a.Metadata["swagger:generate"]; !ok {
@@ -1626,10 +1816,24 @@ func (a *ActionDefinition) UserTypes() map[string]*UserTypeDefinition {
 	return types
 }
 
+// AllHeaders returns an iterator that yields all the resource headers sorted in alphabetical order.
+func (a *ActionDefinition) AllHeaders() iter.Seq2[string, *HeaderDefinition] {
+	mergedHeaders := a.Parent.Headers.Merge(a.Headers)
+
+	isRequired := func(name string) bool {
+		// header required in either the Resource or Action scope?
+		return a.Parent.Headers.IsRequired(name) || a.Headers.IsRequired(name)
+	}
+
+	return newHeaderSeq(mergedHeaders, isRequired)
+}
+
 // IterateHeaders iterates over the resource-level and action-level headers,
 // calling the given iterator passing in each response sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateHeaders returns that
 // error.
+//
+// Deprecated: Use [ActionDefinition.AllHeaders] instead.
 func (a *ActionDefinition) IterateHeaders(it HeaderIterator) error {
 	mergedHeaders := a.Parent.Headers.Merge(a.Headers)
 
@@ -1641,9 +1845,28 @@ func (a *ActionDefinition) IterateHeaders(it HeaderIterator) error {
 	return iterateHeaders(mergedHeaders, isRequired, it)
 }
 
+// AllResponses returns an iterator that yields all responses sorted in alphabetical order.
+func (a *ActionDefinition) AllResponses() iter.Seq[*ResponseDefinition] {
+	names := make([]string, 0, len(a.Responses))
+	for name := range a.Responses {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(*ResponseDefinition) bool) {
+		for _, name := range names {
+			if !yield(a.Responses[name]) {
+				return
+			}
+		}
+	}
+}
+
 // IterateResponses calls the given iterator passing in each response sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateResponses returns that
 // error.
+//
+// Deprecated: Use [ActionDefinition.AllResponses] instead.
 func (a *ActionDefinition) IterateResponses(it ResponseIterator) error {
 	names := make([]string, len(a.Responses))
 	i := 0
@@ -1894,4 +2117,28 @@ func iterateHeaders(headers *AttributeDefinition, isRequired func(name string) b
 		}
 	}
 	return nil
+}
+
+func newHeaderSeq(headers *AttributeDefinition, isRequired func(name string) bool) iter.Seq2[string, *HeaderDefinition] {
+	if headers == nil || !headers.Type.IsObject() {
+		return func(func(string, *HeaderDefinition) bool) {}
+	}
+	headersMap := headers.Type.ToObject()
+	names := make([]string, 0, len(headersMap))
+	for name := range headersMap {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(string, *HeaderDefinition) bool) {
+		for _, name := range names {
+			header := &HeaderDefinition{
+				IsRequired: isRequired(name),
+				Attribute:  headersMap[name],
+			}
+			if !yield(name, header) {
+				return
+			}
+		}
+	}
 }

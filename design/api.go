@@ -1,6 +1,7 @@
 package design
 
 import (
+	"iter"
 	"mime"
 	"regexp"
 	"slices"
@@ -240,6 +241,27 @@ func (r MediaTypeRoot) DSLName() string {
 // DependsOn return the DSL roots the generated media types DSL root depends on, that's the API DSL.
 func (r MediaTypeRoot) DependsOn() []dslengine.Root {
 	return []dslengine.Root{Design}
+}
+
+// AllSets returns the generated media type definition set.
+func (r MediaTypeRoot) AllSets() iter.Seq[dslengine.DefinitionSet] {
+	return func(yield func(dslengine.DefinitionSet) bool) {
+		canonicalIDs := make([]string, 0, len(r))
+		for _, mt := range r {
+			canonicalID := CanonicalIdentifier(mt.Identifier)
+			Design.MediaTypes[canonicalID] = mt
+			canonicalIDs = append(canonicalIDs, canonicalID)
+		}
+		slices.Sort(canonicalIDs)
+
+		set := make([]dslengine.Definition, len(canonicalIDs))
+		for i, cid := range canonicalIDs {
+			set[i] = Design.MediaTypes[cid]
+		}
+		if !yield(set) {
+			return
+		}
+	}
 }
 
 // IterateSets iterates over the one generated media type definition set.
