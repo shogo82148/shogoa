@@ -15,7 +15,7 @@ jobs:
           - "macos-latest"
         go:
           - "stable"
-          - "1.22"
+          - "1.23"
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
