@@ -585,9 +585,28 @@ func (a *APIDefinition) IterateMediaTypes(it MediaTypeIterator) error {
 	return nil
 }
 
+// AllUserTypes returns an iterator that yields all the user types sorted in alphabetical order.
+func (a *APIDefinition) AllUserTypes() iter.Seq[*UserTypeDefinition] {
+	names := make([]string, 0, len(a.Types))
+	for name := range a.Types {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(*UserTypeDefinition) bool) {
+		for _, name := range names {
+			if !yield(a.Types[name]) {
+				return
+			}
+		}
+	}
+}
+
 // IterateUserTypes calls the given iterator passing in each user type sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateUserTypes returns that
 // error.
+//
+// Deprecated: Use [AllUserTypes] instead.
 func (a *APIDefinition) IterateUserTypes(it UserTypeIterator) error {
 	names := make([]string, len(a.Types))
 	i := 0
