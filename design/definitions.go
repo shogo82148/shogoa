@@ -834,6 +834,8 @@ func (r *ResourceDefinition) AllActions() iter.Seq[*ActionDefinition] {
 // IterateActions calls the given iterator passing in each resource action sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateActions returns that
 // error.
+//
+// Deprecated: Use [AllActions] instead.
 func (r *ResourceDefinition) IterateActions(it ActionIterator) error {
 	names := make([]string, len(r.Actions))
 	i := 0
