@@ -396,6 +396,24 @@ func TestAPIDefinition_AllUserTypes(t *testing.T) {
 	}
 }
 
+func TestAPIDefinition_AllResponses(t *testing.T) {
+	api := &APIDefinition{
+		Responses: map[string]*ResponseDefinition{
+			"example":  {Name: "example"},
+			"example2": {Name: "example2"},
+		},
+	}
+
+	got := []string{}
+	for res := range api.AllResponses() {
+		got = append(got, res.Name)
+	}
+	want := []string{"example", "example2"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected responses (-want, +got):\n%s", diff)
+	}
+}
+
 func TestAPIDefinition_AllResources(t *testing.T) {
 	t.Run("sort by name", func(t *testing.T) {
 		api := &APIDefinition{
