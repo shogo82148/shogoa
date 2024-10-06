@@ -229,7 +229,7 @@ func TestAttribute(t *testing.T) {
 		if o["foo"].Type != design.DateTime {
 			t.Errorf("Type = %v; want %v", o["foo"].Type, design.DateTime)
 		}
-		if o["foo"].Validation != nil {
+		if o["foo"].Validation == nil {
 			t.Error("Validation = nil; want not nil")
 		}
 		if got, want := o["foo"].DefaultValue, any("1978-06-30T10:00:00+09:00"); got != want {
