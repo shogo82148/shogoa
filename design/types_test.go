@@ -281,3 +281,22 @@ func TestMediaTypeDefinition_Project(t *testing.T) {
 		}
 	})
 }
+
+func TestObject_AllAttributes(t *testing.T) {
+	o := design.Object{
+		"A": &design.AttributeDefinition{Type: design.String},
+		"B": &design.AttributeDefinition{Type: design.String},
+	}
+
+	got := []string{}
+	for name, att := range o.AllAttributes() {
+		got = append(got, name)
+		if att.Type != design.String {
+			t.Errorf("unexpected attribute type: %v", att.Type)
+		}
+	}
+	want := []string{"A", "B"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected attributes (-want +got):\n%s", diff)
+	}
+}

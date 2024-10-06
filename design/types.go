@@ -11,8 +11,10 @@ package design
 
 import (
 	"fmt"
+	"iter"
 	"mime"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -527,12 +529,31 @@ func (h *Hash) MakeMap(m map[any]any) any {
 	return hash.Interface()
 }
 
+// AllAttributes returns a sequence of all the attributes of the object.
+func (o Object) AllAttributes() iter.Seq2[string, *AttributeDefinition] {
+	names := make([]string, 0, len(o))
+	for n := range o {
+		names = append(names, n)
+	}
+	slices.Sort(names)
+
+	return func(yield func(string, *AttributeDefinition) bool) {
+		for _, n := range names {
+			if !yield(n, o[n]) {
+				break
+			}
+		}
+	}
+}
+
 // AttributeIterator is the type of the function given to IterateAttributes.
 type AttributeIterator func(string, *AttributeDefinition) error
 
 // IterateAttributes calls the given iterator passing in each attribute sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateObject returns that
 // error.
+//
+// Deprecated: Use [Object.AllAttributes] instead.
 func (o Object) IterateAttributes(it AttributeIterator) error {
 	names := make([]string, len(o))
 	i := 0
