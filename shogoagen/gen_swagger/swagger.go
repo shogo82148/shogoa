@@ -428,14 +428,13 @@ func New(api *design.APIDefinition) (*Swagger, error) {
 		for k, v := range extensionsFromDefinition(res.Metadata) {
 			s.Paths[k] = v
 		}
-		err := res.IterateFileServers(func(fs *design.FileServerDefinition) error {
+		for fs := range res.AllFileServers() {
 			if !mustGenerate(fs.Metadata) {
-				return nil
+				continue
 			}
-			return buildPathFromFileServer(s, api, fs)
-		})
-		if err != nil {
-			return err
+			if err := buildPathFromFileServer(s, api, fs); err != nil {
+				return err
+			}
 		}
 		return res.IterateActions(func(a *design.ActionDefinition) error {
 			if !mustGenerate(a.Metadata) {

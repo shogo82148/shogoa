@@ -365,11 +365,6 @@ type UserTypeIterator func(m *UserTypeDefinition) error
 // Deprecated: Use [iter.Seq] instead.
 type ActionIterator func(a *ActionDefinition) error
 
-// FileServerIterator is the type of functions given to IterateFileServers.
-//
-// Deprecated: Use [iter.Seq] instead.
-type FileServerIterator func(f *FileServerDefinition) error
-
 // HeaderIterator is the type of functions given to IterateHeaders.
 //
 // Deprecated: Use [iter.Seq] instead.
@@ -949,21 +944,6 @@ func (r *ResourceDefinition) AllFileServers() iter.Seq[*FileServerDefinition] {
 	return slices.Values(servers)
 }
 
-// IterateFileServers calls the given iterator passing each resource file server sorted by file
-// path. Iteration stops if an iterator returns an error and in this case IterateFileServers returns
-// that error.
-//
-// Deprecated: Use [AllFileServers] instead.
-func (r *ResourceDefinition) IterateFileServers(it FileServerIterator) error {
-	sort.Sort(ByFilePath(r.FileServers))
-	for _, f := range r.FileServers {
-		if err := it(f); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // AllHeaders returns an iterator that yields all the resource headers sorted in alphabetical order.
 func (r *ResourceDefinition) AllHeaders() iter.Seq2[string, *HeaderDefinition] {
 	return newHeaderSeq(r.Headers, r.Headers.IsRequired)
@@ -1077,7 +1057,7 @@ func (r *ResourceDefinition) PreflightPaths() []string {
 		}
 		return nil
 	})
-	r.IterateFileServers(func(fs *FileServerDefinition) error {
+	for fs := range r.AllFileServers() {
 		found := false
 		fp := fs.RequestPath
 		for _, p := range paths {
@@ -1089,8 +1069,7 @@ func (r *ResourceDefinition) PreflightPaths() []string {
 		if !found {
 			paths = append(paths, fp)
 		}
-		return nil
-	})
+	}
 	return paths
 }
 
@@ -1104,15 +1083,14 @@ func (r *ResourceDefinition) DSL() func() {
 // and sets the fallbacks for security schemes.
 func (r *ResourceDefinition) Finalize() {
 	meta := r.Metadata["swagger:generate"]
-	r.IterateFileServers(func(f *FileServerDefinition) error {
+	for f := range r.AllFileServers() {
 		if meta != nil {
 			if _, ok := f.Metadata["swagger:generate"]; !ok {
 				f.Metadata["swagger:generate"] = meta
 			}
 		}
 		f.Finalize()
-		return nil
-	})
+	}
 	r.IterateActions(func(a *ActionDefinition) error {
 		if meta != nil {
 			if _, ok := a.Metadata["swagger:generate"]; !ok {

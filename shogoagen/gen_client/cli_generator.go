@@ -199,7 +199,7 @@ func (g *Generator) generateCommands(commandsFile string, clientPkg string, func
 	var fsdata []map[string]interface{}
 	g.API.IterateResources(func(res *design.ResourceDefinition) error {
 		if res.FileServers != nil {
-			res.IterateFileServers(func(fs *design.FileServerDefinition) error {
+			for fs := range res.AllFileServers() {
 				wcs := design.ExtractWildcards(fs.RequestPath)
 				isDir := len(wcs) > 0
 				var reqDir, filename string
@@ -216,8 +216,7 @@ func (g *Generator) generateCommands(commandsFile string, clientPkg string, func
 					"Name":        g.fileServerMethod(fs),
 					"RequestDir":  reqDir,
 				})
-				return nil
-			})
+			}
 		}
 		return nil
 	})
