@@ -168,7 +168,7 @@ func TestSecurity(t *testing.T) {
 			t.Errorf("Resources[three].Actions[fifth].Security.Scheme.SchemeName = %v; want jwt", v)
 		}
 		if v := design.Design.Resources["auth"].Actions["auth"].Security; v != nil {
-			t.Errorf("Resources[auth].Actions[auth].Security = nil; want nil")
+			t.Errorf("Resources[auth].Actions[auth].Security = %v; want nil", v)
 		}
 		if v := design.Design.Resources["auth"].Actions["refresh"].Security.Scheme.SchemeName; v != "jwt" {
 			t.Errorf("Resources[auth].Actions[refresh].Security.Scheme.SchemeName = %v; want jwt", v)
