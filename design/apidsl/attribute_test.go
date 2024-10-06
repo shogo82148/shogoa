@@ -1,8 +1,9 @@
 package apidsl_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/design/apidsl"
 	"github.com/shogo82148/shogoa/dslengine"
@@ -42,360 +43,382 @@ func (t *TestCD) DependsOn() []dslengine.Root {
 
 // IterateSets implement Root
 func (t *TestCD) IterateSets(it dslengine.SetIterator) {
-	it([]dslengine.Definition{t})
+	_ = it([]dslengine.Definition{t})
 }
 
 // Reset is a no-op
 func (t *TestCD) Reset() {}
 
-var _ = Describe("ContainerDefinition", func() {
-	var att *design.AttributeDefinition
-	var testCD *TestCD
-	BeforeEach(func() {
+func TestContainerDefinition(t *testing.T) {
+	dslengine.Reset()
+	att := &design.AttributeDefinition{Type: design.Object{}}
+	testCD := &TestCD{AttributeDefinition: att}
+	dslengine.Register(testCD)
+	if err := dslengine.Run(); err != nil {
+		t.Fatalf("Run() = %v; want nil", err)
+	}
+	if got, want := testCD.Attribute(), att; got != want {
+		t.Errorf("Attribute() = %v; want %v", got, want)
+	}
+}
+
+func TestAttribute(t *testing.T) {
+	t.Run("with only a name", func(t *testing.T) {
 		dslengine.Reset()
-		att = &design.AttributeDefinition{Type: design.Object{}}
-		testCD = &TestCD{AttributeDefinition: att}
-		dslengine.Register(testCD)
-	})
-
-	JustBeforeEach(func() {
-		err := dslengine.Run()
-		Ω(err).ShouldNot(HaveOccurred())
-	})
-
-	It("contains attributes", func() {
-		Ω(testCD.Attribute()).Should(Equal(att))
-	})
-})
-
-var _ = Describe("Attribute", func() {
-	var name string
-	var dataType interface{}
-	var description string
-	var dsl func()
-
-	var parent *design.AttributeDefinition
-
-	BeforeEach(func() {
-		dslengine.Reset()
-		name = ""
-		dataType = nil
-		description = ""
-		dsl = nil
-	})
-
-	JustBeforeEach(func() {
 		apidsl.Type("type", func() {
-			if dsl == nil {
-				if dataType == nil {
-					apidsl.Attribute(name)
-				} else if description == "" {
-					apidsl.Attribute(name, dataType)
-				} else {
-					apidsl.Attribute(name, dataType, description)
-				}
-			} else if dataType == nil {
-				apidsl.Attribute(name, dsl)
-			} else if description == "" {
-				apidsl.Attribute(name, dataType, dsl)
-			} else {
-				apidsl.Attribute(name, dataType, description, dsl)
-			}
+			apidsl.Attribute("foo")
 		})
-		dslengine.Run()
-		if t, ok := design.Design.Types["type"]; ok {
-			parent = t.AttributeDefinition
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
+
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.String {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.String)
 		}
 	})
 
-	Context("with only a name", func() {
-		BeforeEach(func() {
-			name = "foo"
+	t.Run("with a name and datatype", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.Integer)
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of type string", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.String))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.Integer {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.Integer)
+		}
 	})
 
-	Context("with a name and datatype", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dataType = design.Integer
+	t.Run("with a name and uuid datatype", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.UUID)
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of given type", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.Integer))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.UUID {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.UUID)
+		}
 	})
 
-	Context("with a name and uuid datatype", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dataType = design.UUID
+	t.Run("with a name and date datatype", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.DateTime)
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of uuid type", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.UUID))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.DateTime {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.DateTime)
+		}
 	})
 
-	Context("with a name and date datatype", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dataType = design.DateTime
+	t.Run("with a name, datatype and description", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.Integer, "bar")
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of date type", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.DateTime))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.Integer {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.Integer)
+		}
+		if o["foo"].Description != "bar" {
+			t.Errorf("Description = %q; want %q", o["foo"].Description, "bar")
+		}
 	})
 
-	Context("with a name, datatype and description", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dataType = design.Integer
-			description = "bar"
+	t.Run("with a name and a DSL defining a 'readOnly' attribute", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", func() { apidsl.ReadOnly() })
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of given type and given description", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.Integer))
-			Ω(o[name].Description).Should(Equal(description))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if !o["foo"].IsReadOnly() {
+			t.Error("ReadOnly = false; want true")
+		}
 	})
 
-	Context("with a name and a DSL defining a 'readOnly' attribute", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() { apidsl.ReadOnly() }
+	t.Run("with a name and a DSL defining an enum validation", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", func() { apidsl.Enum("one", "two") })
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of type string set to readOnly", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.String))
-			Ω(o[name].IsReadOnly()).Should(BeTrue())
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.String {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.String)
+		}
+
+		want := []any{"one", "two"}
+		got := o["foo"].Validation.Values
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("Validation.Values mismatch (-want +got):\n%s", diff)
+		}
 	})
 
-	Context("with a name and a DSL defining an enum validation", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() { apidsl.Enum("one", "two") }
+	t.Run("with a name, type datetime and a DSL defining a default value", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.DateTime, func() { apidsl.Default("1978-06-30T10:00:00+09:00") })
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of type string with a validation", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.String))
-			Ω(o[name].Validation).ShouldNot(BeNil())
-			Ω(o[name].Validation.Values).Should(Equal([]interface{}{"one", "two"}))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.DateTime {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.DateTime)
+		}
+		if o["foo"].Validation != nil {
+			t.Error("Validation != nil; want nil")
+		}
+		if got, want := o["foo"].DefaultValue, any("1978-06-30T10:00:00+09:00"); got != want {
+			t.Errorf("DefaultValue = %v; want %v", got, want)
+		}
 	})
 
-	Context("with a name, type datetime and a DSL defining a default value", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dataType = design.DateTime
-			dsl = func() { apidsl.Default("1978-06-30T10:00:00+09:00") }
+	t.Run("with a name, type integer and a DSL defining an enum validation", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.Integer, func() { apidsl.Enum(1, 2) })
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of type string with a default value", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.DateTime))
-			Ω(o[name].Validation).Should(BeNil())
-			Ω(o[name].DefaultValue).Should(Equal(interface{}("1978-06-30T10:00:00+09:00")))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.Integer {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.Integer)
+		}
+		if o["foo"].Validation == nil {
+			t.Error("Validation = nil; want not nil")
+		}
+
+		got := o["foo"].Validation.Values
+		want := []any{1, 2}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("Validation.Values mismatch (-want +got):\n%s", diff)
+		}
 	})
 
-	Context("with a name, type integer and a DSL defining an enum validation", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dataType = design.Integer
-			dsl = func() { apidsl.Enum(1, 2) }
+	t.Run("with a name, type integer, a description and a DSL defining an enum validation", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.String, "bar", func() { apidsl.Enum("one", "two") })
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of type integer with a validation", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.Integer))
-			Ω(o[name].Validation).ShouldNot(BeNil())
-			Ω(o[name].Validation.Values).Should(Equal([]interface{}{1, 2}))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.String {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.String)
+		}
+		if o["foo"].Validation == nil {
+			t.Error("Validation = nil; want not nil")
+		}
+
+		got := o["foo"].Validation.Values
+		want := []any{"one", "two"}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("Validation.Values mismatch (-want +got):\n%s", diff)
+		}
 	})
 
-	Context("with a name, type integer, a description and a DSL defining an enum validation", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dataType = design.String
-			description = "bar"
-			dsl = func() { apidsl.Enum("one", "two") }
+	t.Run("with a name and type uuid", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.UUID)
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of type integer with a validation and the description", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.String))
-			Ω(o[name].Validation).ShouldNot(BeNil())
-			Ω(o[name].Validation.Values).Should(Equal([]interface{}{"one", "two"}))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.UUID {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.UUID)
+		}
 	})
 
-	Context("with a name and type uuid", func() {
-		BeforeEach(func() {
-			name = "birthdate"
-			dataType = design.UUID
+	t.Run("with a name and type date", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.DateTime)
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of type date with a validation and the description", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.UUID))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		if typ == nil {
+			t.Error("Type = nil; want not nil")
+		}
+		o := typ.(design.Object)
+		if o["foo"].Type != design.DateTime {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, design.DateTime)
+		}
 	})
 
-	Context("with a name and type date", func() {
-		BeforeEach(func() {
-			name = "birthdate"
-			dataType = design.DateTime
+	t.Run("with a name and a type defined by name", func(t *testing.T) {
+		dslengine.Reset()
+		foo := apidsl.Type("bar", func() {
+			apidsl.Attribute("baz")
 		})
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", "bar")
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatalf("Run() = %v; want nil", err)
+		}
 
-		It("produces an attribute of type date with a validation and the description", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(design.DateTime))
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		o := typ.(design.Object)
+		if len(o) != 1 {
+			t.Errorf("len(o) = %d; want 1", len(o))
+		}
+		if o["foo"].Type != foo {
+			t.Errorf("Type = %v; want %v", o["foo"].Type, foo)
+		}
 	})
 
-	Context("with a name and a type defined by name", func() {
-		var Foo *design.UserTypeDefinition
-
-		BeforeEach(func() {
-			name = "fooatt"
-			dataType = "foo"
-			Foo = apidsl.Type("foo", func() {
+	t.Run("with child attributes on an attribute that is not an object", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.Integer, func() {
 				apidsl.Attribute("bar")
 			})
 		})
-
-		It("produces an attribute of the corresponding type", func() {
-			t := parent.Type
-			Ω(t).ShouldNot(BeNil())
-			Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-			o := t.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(name))
-			Ω(o[name].Type).Should(Equal(Foo))
-		})
+		if err := dslengine.Run(); err == nil {
+			t.Error("Run() = nil; want an error")
+		}
 	})
 
-	Context("with child attributes", func() {
-		const childAtt = "childAtt"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() { apidsl.Attribute(childAtt) }
-		})
-
-		Context("on an attribute that is not an object", func() {
-			BeforeEach(func() {
-				dataType = design.Integer
-			})
-
-			It("fails", func() {
-				Ω(dslengine.Errors).Should(HaveOccurred())
+	t.Run("with child attributes on an attribute that does not have a type", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", func() {
+				apidsl.Attribute("bar")
 			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		Context("on an attribute that does not have a type", func() {
-			It("sets the type to Object", func() {
-				t := parent.Type
-				Ω(t).ShouldNot(BeNil())
-				Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-				o := t.(design.Object)
-				Ω(o).Should(HaveLen(1))
-				Ω(o).Should(HaveKey(name))
-				Ω(o[name].Type).Should(BeAssignableToTypeOf(design.Object{}))
-			})
-		})
-
-		Context("on an attribute of type Object", func() {
-			BeforeEach(func() {
-				dataType = design.Object{}
-			})
-
-			It("initializes the object attributes", func() {
-				Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-				t := parent.Type
-				Ω(t).ShouldNot(BeNil())
-				Ω(t).Should(BeAssignableToTypeOf(design.Object{}))
-				o := t.(design.Object)
-				Ω(o).Should(HaveLen(1))
-				Ω(o).Should(HaveKey(name))
-				Ω(o[name].Type).Should(BeAssignableToTypeOf(design.Object{}))
-				co := o[name].Type.(design.Object)
-				Ω(co).Should(HaveLen(1))
-				Ω(co).Should(HaveKey(childAtt))
-			})
-		})
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		o := typ.(design.Object)
+		if len(o) != 1 {
+			t.Errorf("len(o) = %d; want 1", len(o))
+		}
+		if _, ok := o["foo"].Type.(design.Object); !ok {
+			t.Errorf("o[\"foo\"].Type is not an object")
+		}
 	})
-})
+
+	t.Run("with child attribute on an attribute of type Object", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("type", func() {
+			apidsl.Attribute("foo", design.Object{}, func() {
+				apidsl.Attribute("bar")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		parent := design.Design.Types["type"].AttributeDefinition
+		typ := parent.Type
+		o := typ.(design.Object)
+		if len(o) != 1 {
+			t.Errorf("len(o) = %d; want 1", len(o))
+		}
+		if _, ok := o["foo"].Type.(design.Object); !ok {
+			t.Errorf("o[\"foo\"].Type is not an object")
+		}
+		co := o["foo"].Type.(design.Object)
+		if len(co) != 1 {
+			t.Errorf("len(co) = %d; want 1", len(co))
+		}
+		if _, ok := co["bar"]; !ok {
+			t.Errorf("co[\"bar\"] is not found")
+		}
+	})
+}

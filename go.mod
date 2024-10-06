@@ -1,6 +1,6 @@
 module github.com/shogo82148/shogoa
 
-go 1.22.5
+go 1.23.0
 
 require (
 	github.com/ajg/form v1.5.1
