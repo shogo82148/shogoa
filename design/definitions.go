@@ -375,6 +375,12 @@ type FileServerIterator func(f *FileServerDefinition) error
 // Deprecated: Use [iter.Seq] instead.
 type HeaderIterator func(name string, isRequired bool, h *AttributeDefinition) error
 
+// HeaderDefinition defines a header parameter.
+type HeaderDefinition struct {
+	IsRequired bool
+	Attribute  *AttributeDefinition
+}
+
 // ResponseIterator is the type of functions given to IterateResponses.
 //
 // Deprecated: Use [iter.Seq] instead.
@@ -895,9 +901,16 @@ func (r *ResourceDefinition) IterateFileServers(it FileServerIterator) error {
 	return nil
 }
 
+// AllHeaders returns an iterator that yields all the resource headers sorted in alphabetical order.
+func (r *ResourceDefinition) AllHeaders() iter.Seq2[string, *HeaderDefinition] {
+	return newHeaderSeq(r.Headers, r.Headers.IsRequired)
+}
+
 // IterateHeaders calls the given iterator passing in each response sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateHeaders returns that
 // error.
+//
+// Deprecated: Use [ResourceDefinition.AllHeaders] instead.
 func (r *ResourceDefinition) IterateHeaders(it HeaderIterator) error {
 	return iterateHeaders(r.Headers, r.Headers.IsRequired, it)
 }
@@ -1762,10 +1775,24 @@ func (a *ActionDefinition) UserTypes() map[string]*UserTypeDefinition {
 	return types
 }
 
+// AllHeaders returns an iterator that yields all the resource headers sorted in alphabetical order.
+func (a *ActionDefinition) AllHeaders() iter.Seq2[string, *HeaderDefinition] {
+	mergedHeaders := a.Parent.Headers.Merge(a.Headers)
+
+	isRequired := func(name string) bool {
+		// header required in either the Resource or Action scope?
+		return a.Parent.Headers.IsRequired(name) || a.Headers.IsRequired(name)
+	}
+
+	return newHeaderSeq(mergedHeaders, isRequired)
+}
+
 // IterateHeaders iterates over the resource-level and action-level headers,
 // calling the given iterator passing in each response sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateHeaders returns that
 // error.
+//
+// Deprecated: Use [ActionDefinition.AllHeaders] instead.
 func (a *ActionDefinition) IterateHeaders(it HeaderIterator) error {
 	mergedHeaders := a.Parent.Headers.Merge(a.Headers)
 
@@ -2049,4 +2076,28 @@ func iterateHeaders(headers *AttributeDefinition, isRequired func(name string) b
 		}
 	}
 	return nil
+}
+
+func newHeaderSeq(headers *AttributeDefinition, isRequired func(name string) bool) iter.Seq2[string, *HeaderDefinition] {
+	if headers == nil || !headers.Type.IsObject() {
+		return func(func(string, *HeaderDefinition) bool) {}
+	}
+	headersMap := headers.Type.ToObject()
+	names := make([]string, 0, len(headersMap))
+	for name := range headersMap {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(string, *HeaderDefinition) bool) {
+		for _, name := range names {
+			header := &HeaderDefinition{
+				IsRequired: isRequired(name),
+				Attribute:  headersMap[name],
+			}
+			if !yield(name, header) {
+				return
+			}
+		}
+	}
 }
