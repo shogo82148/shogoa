@@ -473,8 +473,68 @@ func (a *APIDefinition) DependsOn() []dslengine.Root {
 	return nil
 }
 
+// AllSets returns an iterator that yields the API definition, user types, media types and
+// finally resources.
+func (a *APIDefinition) AllSets() iter.Seq[dslengine.DefinitionSet] {
+	return func(yield func(dslengine.DefinitionSet) bool) {
+		// First run the top level API DSL to initialize responses and
+		// response templates needed by resources.
+		if !yield(dslengine.DefinitionSet{a}) {
+			return
+		}
+
+		// Then run the user type DSLs
+		typeAttributes := make([]dslengine.Definition, 0, len(a.Types))
+		for u := range a.AllUserTypes() {
+			u.AttributeDefinition.DSLFunc = u.DSLFunc
+			typeAttributes = append(typeAttributes, u.AttributeDefinition)
+		}
+		if !yield(typeAttributes) {
+			return
+		}
+
+		// Then the media type DSLs
+		mediaTypes := make([]dslengine.Definition, 0, len(a.MediaTypes))
+		for mt := range a.AllMediaTypes() {
+			mediaTypes = append(mediaTypes, mt)
+		}
+		if !yield(mediaTypes) {
+			return
+		}
+
+		// Then, the Security schemes definitions
+		securitySchemes := make([]dslengine.Definition, 0, len(a.SecuritySchemes))
+		for _, scheme := range a.SecuritySchemes {
+			securitySchemes = append(securitySchemes, dslengine.Definition(scheme))
+		}
+		if !yield(securitySchemes) {
+			return
+		}
+
+		// And now that we have everything - the resources. The resource
+		// lifecycle handlers dispatch to their children elements, like Actions,
+		// etc.. We must process parent resources first to ensure that query
+		// string and path parameters are initialized by the time a child
+		// resource action parameters are categorized.
+		resources := make([]*ResourceDefinition, 0, len(a.Resources))
+		for res := range a.AllResources() {
+			resources = append(resources, res)
+		}
+		sort.Sort(byParent(resources))
+		defs := make([]dslengine.Definition, len(resources))
+		for i, r := range resources {
+			defs[i] = r
+		}
+		if !yield(defs) {
+			return
+		}
+	}
+}
+
 // IterateSets calls the given iterator passing in the API definition, user types, media types and
 // finally resources.
+//
+// Deprecated: Use [APIDefinition.AllSets] instead.
 func (a *APIDefinition) IterateSets(iterator dslengine.SetIterator) {
 	// First run the top level API DSL to initialize responses and
 	// response templates needed by resources.

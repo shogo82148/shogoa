@@ -1,6 +1,9 @@
 package dslengine
 
-import "fmt"
+import (
+	"fmt"
+	"iter"
+)
 
 // Definition is the common interface implemented by all definitions.
 type Definition interface {
@@ -23,11 +26,18 @@ type Root interface {
 	// DependsOn returns the list of other DSL roots this root depends on.
 	// The DSL engine uses this function to order execution of the DSLs.
 	DependsOn() []Root
+
+	// AllSets returns all the definition sets in the root.
+	AllSets() iter.Seq[DefinitionSet]
+
 	// IterateSets implements the visitor pattern: is is called by the engine so the
 	// DSL can control the order of execution. IterateSets calls back the engine via
 	// the given iterator as many times as needed providing the DSL definitions that
 	// must be run for each callback.
+	//
+	// Deprecated: Use the [Root.AllSets] instead.
 	IterateSets(SetIterator)
+
 	// Reset restores the root to pre DSL execution state.
 	// This is mainly used by tests.
 	Reset()
@@ -62,6 +72,8 @@ type Finalize interface {
 
 // SetIterator is the function signature used to iterate over definition sets with
 // IterateSets.
+//
+// Deprecated: Use the [iter.Seq] instead.
 type SetIterator func(s DefinitionSet) error
 
 // MetadataDefinition is a set of key/value pairs
