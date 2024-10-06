@@ -14,6 +14,7 @@ require (
 	github.com/manveru/faker v0.0.0-20171103152722-9fbc68a78c4d
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.33.1
+	github.com/shogo82148/pointer v1.3.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/ugorji/go/codec v1.2.12
@@ -42,7 +43,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/shogo82148/pointer v1.3.0 // indirect
 	github.com/smartystreets/goconvey v1.8.1 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
