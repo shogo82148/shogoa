@@ -50,6 +50,7 @@ func (t *TestCD) IterateSets(it dslengine.SetIterator) {
 func (t *TestCD) Reset() {}
 
 func TestContainerDefinition(t *testing.T) {
+	dslengine.Reset()
 	att := &design.AttributeDefinition{Type: design.Object{}}
 	testCD := &TestCD{AttributeDefinition: att}
 	dslengine.Register(testCD)
