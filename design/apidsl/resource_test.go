@@ -1,342 +1,296 @@
 package apidsl_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"testing"
+
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/design/apidsl"
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
-var _ = Describe("Resource", func() {
-	var name string
-	var dsl func()
-
-	var res *design.ResourceDefinition
-
-	BeforeEach(func() {
+func TestResource(t *testing.T) {
+	t.Run("with no dsl and no name", func(t *testing.T) {
 		dslengine.Reset()
-		name = ""
-		dsl = nil
+		apidsl.Resource("", nil)
+		if err := dslengine.Run(); err == nil {
+			t.Errorf("expected an error, but no error")
+		}
 	})
 
-	JustBeforeEach(func() {
-		res = apidsl.Resource(name, dsl)
-		dslengine.Run()
+	t.Run("with no dsl", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Resource("foo", nil)
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 	})
 
-	Context("with no dsl and no name", func() {
-		It("produces an invalid resource definition", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).Should(HaveOccurred())
+	t.Run("with a description", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.Description("desc")
 		})
-	})
-
-	Context("with no dsl", func() {
-		BeforeEach(func() {
-			name = "foo"
-		})
-
-		It("produces a valid resource definition and defaults the media type to text/plain", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.MediaType).Should(Equal("text/plain"))
-		})
-	})
-
-	Context("with a description", func() {
-		const description = "desc"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.Description(description)
-			}
-		})
-
-		It("sets the description", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.Description).Should(Equal(description))
-		})
-	})
-
-	Context("with a parent resource that does not exist", func() {
-		const parent = "parent"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.Parent(parent)
-			}
-		})
-
-		It("sets the parent and produces an invalid resource definition", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.ParentName).Should(Equal(parent))
-			Ω(res.Validate()).Should(HaveOccurred())
-		})
-	})
-
-	Context("with actions", func() {
-		const actionName = "action"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.Action(actionName, func() { apidsl.Routing(apidsl.PUT(":/id")) })
-			}
-		})
-
-		It("sets the actions", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.Actions).Should(HaveLen(1))
-			Ω(res.Actions).Should(HaveKey(actionName))
-		})
-	})
-
-	Context("with metadata and actions", func() {
-		const actionName = "action"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.Metadata("swagger:generate", "false")
-				apidsl.Action(actionName, func() { apidsl.Routing(apidsl.PUT(":/id")) })
-			}
-		})
-
-		It("sets the actions", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Finalize).ShouldNot(Panic())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.Actions).Should(HaveLen(1))
-			Ω(res.Actions).Should(HaveKey(actionName))
-		})
-	})
-
-	Context("with metadata and files", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.Metadata("swagger:generate", "false")
-				apidsl.Files("path", "filename")
-			}
-		})
-
-		It("sets the files", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Finalize).ShouldNot(Panic())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.FileServers).Should(HaveLen(1))
-		})
-	})
-
-	Context("with a canonical action that does not exist", func() {
-		const can = "can"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.CanonicalActionName(can)
-			}
-		})
-
-		It("sets the canonical action and produces an invalid resource definition", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.CanonicalActionName).Should(Equal(can))
-			Ω(res.Validate()).Should(HaveOccurred())
-		})
-	})
-
-	Context("with a canonical action that does exist", func() {
-		const can = "can"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.Action(can, func() { apidsl.Routing(apidsl.PUT(":/id")) })
-				apidsl.CanonicalActionName(can)
-			}
-		})
-
-		It("sets the canonical action and produces a valid resource definition", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.CanonicalActionName).Should(Equal(can))
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-		})
-	})
-
-	Context("with a base path", func() {
-		const basePath = "basePath"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.BasePath(basePath)
-			}
-		})
-
-		It("sets the base path", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.BasePath).Should(Equal(basePath))
-		})
-	})
-
-	Context("with base params", func() {
-		const basePath = "basePath/:paramID"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.BasePath(basePath)
-				apidsl.Params(func() {
-					apidsl.Param("paramID")
-				})
-			}
-		})
-
-		It("sets the base path and params", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.BasePath).Should(Equal(basePath))
-			Ω(res.Params).ShouldNot(BeNil())
-			Ω(res.Params.Type).ShouldNot(BeNil())
-			Ω(res.Params.Type.ToObject()).Should(HaveKey("paramID"))
-		})
-	})
-
-	Context("with a media type name", func() {
-		const mediaType = "application/mt"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.DefaultMedia(mediaType)
-			}
-		})
-
-		It("sets the media type", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.MediaType).Should(Equal(mediaType))
-		})
-	})
-
-	Context("with a view name", func() {
-		const mediaType = "application/mt"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.DefaultMedia(mediaType, "compact")
-			}
-		})
-
-		It("sets the media type", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.MediaType).Should(Equal(mediaType))
-			Ω(res.DefaultViewName).Should(Equal("compact"))
-		})
-	})
-
-	Context("with an invalid media type", func() {
-		var mediaType = &design.MediaTypeDefinition{Identifier: "application/foo"}
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.DefaultMedia(mediaType)
-			}
-		})
-
-		It("fails", func() {
-			Ω(dslengine.Errors).Should(HaveOccurred())
-		})
-	})
-
-	Context("with a valid media type", func() {
-		const typeName = "typeName"
-		const identifier = "application/vnd.raphael.shogoa.test"
-
-		var mediaType = &design.MediaTypeDefinition{
-			UserTypeDefinition: &design.UserTypeDefinition{
-				TypeName: typeName,
-			},
-			Identifier: identifier,
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
 		}
 
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.DefaultMedia(mediaType)
-			}
-		})
-
-		It("sets the media type", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.MediaType).Should(Equal(identifier))
-		})
+		if res.Description != "desc" {
+			t.Errorf("unexpected description: %s", res.Description)
+		}
 	})
 
-	Context("with a valid media type using a modifier", func() {
-		const typeName = "typeName"
-		const identifier = "application/vnd.raphael.shogoa.test+json"
-
-		var mediaType = &design.MediaTypeDefinition{
-			UserTypeDefinition: &design.UserTypeDefinition{
-				TypeName: typeName,
-			},
-			Identifier: identifier,
+	t.Run("with a parent resource that does not exist", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.Parent("parent")
+		})
+		if err := dslengine.Run(); err == nil {
+			t.Errorf("expected an error, but no error")
 		}
 
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.DefaultMedia(mediaType)
-			}
-		})
-
-		It("sets the media type and keeps the modifier", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.MediaType).Should(Equal(identifier))
-		})
+		if res.ParentName != "parent" {
+			t.Errorf("unexpected parent name: %s", res.ParentName)
+		}
+		if err := res.Validate(); err == nil {
+			t.Errorf("expected an error, but no error")
+		}
 	})
 
-	Context("with a trait that does not exist", func() {
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() { apidsl.UseTrait("Authenticated") }
+	t.Run("with actions", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.Action("action", func() { apidsl.Routing(apidsl.PUT("/:id")) })
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 
-		It("returns an error", func() {
-			Ω(dslengine.Errors).Should(HaveOccurred())
-		})
+		if len(res.Actions) != 1 {
+			t.Errorf("unexpected actions: %v", res.Actions)
+		}
+		if _, ok := res.Actions["action"]; !ok {
+			t.Errorf("action not found")
+		}
 	})
 
-	Context("with a trait that exists", func() {
-		const description = "desc"
-		const traitName = "descTrait"
+	t.Run("with metadata and actions", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.Metadata("swagger:generate", "false")
+			apidsl.Action("action", func() { apidsl.Routing(apidsl.PUT("/:id")) })
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() { apidsl.UseTrait(traitName) }
-			apidsl.API("test", func() {
-				apidsl.Trait(traitName, func() {
-					apidsl.Description(description)
-				})
+		if len(res.Actions) != 1 {
+			t.Errorf("unexpected actions: %v", res.Actions)
+		}
+		if _, ok := res.Actions["action"]; !ok {
+			t.Errorf("action not found")
+		}
+		if res.Metadata["swagger:generate"][0] != "false" {
+			t.Errorf("unexpected metadata: %v", res.Metadata)
+		}
+	})
+
+	t.Run("with metadata and files", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.Metadata("swagger:generate", "false")
+			apidsl.Files("path", "filename")
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+
+		if len(res.FileServers) != 1 {
+			t.Errorf("unexpected file servers: %v", res.FileServers)
+		}
+	})
+
+	t.Run("with a canonical action that does not exist", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.CanonicalActionName("can")
+		})
+		if err := dslengine.Run(); err == nil {
+			t.Errorf("expected an error, but no error")
+		}
+
+		if res.CanonicalActionName != "can" {
+			t.Errorf("unexpected canonical action name: %s", res.CanonicalActionName)
+		}
+		if err := res.Validate(); err == nil {
+			t.Errorf("expected an error, but no error")
+		}
+	})
+
+	t.Run("with a canonical action that does exist", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.Action("can", func() { apidsl.Routing(apidsl.PUT("/:id")) })
+			apidsl.CanonicalActionName("can")
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+
+		if res.CanonicalActionName != "can" {
+			t.Errorf("unexpected canonical action name: %s", res.CanonicalActionName)
+		}
+		if err := res.Validate(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+	})
+
+	t.Run("with a base path", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.BasePath("basePath")
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+
+		if res.BasePath != "basePath" {
+			t.Errorf("unexpected base path: %s", res.BasePath)
+		}
+	})
+
+	t.Run("with base params", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.BasePath("basePath/:paramID")
+			apidsl.Params(func() {
+				apidsl.Param("paramID")
 			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 
-		It("runs the trait", func() {
-			Ω(res).ShouldNot(BeNil())
-			Ω(res.Validate()).ShouldNot(HaveOccurred())
-			Ω(res.Description).Should(Equal(description))
-		})
+		if res.BasePath != "basePath/:paramID" {
+			t.Errorf("unexpected base path: %s", res.BasePath)
+		}
+		if _, ok := res.Params.Type.ToObject()["paramID"]; !ok {
+			t.Errorf("paramID not found")
+		}
 	})
-})
+
+	t.Run("with a media type name", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.DefaultMedia("application/mt")
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+
+		if res.MediaType != "application/mt" {
+			t.Errorf("unexpected media type: %s", res.MediaType)
+		}
+	})
+
+	t.Run("with a view name", func(t *testing.T) {
+		dslengine.Reset()
+		res := apidsl.Resource("foo", func() {
+			apidsl.DefaultMedia("application/mt", "compact")
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+
+		if res.MediaType != "application/mt" {
+			t.Errorf("unexpected media type: %s", res.MediaType)
+		}
+		if res.DefaultViewName != "compact" {
+			t.Errorf("unexpected default view name: %s", res.DefaultViewName)
+		}
+	})
+
+	t.Run("with an invalid media type", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Resource("foo", func() {
+			apidsl.DefaultMedia(&design.MediaTypeDefinition{Identifier: "application/foo"})
+		})
+		if err := dslengine.Run(); err == nil {
+			t.Errorf("expected an error, but no error")
+		}
+	})
+
+	t.Run("with a valid media type", func(t *testing.T) {
+		dslengine.Reset()
+		mt := &design.MediaTypeDefinition{
+			UserTypeDefinition: &design.UserTypeDefinition{
+				TypeName: "typeName",
+			},
+			Identifier: "application/vnd.raphael.shogoa.test",
+		}
+		res := apidsl.Resource("foo", func() {
+			apidsl.DefaultMedia(mt)
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+
+		if err := res.Validate(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if res.MediaType != "application/vnd.raphael.shogoa.test" {
+			t.Errorf("unexpected media type: %s", res.MediaType)
+		}
+	})
+
+	t.Run("with a valid media type using a modifier", func(t *testing.T) {
+		dslengine.Reset()
+		mt := &design.MediaTypeDefinition{
+			UserTypeDefinition: &design.UserTypeDefinition{
+				TypeName: "typeName",
+			},
+			Identifier: "application/vnd.raphael.shogoa.test+json",
+		}
+		res := apidsl.Resource("foo", func() {
+			apidsl.DefaultMedia(mt)
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+
+		if err := res.Validate(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+		if res.MediaType != "application/vnd.raphael.shogoa.test+json" {
+			t.Errorf("unexpected media type: %s", res.MediaType)
+		}
+	})
+
+	t.Run("with a trait that does not exist", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Resource("foo", func() {
+			apidsl.UseTrait("Authenticated")
+		})
+		if err := dslengine.Run(); err == nil {
+			t.Errorf("expected an error, but no error")
+		}
+	})
+
+	t.Run("with a trait that exists", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.API("test", func() {
+			apidsl.Trait("descTrait", func() {
+				apidsl.Description("desc")
+			})
+		})
+		res := apidsl.Resource("foo", func() {
+			apidsl.UseTrait("descTrait")
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+
+		if res.Description != "desc" {
+			t.Errorf("unexpected description: %s", res.Description)
+		}
+	})
+}
