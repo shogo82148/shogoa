@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"maps"
 	"net/http"
 	"path"
 	"slices"
@@ -812,6 +813,18 @@ func (r *ResourceDefinition) PathParams() *AttributeDefinition {
 		}
 	}
 	return &AttributeDefinition{Type: obj}
+}
+
+// AllActions returns an iterator that yields all the resource actions sorted in alphabetical order.
+func (r *ResourceDefinition) AllActions() iter.Seq[*ActionDefinition] {
+	return func(yield func(*ActionDefinition) bool) {
+		names := slices.Sorted(maps.Keys(r.Actions))
+		for _, name := range names {
+			if !yield(r.Actions[name]) {
+				return
+			}
+		}
+	}
 }
 
 // IterateActions calls the given iterator passing in each resource action sorted in alphabetical order.
