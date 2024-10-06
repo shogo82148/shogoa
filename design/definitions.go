@@ -606,7 +606,7 @@ func (a *APIDefinition) AllUserTypes() iter.Seq[*UserTypeDefinition] {
 // Iteration stops if an iterator returns an error and in this case IterateUserTypes returns that
 // error.
 //
-// Deprecated: Use [AllUserTypes] instead.
+// Deprecated: Use [APIDefinition.AllUserTypes] instead.
 func (a *APIDefinition) IterateUserTypes(it UserTypeIterator) error {
 	names := make([]string, len(a.Types))
 	i := 0
@@ -623,9 +623,28 @@ func (a *APIDefinition) IterateUserTypes(it UserTypeIterator) error {
 	return nil
 }
 
+// AllResponses returns an iterator that yields all responses sorted in alphabetical order.
+func (a *APIDefinition) AllResponses() iter.Seq[*ResponseDefinition] {
+	names := make([]string, 0, len(a.Responses))
+	for name := range a.Responses {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(*ResponseDefinition) bool) {
+		for _, name := range names {
+			if !yield(a.Responses[name]) {
+				return
+			}
+		}
+	}
+}
+
 // IterateResponses calls the given iterator passing in each response sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateResponses returns that
 // error.
+//
+// Deprecated: Use [APIDefinition.AllResponses] instead.
 func (a *APIDefinition) IterateResponses(it ResponseIterator) error {
 	names := make([]string, len(a.Responses))
 	i := 0
