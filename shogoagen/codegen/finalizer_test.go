@@ -1,81 +1,91 @@
 package codegen_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/dslengine"
 	"github.com/shogo82148/shogoa/shogoagen/codegen"
 )
 
-var _ = Describe("Struct finalize code generation", func() {
-	var (
-		att       *design.AttributeDefinition
-		target    string
-		finalizer *codegen.Finalizer
-	)
+// UserDefinitionType is a user defined type used in the unit tests.
+type UserDefinitionType string
 
-	BeforeEach(func() {
-		finalizer = codegen.NewFinalizer()
-	})
+func TestFinalizer(t *testing.T) {
+	// given a recursive user type with an array attribute
+	rt := &design.UserTypeDefinition{TypeName: "recursive"}
+	ar := &design.Array{ElemType: &design.AttributeDefinition{Type: rt}}
+	obj := &design.Object{
+		"elems": &design.AttributeDefinition{Type: ar},
+		"other": &design.AttributeDefinition{
+			Type:         design.String,
+			DefaultValue: "foo",
+		},
+	}
+	rt.AttributeDefinition = &design.AttributeDefinition{Type: obj}
 
-	Context("given an object with a primitive field", func() {
-		BeforeEach(func() {
-			att = &design.AttributeDefinition{
+	testCases := []struct {
+		name   string
+		att    *design.AttributeDefinition
+		target string
+		want   string
+	}{
+
+		{
+			name: "given an object with a primitive field",
+			att: &design.AttributeDefinition{
 				Type: &design.Object{
 					"foo": &design.AttributeDefinition{
 						Type:         design.String,
 						DefaultValue: "bar",
 					},
 				},
-			}
-			target = "ut"
-		})
-		It("finalizes the fields", func() {
-			code := finalizer.Code(att, target, 0)
-			Ω(code).Should(Equal(primitiveAssignmentCode))
-		})
-	})
+			},
+			target: "ut",
+			want: `var defaultFoo string = "bar"
+if ut.Foo == nil {
+	ut.Foo = &defaultFoo
+}`,
+		},
 
-	Context("given an object with a primitive Number field", func() {
-		BeforeEach(func() {
-			att = &design.AttributeDefinition{
+		{
+			name: "given an object with a primitive Number field",
+			att: &design.AttributeDefinition{
 				Type: &design.Object{
 					"foo": &design.AttributeDefinition{
 						Type:         design.Number,
 						DefaultValue: 0.0,
 					},
 				},
-			}
-			target = "ut"
-		})
-		It("finalizes the fields", func() {
-			code := finalizer.Code(att, target, 0)
-			Ω(code).Should(Equal(numberAssignmentCode))
-		})
-	})
+			},
+			target: "ut",
+			want: `var defaultFoo float64 = 0.000000
+if ut.Foo == nil {
+	ut.Foo = &defaultFoo
+}`,
+		},
 
-	Context("given an object with a primitive Number field with a int default value", func() {
-		BeforeEach(func() {
-			att = &design.AttributeDefinition{
+		{
+			name: "given an object with a primitive Number field with a int default value",
+			att: &design.AttributeDefinition{
 				Type: &design.Object{
 					"foo": &design.AttributeDefinition{
 						Type:         design.Number,
 						DefaultValue: 50,
 					},
 				},
-			}
-			target = "ut"
-		})
-		It("finalizes the fields", func() {
-			code := finalizer.Code(att, target, 0)
-			Ω(code).Should(Equal(numberAssignmentCodeIntDefault))
-		})
-	})
+			},
+			target: "ut",
+			want: `var defaultFoo float64 = 50.000000
+if ut.Foo == nil {
+	ut.Foo = &defaultFoo
+}`,
+		},
 
-	Context("given an array field", func() {
-		BeforeEach(func() {
-			att = &design.AttributeDefinition{
+		{
+			name: "given an array field",
+			att: &design.AttributeDefinition{
 				Type: &design.Object{
 					"foo": &design.AttributeDefinition{
 						Type: &design.Array{
@@ -83,21 +93,19 @@ var _ = Describe("Struct finalize code generation", func() {
 								Type: design.String,
 							},
 						},
-						DefaultValue: []interface{}{"bar", "baz"},
+						DefaultValue: []any{"bar", "baz"},
 					},
 				},
-			}
-			target = "ut"
-		})
-		It("finalizes the array fields", func() {
-			code := finalizer.Code(att, target, 0)
-			Ω(code).Should(Equal(arrayAssignmentCode))
-		})
-	})
+			},
+			target: "ut",
+			want: `if ut.Foo == nil {
+	ut.Foo = []string{"bar", "baz"}
+}`,
+		},
 
-	Context("given a hash field", func() {
-		BeforeEach(func() {
-			att = &design.AttributeDefinition{
+		{
+			name: "given a hash field",
+			att: &design.AttributeDefinition{
 				Type: &design.Object{
 					"foo": &design.AttributeDefinition{
 						Type: &design.Hash{
@@ -108,63 +116,52 @@ var _ = Describe("Struct finalize code generation", func() {
 								Type: design.String,
 							},
 						},
-						DefaultValue: map[interface{}]interface{}{"bar": "baz"},
+						DefaultValue: map[any]any{"bar": "baz"},
 					},
 				},
-			}
-			target = "ut"
-		})
-		Context("given a datetime field", func() {
-			BeforeEach(func() {
-				att = &design.AttributeDefinition{
-					Type: &design.Object{
-						"foo": &design.AttributeDefinition{
-							Type:         design.DateTime,
-							DefaultValue: interface{}("1978-06-30T10:00:00+09:00"),
-						},
+			},
+			target: "ut",
+			want: `if ut.Foo == nil {
+	ut.Foo = map[string]string{"bar": "baz"}
+}`,
+		},
+
+		{
+			name: "given a datetime field",
+			att: &design.AttributeDefinition{
+				Type: &design.Object{
+					"foo": &design.AttributeDefinition{
+						Type:         design.DateTime,
+						DefaultValue: interface{}("1978-06-30T10:00:00+09:00"),
 					},
-				}
-				target = "ut"
-			})
-			It("finalizes the hash fields", func() {
-				code := finalizer.Code(att, target, 0)
-				Ω(code).Should(Equal(datetimeAssignmentCode))
-			})
-		})
+				},
+			},
+			target: "ut",
+			want: `var defaultFoo, _ = time.Parse(time.RFC3339, "1978-06-30T10:00:00+09:00")
+if ut.Foo == nil {
+	ut.Foo = &defaultFoo
+}`,
+		},
 
-		It("finalizes the recursive type fields", func() {
-			code := finalizer.Code(att, target, 0)
-			Ω(code).Should(Equal(recursiveAssignmentCodeA))
-		})
-	})
+		{
+			name:   "given a recursive user type with an array attribute",
+			att:    &design.AttributeDefinition{Type: rt},
+			target: "ut",
+			want: `	for _, e := range ut.Elems {
+		var defaultOther string = "foo"
+		if e.Other == nil {
+			e.Other = &defaultOther
+}
+	}
+var defaultOther string = "foo"
+if ut.Other == nil {
+	ut.Other = &defaultOther
+}`,
+		},
 
-	Context("given a recursive user type with an array attribute", func() {
-		BeforeEach(func() {
-			var (
-				rt  = &design.UserTypeDefinition{TypeName: "recursive"}
-				ar  = &design.Array{ElemType: &design.AttributeDefinition{Type: rt}}
-				obj = &design.Object{
-					"elems": &design.AttributeDefinition{Type: ar},
-					"other": &design.AttributeDefinition{
-						Type:         design.String,
-						DefaultValue: "foo",
-					},
-				}
-			)
-			rt.AttributeDefinition = &design.AttributeDefinition{Type: obj}
-
-			att = &design.AttributeDefinition{Type: rt}
-			target = "ut"
-		})
-		It("finalizes the recursive type fields", func() {
-			code := finalizer.Code(att, target, 0)
-			Ω(code).Should(Equal(recursiveAssignmentCodeB))
-		})
-	})
-
-	Context("given an object with a user definition type", func() {
-		BeforeEach(func() {
-			att = &design.AttributeDefinition{
+		{
+			name: "given an object with a user definition type",
+			att: &design.AttributeDefinition{
 				Type: &design.Object{
 					"foo": &design.AttributeDefinition{
 						Type: design.String,
@@ -174,61 +171,22 @@ var _ = Describe("Struct finalize code generation", func() {
 						DefaultValue: UserDefinitionType("bar"),
 					},
 				},
-			}
-			target = "ut"
-		})
-		It("finalizes the fields", func() {
-			code := finalizer.Code(att, target, 0)
-			Ω(code).Should(Equal(userTypeAssignmentCode))
-		})
-	})
-})
-
-// UserDefinitionType is a user defined type used in the unit tests.
-type UserDefinitionType string
-
-const (
-	primitiveAssignmentCode = `var defaultFoo string = "bar"
+			},
+			target: "ut",
+			want: `var defaultFoo UserDefinitionType = "bar"
 if ut.Foo == nil {
 	ut.Foo = &defaultFoo
-}`
-
-	numberAssignmentCodeIntDefault = `var defaultFoo float64 = 50.000000
-if ut.Foo == nil {
-	ut.Foo = &defaultFoo
-}`
-
-	numberAssignmentCode = `var defaultFoo float64 = 0.000000
-if ut.Foo == nil {
-	ut.Foo = &defaultFoo
-}`
-
-	arrayAssignmentCode = `if ut.Foo == nil {
-	ut.Foo = []string{"bar", "baz"}
-}`
-
-	datetimeAssignmentCode = `var defaultFoo, _ = time.Parse(time.RFC3339, "1978-06-30T10:00:00+09:00")
-if ut.Foo == nil {
-	ut.Foo = &defaultFoo
-}`
-
-	recursiveAssignmentCodeA = `if ut.Foo == nil {
-	ut.Foo = map[string]string{"bar": "baz"}
-}`
-
-	recursiveAssignmentCodeB = `	for _, e := range ut.Elems {
-		var defaultOther string = "foo"
-		if e.Other == nil {
-			e.Other = &defaultOther
-}
+}`,
+		},
 	}
-var defaultOther string = "foo"
-if ut.Other == nil {
-	ut.Other = &defaultOther
-}`
 
-	userTypeAssignmentCode = `var defaultFoo UserDefinitionType = "bar"
-if ut.Foo == nil {
-	ut.Foo = &defaultFoo
-}`
-)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			finalizer := codegen.NewFinalizer()
+			code := finalizer.Code(tc.att, tc.target, 0)
+			if diff := cmp.Diff(tc.want, code); diff != "" {
+				t.Errorf("unexpected code (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
