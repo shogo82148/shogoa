@@ -1,644 +1,581 @@
 package codegen_test
 
 import (
-	"fmt"
-	"strings"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/design/apidsl"
 	"github.com/shogo82148/shogoa/dslengine"
 	"github.com/shogo82148/shogoa/shogoagen/codegen"
 )
 
-var _ = Describe("code generation", func() {
-	BeforeEach(func() {
-		codegen.TempCount = 0
-	})
+func TestGoify(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		firstUpper bool
+		want       string
+	}{
+		{
+			name:       "with first upper false",
+			input:      "blue_id",
+			firstUpper: false,
+			want:       "blueID",
+		},
+		{
+			name:       "with first upper false normal identifier",
+			input:      "blue",
+			firstUpper: false,
+			want:       "blue",
+		},
+		{
+			name:       "with first upper false and UUID",
+			input:      "blue_uuid",
+			firstUpper: false,
+			want:       "blueUUID",
+		},
+		{
+			name:       "with first upper true",
+			input:      "blue_id",
+			firstUpper: true,
+			want:       "BlueID",
+		},
+		{
+			name:       "with first upper true and UUID",
+			input:      "blue_uuid",
+			firstUpper: true,
+			want:       "BlueUUID",
+		},
+		{
+			name:       "with first upper true normal identifier",
+			input:      "blue",
+			firstUpper: true,
+			want:       "Blue",
+		},
+		{
+			name:       "with first upper false normal identifier",
+			input:      "blue",
+			firstUpper: false,
+			want:       "blue",
+		},
+		{
+			name:       "with first upper true normal identifier",
+			input:      "Blue",
+			firstUpper: true,
+			want:       "Blue",
+		},
+		{
+			name:       "with invalid identifier",
+			input:      "Blue%50",
+			firstUpper: true,
+			want:       "Blue50",
+		},
+		{
+			name:       "with invalid identifier first upper false",
+			input:      "Blue%50",
+			firstUpper: false,
+			want:       "blue50",
+		},
+		{
+			name:       "with only UUID and first upper false",
+			input:      "UUID",
+			firstUpper: false,
+			want:       "uuid",
+		},
+		{
+			name:       "with connectives invalid identifiers, first upper false",
+			input:      "[[fields___type]]",
+			firstUpper: false,
+			want:       "fieldsType",
+		},
+		{
+			name:       "with connectives invalid identifiers, first upper true",
+			input:      "[[fields___type]]",
+			firstUpper: true,
+			want:       "FieldsType",
+		},
+		{
+			name:       "with all invalid identifiers",
+			input:      "[[",
+			firstUpper: false,
+			want:       "",
+		},
+	}
 
-	Describe("Goify", func() {
-		Context("given a string with an initialism", func() {
-			var str, goified, expected string
-			var firstUpper bool
-			JustBeforeEach(func() {
-				goified = codegen.Goify(str, firstUpper)
-			})
-
-			Context("with first upper false", func() {
-				BeforeEach(func() {
-					firstUpper = false
-					str = "blue_id"
-					expected = "blueID"
-				})
-				It("creates a lowercased camelcased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-			Context("with first upper false normal identifier", func() {
-				BeforeEach(func() {
-					firstUpper = false
-					str = "blue"
-					expected = "blue"
-				})
-				It("creates an uppercased camelcased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-			Context("with first upper false and UUID", func() {
-				BeforeEach(func() {
-					firstUpper = false
-					str = "blue_uuid"
-					expected = "blueUUID"
-				})
-				It("creates an uppercased camelcased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-			Context("with first upper true", func() {
-				BeforeEach(func() {
-					firstUpper = true
-					str = "blue_id"
-					expected = "BlueID"
-				})
-				It("creates an uppercased camelcased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-			Context("with first upper true and UUID", func() {
-				BeforeEach(func() {
-					firstUpper = true
-					str = "blue_uuid"
-					expected = "BlueUUID"
-				})
-				It("creates an uppercased camelcased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-			Context("with first upper true normal identifier", func() {
-				BeforeEach(func() {
-					firstUpper = true
-					str = "blue"
-					expected = "Blue"
-				})
-				It("creates an uppercased camelcased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-			Context("with first upper false normal identifier", func() {
-				BeforeEach(func() {
-					firstUpper = false
-					str = "Blue"
-					expected = "blue"
-				})
-				It("creates a lowercased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-			Context("with first upper true normal identifier", func() {
-				BeforeEach(func() {
-					firstUpper = true
-					str = "Blue"
-					expected = "Blue"
-				})
-				It("creates an uppercased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-			Context("with invalid identifier", func() {
-				BeforeEach(func() {
-					firstUpper = true
-					str = "Blue%50"
-					expected = "Blue50"
-				})
-				It("creates an uppercased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-
-			Context("with invalid identifier firstupper false", func() {
-				BeforeEach(func() {
-					firstUpper = false
-					str = "Blue%50"
-					expected = "blue50"
-				})
-				It("creates an uppercased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-
-			Context("with only UUID and firstupper false", func() {
-				BeforeEach(func() {
-					firstUpper = false
-					str = "UUID"
-					expected = "uuid"
-				})
-				It("creates a lowercased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-
-			Context("with connectives invalid identifiers", func() {
-				BeforeEach(func() {
-					firstUpper = false
-					str = "[[fields___type]]"
-					expected = "fieldsType"
-				})
-				It("creates a camelcased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-
-			Context("with connectives invalid identifiers", func() {
-				BeforeEach(func() {
-					firstUpper = true
-					str = "[[fields___type]]"
-					expected = "FieldsType"
-				})
-				It("creates a camelcased string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-
-			Context("with all invalid identifiers", func() {
-				BeforeEach(func() {
-					firstUpper = false
-					str = "[["
-					expected = ""
-				})
-				It("creates an empty string", func() {
-					Ω(goified).Should(Equal(expected))
-				})
-			})
-
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := codegen.Goify(tt.input, tt.firstUpper)
+			if got != tt.want {
+				t.Errorf("Goify(%v) = %v; want %v", tt.input, got, tt.want)
+			}
 		})
+	}
+}
 
-	})
+func TestGoTypeDef(t *testing.T) {
+	tests := []struct {
+		name    string
+		att     *design.AttributeDefinition
+		private bool
+		want    string
+	}{
+		{
+			name: "given an attribute definition with fields of primitive types",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{Type: design.Integer},
+					"bar": &design.AttributeDefinition{Type: design.String},
+					"baz": &design.AttributeDefinition{Type: design.DateTime},
+					"qux": &design.AttributeDefinition{Type: design.UUID},
+					"quz": &design.AttributeDefinition{Type: design.Any},
+				},
+			},
+			want: "struct {\n" +
+				"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
+				"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
+				"	Foo *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
+				"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
+				"}",
+		},
 
-	Describe("GoTypeDef", func() {
-		Context("given an attribute definition with fields", func() {
-			var att *design.AttributeDefinition
-			var object design.Object
-			var required *dslengine.ValidationDefinition
-			var st string
+		{
+			name: "given an attribute definition with fields of primitive types using struct tags metadata",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type: design.Integer,
+						Metadata: dslengine.MetadataDefinition{
+							"struct:tag:foo":  []string{"bar", "baz"},
+							"struct:tag:foo2": []string{"bar2"},
+						},
+					},
+					"bar": &design.AttributeDefinition{Type: design.String},
+					"baz": &design.AttributeDefinition{Type: design.DateTime},
+					"qux": &design.AttributeDefinition{Type: design.UUID},
+					"quz": &design.AttributeDefinition{Type: design.Any},
+				},
+			},
+			want: "struct {\n" +
+				"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
+				"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
+				"	Foo *int `foo:\"bar,baz\" foo2:\"bar2\"`\n" +
+				"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
+				"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
+				"}",
+		},
 
-			JustBeforeEach(func() {
-				att = new(design.AttributeDefinition)
-				att.Type = object
-				if required != nil {
-					att.Validation = required
-				}
-				st = codegen.GoTypeDef(att, 0, true, false)
-			})
-
-			Context("of primitive types", func() {
-				BeforeEach(func() {
-					object = design.Object{
-						"foo": &design.AttributeDefinition{Type: design.Integer},
-						"bar": &design.AttributeDefinition{Type: design.String},
-						"baz": &design.AttributeDefinition{Type: design.DateTime},
-						"qux": &design.AttributeDefinition{Type: design.UUID},
-						"quz": &design.AttributeDefinition{Type: design.Any},
-					}
-					required = nil
-				})
-
-				It("produces the struct go code", func() {
-					expected := "struct {\n" +
-						"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
-						"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
-						"	Foo *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
-						"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
-						"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
-						"}"
-					Ω(st).Should(Equal(expected))
-				})
-
-				Context("using struct tags metadata", func() {
-					tn1 := "struct:tag:foo"
-					tv11 := "bar"
-					tv12 := "baz"
-					tn2 := "struct:tag:foo2"
-					tv21 := "bar2"
-
-					BeforeEach(func() {
-						object["foo"].Metadata = dslengine.MetadataDefinition{
-							tn1: []string{tv11, tv12},
-							tn2: []string{tv21},
-						}
-					})
-
-					It("produces the struct tags", func() {
-						expected := fmt.Sprintf("struct {\n"+
-							"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n"+
-							"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n"+
-							"	Foo *int `%s:\"%s,%s\" %s:\"%s\"`\n"+
-							"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n"+
-							"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n"+
-							"}", tn1[11:], tv11, tv12, tn2[11:], tv21)
-						Ω(st).Should(Equal(expected))
-					})
-				})
-
-				Context("using struct field name metadata", func() {
-					BeforeEach(func() {
-						object["foo"].Metadata = dslengine.MetadataDefinition{
+		{
+			name: "given an attribute definition with fields of primitive types using struct field name metadata",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type: design.Integer,
+						Metadata: dslengine.MetadataDefinition{
 							"struct:field:name": []string{"serviceName", "unused"},
-						}
-					})
+						},
+					},
+					"bar": &design.AttributeDefinition{Type: design.String},
+					"baz": &design.AttributeDefinition{Type: design.DateTime},
+					"qux": &design.AttributeDefinition{Type: design.UUID},
+					"quz": &design.AttributeDefinition{Type: design.Any},
+				},
+			},
+			want: "struct {\n" +
+				"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
+				"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
+				"	ServiceName *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
+				"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
+				"}",
+		},
 
-					It("produces the struct tags", func() {
-						expected := "struct {\n" +
-							"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
-							"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
-							"	ServiceName *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
-							"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
-							"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
-							"}"
-						Ω(st).Should(Equal(expected))
-					})
-				})
-
-				Context("using struct field type metadata", func() {
-					BeforeEach(func() {
-						object["foo"].Metadata = dslengine.MetadataDefinition{
+		{
+			name: "given an attribute definition with fields of primitive types using struct field type metadata",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type: design.Integer,
+						Metadata: dslengine.MetadataDefinition{
 							"struct:field:type": []string{"[]byte"},
-						}
-					})
+						},
+					},
+					"bar": &design.AttributeDefinition{Type: design.String},
+					"baz": &design.AttributeDefinition{Type: design.DateTime},
+					"qux": &design.AttributeDefinition{Type: design.UUID},
+					"quz": &design.AttributeDefinition{Type: design.Any},
+				},
+			},
+			want: "struct {\n" +
+				"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
+				"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
+				"	Foo *[]byte `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
+				"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
+				"}",
+		},
 
-					It("produces the struct tags", func() {
-						expected := "struct {\n" +
-							"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
-							"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
-							"	Foo *[]byte `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
-							"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
-							"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
-							"}"
-						Ω(st).Should(Equal(expected))
-					})
-				})
+		{
+			name: "given an attribute definition with fields of primitive types that are required",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{Type: design.Integer},
+					"bar": &design.AttributeDefinition{Type: design.String},
+					"baz": &design.AttributeDefinition{Type: design.DateTime},
+					"qux": &design.AttributeDefinition{Type: design.UUID},
+					"quz": &design.AttributeDefinition{Type: design.Any},
+				},
+				Validation: &dslengine.ValidationDefinition{
+					Required: []string{"foo", "bar", "baz", "qux", "quz"},
+				},
+			},
+			want: "struct {\n" +
+				"	Bar string `form:\"bar\" json:\"bar\" yaml:\"bar\" xml:\"bar\"`\n" +
+				"	Baz time.Time `form:\"baz\" json:\"baz\" yaml:\"baz\" xml:\"baz\"`\n" +
+				"	Foo int `form:\"foo\" json:\"foo\" yaml:\"foo\" xml:\"foo\"`\n" +
+				"	Qux uuid.UUID `form:\"qux\" json:\"qux\" yaml:\"qux\" xml:\"qux\"`\n" +
+				"	Quz interface{} `form:\"quz\" json:\"quz\" yaml:\"quz\" xml:\"quz\"`\n" +
+				"}",
+		},
 
-				Context("that are required", func() {
-					BeforeEach(func() {
-						required = &dslengine.ValidationDefinition{
-							Required: []string{"foo", "bar", "baz", "qux", "quz"},
-						}
-					})
-					It("produces the struct go code", func() {
-						expected := "struct {\n" +
-							"	Bar string `form:\"bar\" json:\"bar\" yaml:\"bar\" xml:\"bar\"`\n" +
-							"	Baz time.Time `form:\"baz\" json:\"baz\" yaml:\"baz\" xml:\"baz\"`\n" +
-							"	Foo int `form:\"foo\" json:\"foo\" yaml:\"foo\" xml:\"foo\"`\n" +
-							"	Qux uuid.UUID `form:\"qux\" json:\"qux\" yaml:\"qux\" xml:\"qux\"`\n" +
-							"	Quz interface{} `form:\"quz\" json:\"quz\" yaml:\"quz\" xml:\"quz\"`\n" +
-							"}"
-						Ω(st).Should(Equal(expected))
-					})
-				})
-			})
+		{
+			name: "given an attribute definition with fields of hash of primitive types",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type: &design.Hash{
+							KeyType:  &design.AttributeDefinition{Type: design.Integer},
+							ElemType: &design.AttributeDefinition{Type: design.Integer},
+						},
+					},
+				},
+			},
+			want: "struct {\n" +
+				"\tFoo map[int]int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"}",
+		},
 
-			Context("of hash of primitive types", func() {
-				BeforeEach(func() {
-					elemType := &design.AttributeDefinition{Type: design.Integer}
-					keyType := &design.AttributeDefinition{Type: design.Integer}
-					hash := &design.Hash{KeyType: keyType, ElemType: elemType}
-					object = design.Object{
-						"foo": &design.AttributeDefinition{Type: hash},
-					}
-					required = nil
-				})
+		{
+			name: "given an attribute definition with fields of array of primitive types",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type: &design.Array{
+							ElemType: &design.AttributeDefinition{Type: design.Integer},
+						},
+					},
+				},
+			},
+			want: "struct {\n" +
+				"\tFoo []int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"}",
+		},
 
-				It("produces the struct go code", func() {
-					Ω(st).Should(Equal("struct {\n\tFoo map[int]int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n}"))
-				})
-			})
+		{
+			name: "given an attribute definition with fields of hash of objects",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type: &design.Hash{
+							KeyType: &design.AttributeDefinition{
+								Type: design.Object{
+									"keyAtt": &design.AttributeDefinition{Type: design.String},
+								},
+							},
+							ElemType: &design.AttributeDefinition{
+								Type: design.Object{
+									"elemAtt": &design.AttributeDefinition{Type: design.Integer},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: "struct {\n" +
+				"	Foo map[*struct {\n" +
+				"		KeyAtt *string `form:\"keyAtt,omitempty\" json:\"keyAtt,omitempty\" yaml:\"keyAtt,omitempty\" xml:\"keyAtt,omitempty\"`\n" +
+				"	}]*struct {\n" +
+				"		ElemAtt *int `form:\"elemAtt,omitempty\" json:\"elemAtt,omitempty\" yaml:\"elemAtt,omitempty\" xml:\"elemAtt,omitempty\"`\n" +
+				"	} `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"}",
+		},
 
-			Context("of array of primitive types", func() {
-				BeforeEach(func() {
-					elemType := &design.AttributeDefinition{Type: design.Integer}
-					array := &design.Array{ElemType: elemType}
-					object = design.Object{
-						"foo": &design.AttributeDefinition{Type: array},
-					}
-					required = nil
-				})
+		{
+			name: "given an attribute definition with fields of array of objects",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type: &design.Array{
+							ElemType: &design.AttributeDefinition{
+								Type: design.Object{
+									"bar": &design.AttributeDefinition{Type: design.Integer},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: "struct {\n" +
+				"	Foo []*struct {\n" +
+				"		Bar *int `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
+				"	} `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"}",
+		},
 
-				It("produces the struct go code", func() {
-					Ω(st).Should(Equal("struct {\n\tFoo []int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n}"))
-				})
-			})
+		{
+			name: "given an attribute definition with fields of array of objects that are required",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type: &design.Array{
+							ElemType: &design.AttributeDefinition{
+								Type: design.Object{
+									"bar": &design.AttributeDefinition{Type: design.Integer},
+								},
+							},
+						},
+					},
+				},
+				Validation: &dslengine.ValidationDefinition{
+					Required: []string{"foo"},
+				},
+			},
+			want: "struct {\n" +
+				"	Foo []*struct {\n" +
+				"		Bar *int `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
+				"	} `form:\"foo\" json:\"foo\" yaml:\"foo\" xml:\"foo\"`\n" +
+				"}",
+		},
 
-			Context("of hash of objects", func() {
-				BeforeEach(func() {
-					elem := design.Object{
-						"elemAtt": &design.AttributeDefinition{Type: design.Integer},
-					}
-					key := design.Object{
-						"keyAtt": &design.AttributeDefinition{Type: design.String},
-					}
-					elemType := &design.AttributeDefinition{Type: elem}
-					keyType := &design.AttributeDefinition{Type: key}
-					hash := &design.Hash{KeyType: keyType, ElemType: elemType}
-					object = design.Object{
-						"foo": &design.AttributeDefinition{Type: hash},
-					}
-					required = nil
-				})
+		{
+			name: "given an attribute definition with fields that are required",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{Type: design.Integer},
+				},
+				Validation: &dslengine.ValidationDefinition{
+					Required: []string{"foo"},
+				},
+			},
+			want: "struct {\n" +
+				"	Foo int `form:\"foo\" json:\"foo\" yaml:\"foo\" xml:\"foo\"`\n" +
+				"}",
+		},
 
-				It("produces the struct go code", func() {
-					expected := "struct {\n" +
-						"	Foo map[*struct {\n" +
-						"		KeyAtt *string `form:\"keyAtt,omitempty\" json:\"keyAtt,omitempty\" yaml:\"keyAtt,omitempty\" xml:\"keyAtt,omitempty\"`\n" +
-						"	}]*struct {\n" +
-						"		ElemAtt *int `form:\"elemAtt,omitempty\" json:\"elemAtt,omitempty\" yaml:\"elemAtt,omitempty\" xml:\"elemAtt,omitempty\"`\n" +
-						"	} `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
-						"}"
-					Ω(st).Should(Equal(expected))
-				})
-			})
+		{
+			name: "given an array of primitive type",
+			att: &design.AttributeDefinition{
+				Type: &design.Array{
+					ElemType: &design.AttributeDefinition{
+						Type: design.Integer,
+					},
+				},
+			},
+			want: "[]int",
+		},
 
-			Context("of array of objects", func() {
-				BeforeEach(func() {
-					obj := design.Object{
-						"bar": &design.AttributeDefinition{Type: design.Integer},
-					}
-					elemType := &design.AttributeDefinition{Type: obj}
-					array := &design.Array{ElemType: elemType}
-					object = design.Object{
-						"foo": &design.AttributeDefinition{Type: array},
-					}
-					required = nil
-				})
+		{
+			name: "given an array of object type",
+			att: &design.AttributeDefinition{
+				Type: &design.Array{
+					ElemType: &design.AttributeDefinition{
+						Type: design.Object{
+							"foo": &design.AttributeDefinition{Type: design.Integer},
+							"bar": &design.AttributeDefinition{Type: design.String},
+						},
+					},
+				},
+			},
+			want: "[]*struct {\n" +
+				"\tBar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
+				"\tFoo *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"}",
+		},
 
-				It("produces the struct go code", func() {
-					expected := "struct {\n" +
-						"	Foo []*struct {\n" +
-						"		Bar *int `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
-						"	} `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
-						"}"
-					Ω(st).Should(Equal(expected))
-				})
+		{
+			name: "when generating an all-optional private struct, given an attribute definition with fields of primitive types",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{Type: design.Integer},
+					"bar": &design.AttributeDefinition{Type: design.String},
+					"baz": &design.AttributeDefinition{Type: design.DateTime},
+					"qux": &design.AttributeDefinition{Type: design.UUID},
+					"quz": &design.AttributeDefinition{Type: design.Any},
+				},
+			},
+			private: true,
+			want: "struct {\n" +
+				"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
+				"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
+				"	Foo *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
+				"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
+				"}",
+		},
 
-				Context("that are required", func() {
-					BeforeEach(func() {
-						required = &dslengine.ValidationDefinition{
-							Required: []string{"foo"},
-						}
-					})
+		{
+			name: "when generating an all-optional private struct, given an attribute definition with fields of primitive types that are required",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{Type: design.Integer},
+					"bar": &design.AttributeDefinition{Type: design.String},
+					"baz": &design.AttributeDefinition{Type: design.DateTime},
+					"qux": &design.AttributeDefinition{Type: design.UUID},
+					"quz": &design.AttributeDefinition{Type: design.Any},
+				},
+				Validation: &dslengine.ValidationDefinition{
+					Required: []string{"foo", "bar", "baz", "qux", "quz"},
+				},
+			},
+			private: true,
+			want: "struct {\n" +
+				"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
+				"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
+				"	Foo *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
+				"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
+				"}",
+		},
 
-					It("produces the struct go code", func() {
-						expected := "struct {\n" +
-							"	Foo []*struct {\n" +
-							"		Bar *int `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
-							"	} `form:\"foo\" json:\"foo\" yaml:\"foo\" xml:\"foo\"`\n" +
-							"}"
-						Ω(st).Should(Equal(expected))
-					})
-				})
-			})
+		{
+			name: "when generating an all-optional private struct, given an attribute definition with fields of hash of primitive types",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type: &design.Hash{
+							KeyType:  &design.AttributeDefinition{Type: design.Integer},
+							ElemType: &design.AttributeDefinition{Type: design.Integer},
+						},
+					},
+				},
+			},
+			private: true,
+			want: "struct {\n" +
+				"\tFoo map[int]int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`" +
+				"\n}",
+		},
 
-			Context("that are required", func() {
-				BeforeEach(func() {
-					object = design.Object{
-						"foo": &design.AttributeDefinition{Type: design.Integer},
-					}
-					required = &dslengine.ValidationDefinition{
-						Required: []string{"foo"},
-					}
-				})
+		{
+			name: "when generating an all-optional private struct, given an attribute definition with fields of array of primitive types",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type: &design.Array{
+							ElemType: &design.AttributeDefinition{Type: design.Integer},
+						},
+					},
+				},
+			},
+			private: true,
+			want: "struct {\n" +
+				"\tFoo []int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"}",
+		},
 
-				It("produces the struct go code", func() {
-					expected := "struct {\n" +
-						"	Foo int `form:\"foo\" json:\"foo\" yaml:\"foo\" xml:\"foo\"`\n" +
-						"}"
-					Ω(st).Should(Equal(expected))
-				})
-			})
+		{
+			name: "when generating an all-optional private struct, given an attribute definition with fields that are required",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{Type: design.Integer},
+				},
+				Validation: &dslengine.ValidationDefinition{
+					Required: []string{"foo"},
+				},
+			},
+			private: true,
+			want: "struct {\n" +
+				"	Foo *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
+				"}",
+		},
+	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := codegen.GoTypeDef(tt.att, 0, true, tt.private)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("unexpected code (-want +got):\n%s", diff)
+			}
 		})
+	}
+}
 
-		Context("given an array", func() {
-			var elemType *design.AttributeDefinition
-			var source string
-
-			JustBeforeEach(func() {
-				array := &design.Array{ElemType: elemType}
-				att := &design.AttributeDefinition{Type: array}
-				source = codegen.GoTypeDef(att, 0, true, false)
-			})
-
-			Context("of primitive type", func() {
-				BeforeEach(func() {
-					elemType = &design.AttributeDefinition{Type: design.Integer}
-				})
-
-				It("produces the array go code", func() {
-					Ω(source).Should(Equal("[]int"))
-				})
-
-			})
-
-			Context("of object type", func() {
-				BeforeEach(func() {
-					object := design.Object{
-						"foo": &design.AttributeDefinition{Type: design.Integer},
-						"bar": &design.AttributeDefinition{Type: design.String},
-					}
-					elemType = &design.AttributeDefinition{Type: object}
-				})
-
-				It("produces the array go code", func() {
-					Ω(source).Should(Equal("[]*struct {\n\tBar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n\tFoo *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n}"))
-				})
-			})
-		})
-
-		Context("when generating an all-optional private struct, given an attribute definition with fields", func() {
-			var att *design.AttributeDefinition
-			var object design.Object
-			var required *dslengine.ValidationDefinition
-			var st string
-
-			JustBeforeEach(func() {
-				att = new(design.AttributeDefinition)
-				att.Type = object
-				if required != nil {
-					att.Validation = required
-				}
-				st = codegen.GoTypeDef(att, 0, true, true)
-			})
-
-			Context("of primitive types", func() {
-				BeforeEach(func() {
-					object = design.Object{
-						"foo": &design.AttributeDefinition{Type: design.Integer},
-						"bar": &design.AttributeDefinition{Type: design.String},
-						"baz": &design.AttributeDefinition{Type: design.DateTime},
-						"qux": &design.AttributeDefinition{Type: design.UUID},
-						"quz": &design.AttributeDefinition{Type: design.Any},
-					}
-					required = nil
-				})
-
-				It("produces the struct go code", func() {
-					expected := "struct {\n" +
-						"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
-						"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
-						"	Foo *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
-						"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
-						"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
-						"}"
-					Ω(st).Should(Equal(expected))
-				})
-
-				Context("that are required", func() {
-					BeforeEach(func() {
-						required = &dslengine.ValidationDefinition{
-							Required: []string{"foo", "bar", "baz", "qux", "quz"},
-						}
-					})
-					It("produces the struct go code", func() {
-						expected := "struct {\n" +
-							"	Bar *string `form:\"bar,omitempty\" json:\"bar,omitempty\" yaml:\"bar,omitempty\" xml:\"bar,omitempty\"`\n" +
-							"	Baz *time.Time `form:\"baz,omitempty\" json:\"baz,omitempty\" yaml:\"baz,omitempty\" xml:\"baz,omitempty\"`\n" +
-							"	Foo *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
-							"	Qux *uuid.UUID `form:\"qux,omitempty\" json:\"qux,omitempty\" yaml:\"qux,omitempty\" xml:\"qux,omitempty\"`\n" +
-							"	Quz interface{} `form:\"quz,omitempty\" json:\"quz,omitempty\" yaml:\"quz,omitempty\" xml:\"quz,omitempty\"`\n" +
-							"}"
-						Ω(st).Should(Equal(expected))
-					})
-				})
-			})
-
-			Context("of hash of primitive types", func() {
-				BeforeEach(func() {
-					elemType := &design.AttributeDefinition{Type: design.Integer}
-					keyType := &design.AttributeDefinition{Type: design.Integer}
-					hash := &design.Hash{KeyType: keyType, ElemType: elemType}
-					object = design.Object{
-						"foo": &design.AttributeDefinition{Type: hash},
-					}
-					required = nil
-				})
-
-				It("produces the struct go code", func() {
-					Ω(st).Should(Equal("struct {\n\tFoo map[int]int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n}"))
-				})
-			})
-
-			Context("of array of primitive types", func() {
-				BeforeEach(func() {
-					elemType := &design.AttributeDefinition{Type: design.Integer}
-					array := &design.Array{ElemType: elemType}
-					object = design.Object{
-						"foo": &design.AttributeDefinition{Type: array},
-					}
-					required = nil
-				})
-
-				It("produces the struct go code", func() {
-					Ω(st).Should(Equal("struct {\n\tFoo []int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n}"))
-				})
-			})
-
-			Context("that are required", func() {
-				BeforeEach(func() {
-					object = design.Object{
-						"foo": &design.AttributeDefinition{Type: design.Integer},
-					}
-					required = &dslengine.ValidationDefinition{
-						Required: []string{"foo"},
-					}
-				})
-
-				It("produces the struct go code", func() {
-					expected := "struct {\n" +
-						"	Foo *int `form:\"foo,omitempty\" json:\"foo,omitempty\" yaml:\"foo,omitempty\" xml:\"foo,omitempty\"`\n" +
-						"}"
-					Ω(st).Should(Equal(expected))
-				})
-			})
-		})
-	})
-})
-
-var _ = Describe("GoTypeTransform", func() {
-	var source, target *design.UserTypeDefinition
-	var targetPkg, funcName string
-
-	var transform string
-
-	BeforeEach(func() {
+func TestGoTypeTransform(t *testing.T) {
+	t.Run("transforming simple objects", func(t *testing.T) {
 		dslengine.Reset()
-	})
-	JustBeforeEach(func() {
-		err := dslengine.Run()
-		Ω(err).ShouldNot(HaveOccurred())
-		transform, _ = codegen.GoTypeTransform(source, target, targetPkg, funcName)
-	})
-
-	Context("transforming simple objects", func() {
-		const attName = "att"
-		BeforeEach(func() {
-			source = apidsl.Type("Source", func() {
-				apidsl.Attribute(attName)
-			})
-			target = apidsl.Type("Target", func() {
-				apidsl.Attribute(attName)
-			})
-			funcName = "Transform"
+		source := apidsl.Type("Source", func() {
+			apidsl.Attribute("att")
 		})
+		target := apidsl.Type("Target", func() {
+			apidsl.Attribute("att")
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("generates a simple assignment", func() {
-			Ω(transform).Should(Equal(`func Transform(source *Source) (target *Target) {
+		got, err := codegen.GoTypeTransform(source, target, "", "Transform")
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := `func Transform(source *Source) (target *Target) {
 	target = new(Target)
 	target.Att = source.Att
 	return
 }
-`))
-		})
+`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
 	})
 
-	Context("transforming objects with attributes with map key metadata", func() {
-		const mapKey = "key"
-		BeforeEach(func() {
-			source = apidsl.Type("Source", func() {
-				apidsl.Attribute("foo", func() {
-					apidsl.Metadata(codegen.TransformMapKey, mapKey)
-				})
+	t.Run("transforming objects with attributes with map key metadata", func(t *testing.T) {
+		dslengine.Reset()
+		source := apidsl.Type("Source", func() {
+			apidsl.Attribute("foo", func() {
+				apidsl.Metadata(codegen.TransformMapKey, "key")
 			})
-			target = apidsl.Type("Target", func() {
-				apidsl.Attribute("bar", func() {
-					apidsl.Metadata(codegen.TransformMapKey, mapKey)
-				})
-			})
-			funcName = "Transform"
 		})
+		target := apidsl.Type("Target", func() {
+			apidsl.Attribute("bar", func() {
+				apidsl.Metadata(codegen.TransformMapKey, "key")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("generates a simple assignment", func() {
-			Ω(transform).Should(Equal(`func Transform(source *Source) (target *Target) {
+		got, err := codegen.GoTypeTransform(source, target, "", "Transform")
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := `func Transform(source *Source) (target *Target) {
 	target = new(Target)
 	target.Bar = source.Foo
 	return
 }
-`))
-		})
+`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
 	})
 
-	Context("transforming objects with array attributes", func() {
-		const attName = "att"
-		BeforeEach(func() {
-			source = apidsl.Type("Source", func() {
-				apidsl.Attribute(attName, apidsl.ArrayOf(design.Integer))
-			})
-			target = apidsl.Type("Target", func() {
-				apidsl.Attribute(attName, apidsl.ArrayOf(design.Integer))
-			})
-			funcName = "Transform"
+	t.Run("transforming objects with array attributes", func(t *testing.T) {
+		dslengine.Reset()
+		source := apidsl.Type("Source", func() {
+			apidsl.Attribute("att", apidsl.ArrayOf(design.Integer))
 		})
+		target := apidsl.Type("Target", func() {
+			apidsl.Attribute("att", apidsl.ArrayOf(design.Integer))
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("generates a simple assignment", func() {
-			Ω(transform).Should(Equal(`func Transform(source *Source) (target *Target) {
+		got, err := codegen.GoTypeTransform(source, target, "", "Transform")
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := `func Transform(source *Source) (target *Target) {
 	target = new(Target)
 	target.Att = make([]int, len(source.Att))
 	for i, v := range source.Att {
@@ -646,28 +583,33 @@ var _ = Describe("GoTypeTransform", func() {
 	}
 	return
 }
-`))
-		})
+`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
 	})
 
-	Context("transforming objects with hash attributes", func() {
-		const attName = "att"
-		BeforeEach(func() {
-			elem := apidsl.Type("elem", func() {
-				apidsl.Attribute("foo", design.Integer)
-				apidsl.Attribute("bar")
-			})
-			source = apidsl.Type("Source", func() {
-				apidsl.Attribute(attName, apidsl.HashOf(design.String, elem))
-			})
-			target = apidsl.Type("Target", func() {
-				apidsl.Attribute(attName, apidsl.HashOf(design.String, elem))
-			})
-			funcName = "Transform"
+	t.Run("transforming objects with hash attributes", func(t *testing.T) {
+		dslengine.Reset()
+		elem := apidsl.Type("elem", func() {
+			apidsl.Attribute("foo", design.Integer)
+			apidsl.Attribute("bar")
 		})
+		source := apidsl.Type("Source", func() {
+			apidsl.Attribute("att", apidsl.HashOf(design.String, elem))
+		})
+		target := apidsl.Type("Target", func() {
+			apidsl.Attribute("att", apidsl.HashOf(design.String, elem))
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("generates a simple assignment", func() {
-			Ω(transform).Should(Equal(`func Transform(source *Source) (target *Target) {
+		got, err := codegen.GoTypeTransform(source, target, "", "Transform")
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := `func Transform(source *Source) (target *Target) {
 	target = new(Target)
 	target.Att = make(map[string]*Elem, len(source.Att))
 	for k, v := range source.Att {
@@ -681,39 +623,45 @@ var _ = Describe("GoTypeTransform", func() {
 	}
 	return
 }
-`))
-		})
+`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
 	})
 
-	Context("transforming objects with recursive attributes", func() {
-		BeforeEach(func() {
-			inner := apidsl.Type("inner", func() {
-				apidsl.Attribute("foo", design.Integer)
-			})
-			outer := apidsl.Type("outer", func() {
-				apidsl.Attribute("in", inner)
-			})
-			array := apidsl.Type("array", func() {
-				apidsl.Attribute("elem", apidsl.ArrayOf(outer))
-			})
-			hash := apidsl.Type("hash", func() {
-				apidsl.Attribute("elem", apidsl.HashOf(design.Integer, outer))
-			})
-			source = apidsl.Type("Source", func() {
-				apidsl.Attribute("outer", outer)
-				apidsl.Attribute("array", array)
-				apidsl.Attribute("hash", hash)
-			})
-			target = apidsl.Type("Target", func() {
-				apidsl.Attribute("outer", outer)
-				apidsl.Attribute("array", array)
-				apidsl.Attribute("hash", hash)
-			})
-			funcName = "Transform"
+	t.Run("transforming objects with recursive attributes", func(t *testing.T) {
+		dslengine.Reset()
+		inner := apidsl.Type("inner", func() {
+			apidsl.Attribute("foo", design.Integer)
 		})
+		outer := apidsl.Type("outer", func() {
+			apidsl.Attribute("in", inner)
+		})
+		array := apidsl.Type("array", func() {
+			apidsl.Attribute("elem", apidsl.ArrayOf(outer))
+		})
+		hash := apidsl.Type("hash", func() {
+			apidsl.Attribute("elem", apidsl.HashOf(design.Integer, outer))
+		})
+		source := apidsl.Type("Source", func() {
+			apidsl.Attribute("outer", outer)
+			apidsl.Attribute("array", array)
+			apidsl.Attribute("hash", hash)
+		})
+		target := apidsl.Type("Target", func() {
+			apidsl.Attribute("outer", outer)
+			apidsl.Attribute("array", array)
+			apidsl.Attribute("hash", hash)
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("generates the proper assignments", func() {
-			Ω(transform).Should(Equal(`func Transform(source *Source) (target *Target) {
+		got, err := codegen.GoTypeTransform(source, target, "", "Transform")
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := `func Transform(source *Source) (target *Target) {
 	target = new(Target)
 	target.Array = new(Array)
 	target.Array.Elem = make([]*Outer, len(source.Array.Elem))
@@ -738,39 +686,37 @@ var _ = Describe("GoTypeTransform", func() {
 	target.Outer.In.Foo = source.Outer.In.Foo
 	return
 }
-`))
-		})
+`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
 	})
-})
+}
 
-var _ = Describe("GoTypeDesc", func() {
-	Context("With a type with a description", func() {
-		var description string
-		var ut *design.UserTypeDefinition
-
-		var desc string
-
-		BeforeEach(func() {
-			description = "foo"
-		})
-
-		JustBeforeEach(func() {
-			ut = &design.UserTypeDefinition{AttributeDefinition: &design.AttributeDefinition{Description: description}}
-			desc = codegen.GoTypeDesc(ut, false)
-		})
-
-		It("uses the description", func() {
-			Ω(desc).Should(Equal(description))
-		})
-
-		Context("containing newlines", func() {
-			BeforeEach(func() {
-				description = "foo\nbar"
-			})
-
-			It("escapes the new lines", func() {
-				Ω(desc).Should(Equal(strings.Replace(description, "\n", "\n// ", -1)))
-			})
-		})
+func TestGoTypeDesc(t *testing.T) {
+	t.Run("with a type with a description", func(t *testing.T) {
+		ut := &design.UserTypeDefinition{
+			AttributeDefinition: &design.AttributeDefinition{
+				Description: "foo",
+			},
+		}
+		got := codegen.GoTypeDesc(ut, false)
+		want := "foo"
+		if got != want {
+			t.Errorf("GoTypeDesc() = %v; want %v", got, want)
+		}
 	})
-})
+
+	t.Run("with a type with a description containing newlines", func(t *testing.T) {
+		ut := &design.UserTypeDefinition{
+			AttributeDefinition: &design.AttributeDefinition{
+				Description: "foo\nbar",
+			},
+		}
+		got := codegen.GoTypeDesc(ut, false)
+		want := "foo\n// bar"
+		if got != want {
+			t.Errorf("GoTypeDesc() = %v; want %v", got, want)
+		}
+	})
+}
