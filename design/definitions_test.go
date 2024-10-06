@@ -378,6 +378,24 @@ func TestAPIDefinition_AllMediaTypes(t *testing.T) {
 	}
 }
 
+func TestAPIDefinition_AllUserTypes(t *testing.T) {
+	api := &APIDefinition{
+		Types: map[string]*UserTypeDefinition{
+			"example":  {TypeName: "example"},
+			"example2": {TypeName: "example2"},
+		},
+	}
+
+	got := []string{}
+	for ut := range api.AllUserTypes() {
+		got = append(got, ut.TypeName)
+	}
+	want := []string{"example", "example2"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected user types (-want, +got):\n%s", diff)
+	}
+}
+
 func TestAPIDefinition_AllSets(t *testing.T) {
 	t.Run("should order nested resources", func(t *testing.T) {
 		api := &APIDefinition{
