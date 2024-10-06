@@ -547,9 +547,28 @@ func (a *APIDefinition) PathParams() *AttributeDefinition {
 	return &AttributeDefinition{Type: obj}
 }
 
+// AllMediaTypes returns an iterator that yields all the media types sorted in alphabetical order.
+func (a *APIDefinition) AllMediaTypes() iter.Seq[*MediaTypeDefinition] {
+	names := make([]string, 0, len(a.MediaTypes))
+	for name := range a.MediaTypes {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(*MediaTypeDefinition) bool) {
+		for _, name := range names {
+			if !yield(a.MediaTypes[name]) {
+				return
+			}
+		}
+	}
+}
+
 // IterateMediaTypes calls the given iterator passing in each media type sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateMediaTypes returns that
 // error.
+//
+// Deprecated: Use [AllMediaTypes] instead.
 func (a *APIDefinition) IterateMediaTypes(it MediaTypeIterator) error {
 	names := make([]string, len(a.MediaTypes))
 	i := 0
