@@ -49,11 +49,6 @@ func (t *TestCD) AllSets() iter.Seq[dslengine.DefinitionSet] {
 	}
 }
 
-// IterateSets implement Root
-func (t *TestCD) IterateSets(it dslengine.SetIterator) {
-	_ = it([]dslengine.Definition{t})
-}
-
 // Reset is a no-op
 func (t *TestCD) Reset() {}
 
