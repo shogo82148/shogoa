@@ -55,10 +55,9 @@ func AttributeImports(att *design.AttributeDefinition, imports []*ImportSpec, se
 	case *design.MediaTypeDefinition:
 		return appendImports(imports, AttributeImports(t.AttributeDefinition, imports, seen))
 	case design.Object:
-		t.IterateAttributes(func(n string, t *design.AttributeDefinition) error {
-			imports = appendImports(imports, AttributeImports(t, imports, seen))
-			return nil
-		})
+		for _, att := range t.AllAttributes() {
+			imports = appendImports(imports, AttributeImports(att, imports, seen))
+		}
 		return imports
 	case *design.Array:
 		return appendImports(imports, AttributeImports(t.ElemType, imports, seen))

@@ -63,7 +63,7 @@ func (f *Finalizer) recurse(root, att *design.AttributeDefinition, target string
 	}
 
 	if o := att.Type.ToObject(); o != nil {
-		o.IterateAttributes(func(n string, catt *design.AttributeDefinition) error {
+		for n, catt := range o.AllAttributes() {
 			if att.HasDefaultValue(n) {
 				data := map[string]interface{}{
 					"target":     target,
@@ -93,8 +93,7 @@ func (f *Finalizer) recurse(root, att *design.AttributeDefinition, target string
 				}
 				buf.WriteString(a)
 			}
-			return nil
-		})
+		}
 	} else if a := att.Type.ToArray(); a != nil {
 		data := map[string]interface{}{
 			"elemType": a.ElemType,
