@@ -3,8 +3,10 @@ package design
 import (
 	"errors"
 	"fmt"
+	"iter"
 	"net/http"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 
@@ -344,24 +346,38 @@ type ContainerDefinition interface {
 }
 
 // ResourceIterator is the type of functions given to IterateResources.
+//
+// Deprecated: Use [iter.Seq] instead.
 type ResourceIterator func(r *ResourceDefinition) error
 
 // MediaTypeIterator is the type of functions given to IterateMediaTypes.
+//
+// Deprecated: Use [iter.Seq] instead.
 type MediaTypeIterator func(m *MediaTypeDefinition) error
 
 // UserTypeIterator is the type of functions given to IterateUserTypes.
+//
+// Deprecated: Use [iter.Seq] instead.
 type UserTypeIterator func(m *UserTypeDefinition) error
 
 // ActionIterator is the type of functions given to IterateActions.
+//
+// Deprecated: Use [iter.Seq] instead.
 type ActionIterator func(a *ActionDefinition) error
 
 // FileServerIterator is the type of functions given to IterateFileServers.
+//
+// Deprecated: Use [iter.Seq] instead.
 type FileServerIterator func(f *FileServerDefinition) error
 
 // HeaderIterator is the type of functions given to IterateHeaders.
+//
+// Deprecated: Use [iter.Seq] instead.
 type HeaderIterator func(name string, isRequired bool, h *AttributeDefinition) error
 
 // ResponseIterator is the type of functions given to IterateResponses.
+//
+// Deprecated: Use [iter.Seq] instead.
 type ResponseIterator func(r *ResponseDefinition) error
 
 // NewAPIDefinition returns a new design with built-in response templates.
@@ -610,9 +626,42 @@ func (a *APIDefinition) MediaTypeWithIdentifier(id string) *MediaTypeDefinition 
 	return nil
 }
 
+// AllResources returns an iterator over all the resources sorted in alphabetical order.
+func (a *APIDefinition) AllResources() iter.Seq[*ResourceDefinition] {
+	res := make([]*ResourceDefinition, 0, len(a.Resources))
+	for _, r := range a.Resources {
+		res = append(res, r)
+	}
+
+	// Iterate parent resources first so that action parameters are
+	// finalized prior to child actions needing them.
+	isParent := func(p, c *ResourceDefinition) bool {
+		par := c.Parent()
+		for par != nil {
+			if par == p {
+				return true
+			}
+			par = par.Parent()
+		}
+		return false
+	}
+	slices.SortFunc(res, func(a, b *ResourceDefinition) int {
+		if isParent(a, b) {
+			return -1
+		}
+		if isParent(b, a) {
+			return 1
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
+	return slices.Values(res)
+}
+
 // IterateResources calls the given iterator passing in each resource sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateResources returns that
 // error.
+//
+// Deprecated: Use [AllResources] instead.
 func (a *APIDefinition) IterateResources(it ResourceIterator) error {
 	res := make([]*ResourceDefinition, len(a.Resources))
 	i := 0
