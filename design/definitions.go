@@ -486,7 +486,6 @@ func (a *APIDefinition) AllSets() iter.Seq[dslengine.DefinitionSet] {
 		// Then run the user type DSLs
 		typeAttributes := make([]dslengine.Definition, 0, len(a.Types))
 		for u := range a.AllUserTypes() {
-			u.AttributeDefinition.DSLFunc = u.DSLFunc
 			typeAttributes = append(typeAttributes, u.AttributeDefinition)
 		}
 		if !yield(typeAttributes) {

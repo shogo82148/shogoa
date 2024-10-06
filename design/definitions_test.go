@@ -359,6 +359,107 @@ func TestResourceDefinition_PathParams(t *testing.T) {
 	})
 }
 
+func TestAPIDefinition_AllSets(t *testing.T) {
+	t.Run("should order nested resources", func(t *testing.T) {
+		api := &APIDefinition{
+			Name: "Test",
+			Resources: map[string]*ResourceDefinition{
+				"V": {Name: "V", ParentName: "W"},
+				"W": {Name: "W", ParentName: "X"},
+				"X": {Name: "X", ParentName: "Y"},
+				"Y": {Name: "Y", ParentName: "Z"},
+				"Z": {Name: "Z"},
+			},
+		}
+
+		var resources []*ResourceDefinition
+		for s := range api.AllSets() {
+			if len(s) == 0 {
+				continue
+			}
+			if _, ok := s[0].(*ResourceDefinition); !ok {
+				continue
+			}
+			resources = make([]*ResourceDefinition, len(s))
+			for i, res := range s {
+				resources[i] = res.(*ResourceDefinition)
+			}
+		}
+
+		if resources[0].Name != "Z" {
+			t.Errorf("got %s, expected Z", resources[0].Name)
+		}
+		if resources[1].Name != "Y" {
+			t.Errorf("got %s, expected Y", resources[1].Name)
+		}
+		if resources[2].Name != "X" {
+			t.Errorf("got %s, expected X", resources[2].Name)
+		}
+		if resources[3].Name != "W" {
+			t.Errorf("got %s, expected W", resources[3].Name)
+		}
+		if resources[4].Name != "V" {
+			t.Errorf("got %s, expected V", resources[4].Name)
+		}
+	})
+
+	t.Run("should order multiple nested resources", func(t *testing.T) {
+		api := &APIDefinition{
+			Name: "Test",
+			Resources: map[string]*ResourceDefinition{
+				"A": {Name: "A"},
+				"B": {Name: "B", ParentName: "A"},
+				"C": {Name: "C", ParentName: "A"},
+				"I": {Name: "I"},
+				"J": {Name: "J", ParentName: "K"},
+				"K": {Name: "K", ParentName: "I"},
+				"X": {Name: "X"},
+				"Y": {Name: "Y"},
+				"Z": {Name: "Z"},
+			},
+		}
+
+		var resources []*ResourceDefinition
+		for s := range api.AllSets() {
+			if len(s) == 0 {
+				continue
+			}
+			if _, ok := s[0].(*ResourceDefinition); !ok {
+				continue
+			}
+			resources = make([]*ResourceDefinition, len(s))
+			for i, res := range s {
+				resources[i] = res.(*ResourceDefinition)
+			}
+		}
+
+		if resources[0].Name != "A" {
+			t.Errorf("got %s, expected A", resources[0].Name)
+		}
+		if resources[1].Name != "B" {
+			t.Errorf("got %s, expected B", resources[1].Name)
+		}
+		if resources[2].Name != "C" {
+			t.Errorf("got %s, expected C", resources[2].Name)
+		}
+		if resources[3].Name != "I" {
+			t.Errorf("got %s, expected I", resources[3].Name)
+		}
+		if resources[4].Name != "K" {
+			t.Errorf("got %s, expected K", resources[4].Name)
+		}
+		if resources[5].Name != "J" {
+			t.Errorf("got %s, expected J", resources[5].Name)
+		}
+		if resources[6].Name != "X" {
+			t.Errorf("got %s, expected X", resources[6].Name)
+		}
+		if resources[7].Name != "Y" {
+			t.Errorf("got %s, expected Y", resources[7].Name)
+		}
+	})
+}
+
 func TestAPIDefinition_IterateSets(t *testing.T) {
 	// a function that collects resource definitions for validation
 	valFunc := func(validate func([]*ResourceDefinition)) func(dslengine.DefinitionSet) error {
