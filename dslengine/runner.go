@@ -92,7 +92,11 @@ func Run() error {
 		start := executed
 		executed = len(roots)
 		for _, root := range roots[start:] {
-			root.IterateSets(runSet)
+			for set := range root.AllSets() {
+				if err := runSet(set); err != nil {
+					return err
+				}
+			}
 		}
 		if recursed > 100 {
 			// Let's cross that bridge once we get there
@@ -103,13 +107,21 @@ func Run() error {
 		return Errors
 	}
 	for _, root := range roots {
-		root.IterateSets(validateSet)
+		for set := range root.AllSets() {
+			if err := validateSet(set); err != nil {
+				return err
+			}
+		}
 	}
 	if Errors != nil {
 		return Errors
 	}
 	for _, root := range roots {
-		root.IterateSets(finalizeSet)
+		for set := range root.AllSets() {
+			if err := finalizeSet(set); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -315,6 +327,9 @@ func validateSet(set DefinitionSet) error {
 		}
 	}
 	err := errors.AsError()
+	if err == nil {
+		return nil
+	}
 	if err != nil {
 		Errors = append(Errors, &Error{GoError: err})
 	}

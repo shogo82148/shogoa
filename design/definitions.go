@@ -520,63 +520,6 @@ func (a *APIDefinition) AllSets() iter.Seq[dslengine.DefinitionSet] {
 	}
 }
 
-// IterateSets calls the given iterator passing in the API definition, user types, media types and
-// finally resources.
-//
-// Deprecated: Use [APIDefinition.AllSets] instead.
-func (a *APIDefinition) IterateSets(iterator dslengine.SetIterator) {
-	// First run the top level API DSL to initialize responses and
-	// response templates needed by resources.
-	iterator([]dslengine.Definition{a})
-
-	// Then run the user type DSLs
-	typeAttributes := make([]dslengine.Definition, len(a.Types))
-	i := 0
-	a.IterateUserTypes(func(u *UserTypeDefinition) error {
-		u.AttributeDefinition.DSLFunc = u.DSLFunc
-		typeAttributes[i] = u.AttributeDefinition
-		i++
-		return nil
-	})
-	iterator(typeAttributes)
-
-	// Then the media type DSLs
-	mediaTypes := make([]dslengine.Definition, len(a.MediaTypes))
-	i = 0
-	a.IterateMediaTypes(func(mt *MediaTypeDefinition) error {
-		mediaTypes[i] = mt
-		i++
-		return nil
-	})
-	iterator(mediaTypes)
-
-	// Then, the Security schemes definitions
-	var securitySchemes []dslengine.Definition
-	for _, scheme := range a.SecuritySchemes {
-		securitySchemes = append(securitySchemes, dslengine.Definition(scheme))
-	}
-	iterator(securitySchemes)
-
-	// And now that we have everything - the resources. The resource
-	// lifecycle handlers dispatch to their children elements, like Actions,
-	// etc.. We must process parent resources first to ensure that query
-	// string and path parameters are initialized by the time a child
-	// resource action parameters are categorized.
-	resources := make([]*ResourceDefinition, len(a.Resources))
-	i = 0
-	a.IterateResources(func(res *ResourceDefinition) error {
-		resources[i] = res
-		i++
-		return nil
-	})
-	sort.Sort(byParent(resources))
-	defs := make([]dslengine.Definition, len(resources))
-	for i, r := range resources {
-		defs[i] = r
-	}
-	iterator(defs)
-}
-
 // Reset sets all the API definition fields to their zero value except the default responses and
 // default response templates.
 func (a *APIDefinition) Reset() {

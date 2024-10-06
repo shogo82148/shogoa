@@ -264,24 +264,6 @@ func (r MediaTypeRoot) AllSets() iter.Seq[dslengine.DefinitionSet] {
 	}
 }
 
-// IterateSets iterates over the one generated media type definition set.
-func (r MediaTypeRoot) IterateSets(iterator dslengine.SetIterator) {
-	canonicalIDs := make([]string, len(r))
-	i := 0
-	for _, mt := range r {
-		canonicalID := CanonicalIdentifier(mt.Identifier)
-		Design.MediaTypes[canonicalID] = mt
-		canonicalIDs[i] = canonicalID
-		i++
-	}
-	slices.Sort(canonicalIDs)
-	set := make([]dslengine.Definition, len(canonicalIDs))
-	for i, cid := range canonicalIDs {
-		set[i] = Design.MediaTypes[cid]
-	}
-	_ = iterator(set)
-}
-
 // Reset deletes all the keys.
 func (r MediaTypeRoot) Reset() {
 	clear(r)
