@@ -3,6 +3,7 @@ package design
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
@@ -357,6 +358,24 @@ func TestResourceDefinition_PathParams(t *testing.T) {
 			t.Error("missing key basepath")
 		}
 	})
+}
+
+func TestAPIDefinition_AllMediaTypes(t *testing.T) {
+	api := &APIDefinition{
+		MediaTypes: map[string]*MediaTypeDefinition{
+			"application/example":  {Identifier: "application/example"},
+			"application/example2": {Identifier: "application/example2"},
+		},
+	}
+
+	got := []string{}
+	for mt := range api.AllMediaTypes() {
+		got = append(got, mt.Identifier)
+	}
+	want := []string{"application/example", "application/example2"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected media types (-want, +got):\n%s", diff)
+	}
 }
 
 func TestAPIDefinition_AllSets(t *testing.T) {
