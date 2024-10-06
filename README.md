@@ -4,7 +4,7 @@ shogoa is a framework for building micro-services and REST APIs in Go using a
 unique design-first approach.
 It was forked from [goadesign/goa](https://github.com/goadesign/goa) v1.
 
-[![Build Status](https://github.com/shogo82148/shogoa/workflows/test/badge.svg?branch=main)](https://github.com/shogo82148/shogoa/actions?query=workflow%3Atest)
+[![test](https://github.com/shogo82148/shogoa/actions/workflows/test.yml/badge.svg)](https://github.com/shogo82148/shogoa/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/shogo82148/shogoa/blob/main/LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/shogo82148/shoshogoa.svg)](https://pkg.go.dev/github.com/shogo82148/shogoa)
 
