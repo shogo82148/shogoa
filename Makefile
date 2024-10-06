@@ -16,11 +16,10 @@ all: depend lint shogoagen
 .PHONY: depend
 depend:
 	go mod download
-	go install github.com/onsi/ginkgo/ginkgo@latest
 
 .PHONY: test
 test:
-	ginkgo -r --randomizeAllSpecs --failOnPending --randomizeSuites -race
+	go test -v -shuffle=on -coverprofile="coverage.txt" ./...
 	go test -v github.com/shogo82148/shogoa/_integration_tests
 
 .PHONY: shogoagen

@@ -19,3 +19,6 @@ goagen/goagen
 # vim
 *.swp
 *.swo
+
+# coverage report
+coverage.txt
