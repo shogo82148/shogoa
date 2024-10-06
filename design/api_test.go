@@ -74,6 +74,54 @@ func TestMediaTypeRoot_DependsOn(t *testing.T) {
 	}
 }
 
+func TestMediaTypeRoot_AllSets(t *testing.T) {
+	tests := []struct {
+		name string
+		root MediaTypeRoot
+		set  []string
+	}{
+		{
+			name: "empty",
+			root: MediaTypeRoot{},
+			set:  []string{},
+		},
+		{
+			name: "one",
+			root: MediaTypeRoot{
+				"foo": &MediaTypeDefinition{Identifier: "application/json"},
+			},
+			set: []string{"foo"},
+		},
+		{
+			name: "two",
+			root: MediaTypeRoot{
+				"foo": &MediaTypeDefinition{Identifier: "application/json"},
+				"bar": &MediaTypeDefinition{Identifier: "application/xml"},
+			},
+			set: []string{"foo", "bar"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Design.MediaTypes = make(map[string]*MediaTypeDefinition)
+
+			sets := slices.Collect(tt.root.AllSets())
+			if len(sets) != 1 {
+				t.Errorf("expected 1, got %d", len(sets))
+			}
+			if len(sets[0]) != len(tt.set) {
+				t.Errorf("expected %d, got %d", len(tt.root), len(sets[0]))
+			}
+			for i, set := range sets[0] {
+				if set != tt.root[tt.set[i]] {
+					t.Errorf("expected %v, got %v", tt.root[tt.set[i]], set)
+				}
+			}
+		})
+	}
+}
+
 func TestMediaTypeRoot_IterateSets(t *testing.T) {
 	tests := []struct {
 		name string
