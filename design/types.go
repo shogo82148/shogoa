@@ -546,30 +546,6 @@ func (o Object) AllAttributes() iter.Seq2[string, *AttributeDefinition] {
 	}
 }
 
-// AttributeIterator is the type of the function given to IterateAttributes.
-type AttributeIterator func(string, *AttributeDefinition) error
-
-// IterateAttributes calls the given iterator passing in each attribute sorted in alphabetical order.
-// Iteration stops if an iterator returns an error and in this case IterateObject returns that
-// error.
-//
-// Deprecated: Use [Object.AllAttributes] instead.
-func (o Object) IterateAttributes(it AttributeIterator) error {
-	names := make([]string, len(o))
-	i := 0
-	for n := range o {
-		names[i] = n
-		i++
-	}
-	sort.Strings(names)
-	for _, n := range names {
-		if err := it(n, o[n]); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // UserTypes traverses the data type recursively and collects all the user types used to
 // define it. The returned map is indexed by type name.
 func UserTypes(dt DataType) map[string]*UserTypeDefinition {

@@ -661,7 +661,7 @@ func paramsFromDefinition(params *design.AttributeDefinition, path string) ([]*P
 	res := make([]*Parameter, len(obj))
 	i := 0
 	wildcards := design.ExtractWildcards(path)
-	obj.IterateAttributes(func(n string, at *design.AttributeDefinition) error {
+	for n, at := range obj.AllAttributes() {
 		in := "query"
 		required := params.IsRequired(n)
 		for _, w := range wildcards {
@@ -674,8 +674,7 @@ func paramsFromDefinition(params *design.AttributeDefinition, path string) ([]*P
 		param := paramFor(at, n, in, required)
 		res[i] = param
 		i++
-		return nil
-	})
+	}
 	return res, nil
 }
 
@@ -699,14 +698,13 @@ func paramsFromPayload(payload *design.UserTypeDefinition) ([]*Parameter, error)
 	}
 	res := make([]*Parameter, len(obj))
 	i := 0
-	obj.IterateAttributes(func(n string, at *design.AttributeDefinition) error {
+	for n, at := range obj.AllAttributes() {
 		in := "formData"
 		required := payload.IsRequired(n)
 		param := paramFor(at, n, in, required)
 		res[i] = param
 		i++
-		return nil
-	})
+	}
 	return res, nil
 }
 
@@ -830,7 +828,7 @@ func headersFromDefinition(headers *design.AttributeDefinition) (map[string]*Hea
 		return nil, fmt.Errorf("invalid headers definition, not an object")
 	}
 	res := make(map[string]*Header)
-	obj.IterateAttributes(func(n string, at *design.AttributeDefinition) error {
+	for n, at := range obj.AllAttributes() {
 		header := &Header{
 			Default:     at.DefaultValue,
 			Description: at.Description,
@@ -838,8 +836,7 @@ func headersFromDefinition(headers *design.AttributeDefinition) (map[string]*Hea
 		}
 		initValidations(at, header)
 		res[n] = header
-		return nil
-	})
+	}
 	return res, nil
 }
 

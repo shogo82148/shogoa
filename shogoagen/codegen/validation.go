@@ -192,7 +192,7 @@ func (v *Validator) recurse(att *design.AttributeDefinition, nonzero, required, 
 			buf.WriteString(validation)
 			first = false
 		}
-		o.IterateAttributes(func(n string, catt *design.AttributeDefinition) error {
+		for n, catt := range o.AllAttributes() {
 			validation := v.recurseAttribute(att, catt, n, target, context, depth, private)
 			if validation != "" {
 				if !first {
@@ -202,8 +202,7 @@ func (v *Validator) recurse(att *design.AttributeDefinition, nonzero, required, 
 				}
 				buf.WriteString(validation)
 			}
-			return nil
-		})
+		}
 	} else if a := att.Type.ToArray(); a != nil {
 		buf.Write(v.arrayValCode(att, nonzero, required, hasDefault, target, context, depth, private))
 	} else if h := att.Type.ToHash(); h != nil {

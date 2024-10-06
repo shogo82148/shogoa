@@ -41,7 +41,7 @@ func RecursivePublicizer(att *design.AttributeDefinition, source, target string,
 		if ds, ok := att.Type.(design.DataStructure); ok {
 			att = ds.Definition()
 		}
-		o.IterateAttributes(func(n string, catt *design.AttributeDefinition) error {
+		for n, catt := range o.AllAttributes() {
 			publication := Publicizer(
 				catt,
 				fmt.Sprintf("%s.%s", source, GoifyAtt(catt, n, true)),
@@ -53,8 +53,7 @@ func RecursivePublicizer(att *design.AttributeDefinition, source, target string,
 			publication = fmt.Sprintf("%sif %s.%s != nil {\n%s\n%s}",
 				Tabs(depth), source, GoifyAtt(catt, n, true), publication, Tabs(depth))
 			publications = append(publications, publication)
-			return nil
-		})
+		}
 	}
 	return strings.Join(publications, "\n")
 }
