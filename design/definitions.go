@@ -1777,9 +1777,28 @@ func (a *ActionDefinition) IterateHeaders(it HeaderIterator) error {
 	return iterateHeaders(mergedHeaders, isRequired, it)
 }
 
+// AllResponses returns an iterator that yields all responses sorted in alphabetical order.
+func (a *ActionDefinition) AllResponses() iter.Seq[*ResponseDefinition] {
+	names := make([]string, 0, len(a.Responses))
+	for name := range a.Responses {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	return func(yield func(*ResponseDefinition) bool) {
+		for _, name := range names {
+			if !yield(a.Responses[name]) {
+				return
+			}
+		}
+	}
+}
+
 // IterateResponses calls the given iterator passing in each response sorted in alphabetical order.
 // Iteration stops if an iterator returns an error and in this case IterateResponses returns that
 // error.
+//
+// Deprecated: Use [ActionDefinition.AllResponses] instead.
 func (a *ActionDefinition) IterateResponses(it ResponseIterator) error {
 	names := make([]string, len(a.Responses))
 	i := 0
