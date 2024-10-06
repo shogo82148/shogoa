@@ -36,3 +36,9 @@ jobs:
         working-directory: src/github.com/shogo82148/shogoa
       - run: make test
         working-directory: src/github.com/shogo82148/shogoa
+      - name: upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: src/github.com/shogo82148/shogoa/coverage.txt
+          flags: ${{ matrix.os }}-${{ matrix.go }}
