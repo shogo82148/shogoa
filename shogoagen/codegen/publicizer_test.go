@@ -1,211 +1,55 @@
 package codegen_test
 
 import (
-	"fmt"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/dslengine"
 	"github.com/shogo82148/shogoa/shogoagen/codegen"
 )
 
-var _ = Describe("Struct publicize code generation", func() {
-	Describe("Publicizer", func() {
-		var att *design.AttributeDefinition
-		var sourceField, targetField string
-		Context("given a simple field", func() {
-			BeforeEach(func() {
-				att = &design.AttributeDefinition{Type: design.Integer}
-				sourceField = "source"
-				targetField = "target"
-			})
-			Context("with init false", func() {
-				It("simply copies the field over", func() {
-					publication := codegen.Publicizer(att, sourceField, targetField, false, 0, false)
-					Ω(publication).Should(Equal(fmt.Sprintf("%s = %s", targetField, sourceField)))
-				})
-			})
-			Context("with init true", func() {
-				It("initializes and copies the field copies the field over", func() {
-					publication := codegen.Publicizer(att, sourceField, targetField, false, 0, true)
-					Ω(publication).Should(Equal(fmt.Sprintf("%s := %s", targetField, sourceField)))
-				})
-			})
-		})
-		Context("given an object field", func() {
-			BeforeEach(func() {
-				att = &design.AttributeDefinition{
-					Type: design.Object{
-						"foo": &design.AttributeDefinition{Type: design.String},
-						"bar": &design.AttributeDefinition{Type: design.Any},
-						"baz": &design.AttributeDefinition{Type: design.Any},
-					},
-					Validation: &dslengine.ValidationDefinition{
-						Required: []string{"bar"},
-					},
-				}
-				sourceField = "source"
-				targetField = "target"
-			})
-			It("copies the struct fields", func() {
-				publication := codegen.Publicizer(att, sourceField, targetField, false, 0, false)
-				Ω(publication).Should(Equal(objectPublicizeCode))
-			})
-		})
-		Context("given an object field with struct:field:name metadata", func() {
-			BeforeEach(func() {
-				att = &design.AttributeDefinition{
-					Type: design.Object{
-						"foo": &design.AttributeDefinition{
-							Type:     design.String,
-							Metadata: dslengine.MetadataDefinition{"struct:field:name": []string{"MetaFoo"}},
-						},
-						"bar": &design.AttributeDefinition{
-							Type:     design.Any,
-							Metadata: dslengine.MetadataDefinition{"struct:field:name": []string{"MetaBar"}},
-						},
-						"baz": &design.AttributeDefinition{
-							Type:     design.Any,
-							Metadata: dslengine.MetadataDefinition{"struct:field:name": []string{"MetaBaz"}},
-						},
-					},
-					Validation: &dslengine.ValidationDefinition{
-						Required: []string{"bar"},
-					},
-				}
-				sourceField = "source"
-				targetField = "target"
-			})
-			It("copies the struct fields", func() {
-				publication := codegen.Publicizer(att, sourceField, targetField, false, 0, false)
-				Ω(publication).Should(Equal(objectPublicizeCodeWithMeta))
-			})
-		})
-		Context("given a user type", func() {
-			BeforeEach(func() {
-				att = &design.AttributeDefinition{
-					Type: &design.UserTypeDefinition{
-						AttributeDefinition: &design.AttributeDefinition{
-							Type: &design.Object{
-								"foo": &design.AttributeDefinition{Type: design.String},
-							},
-						},
-						TypeName: "TheUserType",
-					},
-				}
-				sourceField = "source"
-				targetField = "target"
-			})
-			It("calls Publicize on the source field", func() {
-				publication := codegen.Publicizer(att, sourceField, targetField, false, 0, false)
-				Ω(publication).Should(Equal(fmt.Sprintf("%s = %s.Publicize()", targetField, sourceField)))
-			})
-		})
-		Context("given an array field", func() {
-			Context("that contains primitive fields", func() {
-				BeforeEach(func() {
-					att = &design.AttributeDefinition{
-						Type: &design.Array{
-							ElemType: &design.AttributeDefinition{
-								Type: design.String,
-							},
-						},
-					}
-					sourceField = "source"
-					targetField = "target"
-				})
-				It("copies the array fields", func() {
-					publication := codegen.Publicizer(att, sourceField, targetField, false, 0, false)
-					Ω(publication).Should(Equal(fmt.Sprintf("%s = %s", targetField, sourceField)))
-				})
-			})
-			Context("that contains user defined fields", func() {
-				BeforeEach(func() {
-					att = &design.AttributeDefinition{
-						Type: &design.Array{
-							ElemType: &design.AttributeDefinition{
-								Type: &design.UserTypeDefinition{
-									AttributeDefinition: &design.AttributeDefinition{
-										Type: design.Object{
-											"foo": &design.AttributeDefinition{Type: design.String},
-										},
-									},
-									TypeName: "TheUserType",
-								},
-							},
-						},
-					}
-					sourceField = "source"
-					targetField = "target"
-				})
-				It("copies the array fields", func() {
-					publication := codegen.Publicizer(att, sourceField, targetField, false, 0, false)
-					Ω(publication).Should(Equal(arrayPublicizeCode))
-				})
-			})
-		})
-		Context("given a hash field", func() {
-			Context("that contains primitive fields", func() {
-				BeforeEach(func() {
-					att = &design.AttributeDefinition{
-						Type: &design.Hash{
-							KeyType: &design.AttributeDefinition{
-								Type: design.String,
-							},
-							ElemType: &design.AttributeDefinition{
-								Type: design.String,
-							},
-						},
-					}
-					sourceField = "source"
-					targetField = "target"
-				})
-				It("copies the hash fields", func() {
-					publication := codegen.Publicizer(att, sourceField, targetField, false, 0, false)
-					Ω(publication).Should(Equal(fmt.Sprintf("%s = %s", targetField, sourceField)))
-				})
-			})
-			Context("that contains user defined fields", func() {
-				BeforeEach(func() {
-					att = &design.AttributeDefinition{
-						Type: &design.Hash{
-							KeyType: &design.AttributeDefinition{
-								Type: &design.UserTypeDefinition{
-									AttributeDefinition: &design.AttributeDefinition{
-										Type: &design.Object{
-											"foo": &design.AttributeDefinition{Type: design.String},
-										},
-									},
-									TypeName: "TheKeyType",
-								},
-							},
-							ElemType: &design.AttributeDefinition{
-								Type: &design.UserTypeDefinition{
-									AttributeDefinition: &design.AttributeDefinition{
-										Type: &design.Object{
-											"bar": &design.AttributeDefinition{Type: design.String},
-										},
-									},
-									TypeName: "TheElemType",
-								},
-							},
-						},
-					}
-					sourceField = "source"
-					targetField = "target"
-				})
-				It("copies the hash fields", func() {
-					publication := codegen.Publicizer(att, sourceField, targetField, false, 0, false)
-					Ω(publication).Should(Equal(hashPublicizeCode))
-				})
-			})
-		})
-	})
-})
+func TestPublicizer(t *testing.T) {
+	tests := []struct {
+		name        string
+		att         *design.AttributeDefinition
+		sourceField string
+		targetField string
+		init        bool
+		want        string
+	}{
+		{
+			name:        "given a simple field",
+			att:         &design.AttributeDefinition{Type: design.Integer},
+			sourceField: "source",
+			targetField: "target",
+			want:        "target = source",
+		},
 
-const (
-	objectPublicizeCode = `target = &struct {
+		{
+			name:        "given a simple field with init true",
+			att:         &design.AttributeDefinition{Type: design.Integer},
+			sourceField: "source",
+			targetField: "target",
+			init:        true,
+			want:        "target := source",
+		},
+
+		{
+			name: "given an object field",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{Type: design.String},
+					"bar": &design.AttributeDefinition{Type: design.Any},
+					"baz": &design.AttributeDefinition{Type: design.Any},
+				},
+				Validation: &dslengine.ValidationDefinition{
+					Required: []string{"bar"},
+				},
+			},
+			sourceField: "source",
+			targetField: "target",
+			want: `target = &struct {
 	Bar interface{} ` + "`" + `form:"bar" json:"bar" yaml:"bar" xml:"bar"` + "`" + `
 	Baz interface{} ` + "`" + `form:"baz,omitempty" json:"baz,omitempty" yaml:"baz,omitempty" xml:"baz,omitempty"` + "`" + `
 	Foo *string ` + "`" + `form:"foo,omitempty" json:"foo,omitempty" yaml:"foo,omitempty" xml:"foo,omitempty"` + "`" + `
@@ -218,9 +62,33 @@ if source.Baz != nil {
 }
 if source.Foo != nil {
 	target.Foo = source.Foo
-}`
+}`,
+		},
 
-	objectPublicizeCodeWithMeta = `target = &struct {
+		{
+			name: "given an object field with metadata",
+			att: &design.AttributeDefinition{
+				Type: design.Object{
+					"foo": &design.AttributeDefinition{
+						Type:     design.String,
+						Metadata: dslengine.MetadataDefinition{"struct:field:name": []string{"MetaFoo"}},
+					},
+					"bar": &design.AttributeDefinition{
+						Type:     design.Any,
+						Metadata: dslengine.MetadataDefinition{"struct:field:name": []string{"MetaBar"}},
+					},
+					"baz": &design.AttributeDefinition{
+						Type:     design.Any,
+						Metadata: dslengine.MetadataDefinition{"struct:field:name": []string{"MetaBaz"}},
+					},
+				},
+				Validation: &dslengine.ValidationDefinition{
+					Required: []string{"bar"},
+				},
+			},
+			sourceField: "source",
+			targetField: "target",
+			want: `target = &struct {
 	MetaBar interface{} ` + "`" + `form:"bar" json:"bar" yaml:"bar" xml:"bar"` + "`" + `
 	MetaBaz interface{} ` + "`" + `form:"baz,omitempty" json:"baz,omitempty" yaml:"baz,omitempty" xml:"baz,omitempty"` + "`" + `
 	MetaFoo *string ` + "`" + `form:"foo,omitempty" json:"foo,omitempty" yaml:"foo,omitempty" xml:"foo,omitempty"` + "`" + `
@@ -233,14 +101,110 @@ if source.MetaBaz != nil {
 }
 if source.MetaFoo != nil {
 	target.MetaFoo = source.MetaFoo
-}`
+}`,
+		},
 
-	arrayPublicizeCode = `target = make([]*TheUserType, len(source))
+		{
+			name: "given a user type",
+			att: &design.AttributeDefinition{
+				Type: &design.UserTypeDefinition{
+					AttributeDefinition: &design.AttributeDefinition{
+						Type: &design.Object{
+							"foo": &design.AttributeDefinition{Type: design.String},
+						},
+					},
+					TypeName: "TheUserType",
+				},
+			},
+			sourceField: "source",
+			targetField: "target",
+			want:        `target = source.Publicize()`,
+		},
+
+		{
+			name: "given an array field that contains primitive fields",
+			att: &design.AttributeDefinition{
+				Type: &design.Array{
+					ElemType: &design.AttributeDefinition{
+						Type: design.String,
+					},
+				},
+			},
+			sourceField: "source",
+			targetField: "target",
+			want:        `target = source`,
+		},
+
+		{
+			name: "given an array field that contains user defined fields",
+			att: &design.AttributeDefinition{
+				Type: &design.Array{
+					ElemType: &design.AttributeDefinition{
+						Type: &design.UserTypeDefinition{
+							AttributeDefinition: &design.AttributeDefinition{
+								Type: design.Object{
+									"foo": &design.AttributeDefinition{Type: design.String},
+								},
+							},
+							TypeName: "TheUserType",
+						},
+					},
+				},
+			},
+			sourceField: "source",
+			targetField: "target",
+			want: `target = make([]*TheUserType, len(source))
 for i0, elem0 := range source {
 	target[i0] = elem0.Publicize()
-}`
+}`,
+		},
 
-	hashPublicizeCode = `target = make(map[*TheKeyType]*TheElemType, len(source))
+		{
+			name: "given a hash field that contains primitive fields",
+			att: &design.AttributeDefinition{
+				Type: &design.Hash{
+					KeyType: &design.AttributeDefinition{
+						Type: design.String,
+					},
+					ElemType: &design.AttributeDefinition{
+						Type: design.String,
+					},
+				},
+			},
+			sourceField: "source",
+			targetField: "target",
+			want:        "target = source",
+		},
+
+		{
+			name: "given a hash field that contains user defined fields",
+			att: &design.AttributeDefinition{
+				Type: &design.Hash{
+					KeyType: &design.AttributeDefinition{
+						Type: &design.UserTypeDefinition{
+							AttributeDefinition: &design.AttributeDefinition{
+								Type: &design.Object{
+									"foo": &design.AttributeDefinition{Type: design.String},
+								},
+							},
+							TypeName: "TheKeyType",
+						},
+					},
+					ElemType: &design.AttributeDefinition{
+						Type: &design.UserTypeDefinition{
+							AttributeDefinition: &design.AttributeDefinition{
+								Type: &design.Object{
+									"bar": &design.AttributeDefinition{Type: design.String},
+								},
+							},
+							TypeName: "TheElemType",
+						},
+					},
+				},
+			},
+			sourceField: "source",
+			targetField: "target",
+			want: `target = make(map[*TheKeyType]*TheElemType, len(source))
 for k0, v0 := range source {
 	var pubk0 *TheKeyType
 	if k0 != nil {
@@ -251,5 +215,16 @@ for k0, v0 := range source {
 		pubv0 = v0.Publicize()
 	}
 	target[pubk0] = pubv0
-}`
-)
+}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := codegen.Publicizer(tt.att, tt.sourceField, tt.targetField, false, 0, tt.init)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("unexpected code (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
