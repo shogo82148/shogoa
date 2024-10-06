@@ -1,824 +1,872 @@
 package apidsl_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"regexp"
+	"testing"
+
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/design/apidsl"
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
-var _ = Describe("MediaType", func() {
-	var name string
-	var dslFunc func()
-
-	var mt *design.MediaTypeDefinition
-
-	BeforeEach(func() {
+func TestMediaType(t *testing.T) {
+	t.Run("with no dsl and no identifier", func(t *testing.T) {
 		dslengine.Reset()
-		name = ""
-		dslFunc = nil
+		mt := apidsl.MediaType("", nil)
+		if err := dslengine.Run(); err == nil {
+			t.Error("Run() = nil; want an error")
+		}
+
+		if err := mt.Validate(); err == nil {
+			t.Error("Validate() = nil; want an error")
+		}
 	})
 
-	JustBeforeEach(func() {
-		mt = apidsl.MediaType(name, dslFunc)
-		dslengine.Run()
+	t.Run("with no dsl", func(t *testing.T) {
+		dslengine.Reset()
+		mt := apidsl.MediaType("application/foo", nil)
+		if err := dslengine.Run(); err == nil {
+			t.Error("Run() = nil; want an error")
+		}
+
+		if err := mt.Validate(); err == nil {
+			t.Error("Validate() = nil; want an error")
+		}
 	})
 
-	Context("with no dsl and no identifier", func() {
-		It("produces an error", func() {
-			Ω(mt).ShouldNot(BeNil())
-			Ω(mt.Validate()).Should(HaveOccurred())
-		})
-	})
-
-	Context("with no dsl", func() {
-		BeforeEach(func() {
-			name = "application/foo"
-		})
-
-		It("produces an error", func() {
-			Ω(mt).ShouldNot(BeNil())
-			Ω(mt.Validate()).Should(HaveOccurred())
-		})
-	})
-
-	Context("with attributes", func() {
-		const attName = "att"
-
-		BeforeEach(func() {
-			name = "application/foo"
-			dslFunc = func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute(attName)
-				})
-				apidsl.View("default", func() { apidsl.Attribute(attName) })
-			}
-		})
-
-		It("sets the attributes", func() {
-			Ω(mt).ShouldNot(BeNil())
-			Ω(mt.Validate()).ShouldNot(HaveOccurred())
-			Ω(mt.AttributeDefinition).ShouldNot(BeNil())
-			Ω(mt.Type).Should(BeAssignableToTypeOf(design.Object{}))
-			o := mt.Type.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(attName))
-		})
-	})
-
-	Context("with a content type", func() {
-		const attName = "att"
-		const contentType = "application/json"
-
-		BeforeEach(func() {
-			name = "application/foo"
-			dslFunc = func() {
-				apidsl.ContentType(contentType)
-				apidsl.Attributes(func() {
-					apidsl.Attribute(attName)
-				})
-				apidsl.View("default", func() { apidsl.Attribute(attName) })
-			}
-		})
-
-		It("sets the content type", func() {
-			Ω(mt).ShouldNot(BeNil())
-			Ω(mt.Validate()).ShouldNot(HaveOccurred())
-			Ω(mt.ContentType).Should(Equal(contentType))
-		})
-	})
-
-	Context("with a description", func() {
-		const description = "desc"
-
-		BeforeEach(func() {
-			name = "application/foo"
-			dslFunc = func() {
-				apidsl.Description(description)
-				apidsl.Attributes(func() {
-					apidsl.Attribute("attName")
-				})
-				apidsl.View("default", func() { apidsl.Attribute("attName") })
-			}
-		})
-
-		It("sets the description", func() {
-			Ω(mt).ShouldNot(BeNil())
-			Ω(mt.Validate()).ShouldNot(HaveOccurred())
-			Ω(mt.Description).Should(Equal(description))
-		})
-	})
-
-	Context("with links", func() {
-		var link1Name, link2Name string
-		var link2View string
-		var mt1, mt2 *design.MediaTypeDefinition
-
-		BeforeEach(func() {
-			name = "foo"
-			link1Name = "l1"
-			link2Name = "l2"
-			link2View = "l2v"
-			mt1 = design.NewMediaTypeDefinition("application/mt1", "application/mt1", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("foo")
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("foo")
-				})
-				apidsl.View("link", func() {
-					apidsl.Attribute("foo")
-				})
+	t.Run("with attributes", func(t *testing.T) {
+		dslengine.Reset()
+		mt := apidsl.MediaType("application/foo", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("name")
 			})
-			mt2 = design.NewMediaTypeDefinition("application/mt2", "application/mt2", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("foo")
-				})
-				apidsl.View("l2v", func() {
-					apidsl.Attribute("foo")
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("foo")
-				})
+			apidsl.View("default", func() {
+				apidsl.Attribute("name")
 			})
-			design.Design.MediaTypes = make(map[string]*design.MediaTypeDefinition)
-			design.Design.MediaTypes["application/mt1"] = mt1
-			design.Design.MediaTypes["application/mt2"] = mt2
-			dslFunc = func() {
-				apidsl.Attributes(func() {
-					apidsl.Attributes(func() {
-						apidsl.Attribute(link1Name, mt1)
-						apidsl.Attribute(link2Name, mt2)
-					})
-					apidsl.Links(func() {
-						apidsl.Link(link1Name)
-						apidsl.Link(link2Name, link2View)
-					})
-					apidsl.View("default", func() {
-						apidsl.Attribute(link1Name)
-						apidsl.Attribute(link2Name)
-					})
-				})
-			}
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("sets the links", func() {
-			Ω(mt).ShouldNot(BeNil())
-			Ω(dslengine.Errors).Should(BeEmpty())
-			Ω(mt.Validate()).ShouldNot(HaveOccurred())
-			Ω(mt.Links).ShouldNot(BeNil())
-			Ω(mt.Links).Should(HaveLen(2))
-			Ω(mt.Links).Should(HaveKey(link1Name))
-			Ω(mt.Links[link1Name].Name).Should(Equal(link1Name))
-			Ω(mt.Links[link1Name].View).Should(Equal("link"))
-			Ω(mt.Links[link1Name].Parent).Should(Equal(mt))
-			Ω(mt.Links[link2Name].Name).Should(Equal(link2Name))
-			Ω(mt.Links[link2Name].View).Should(Equal(link2View))
-			Ω(mt.Links[link2Name].Parent).Should(Equal(mt))
-		})
+		if err := mt.Validate(); err != nil {
+			t.Errorf("Validate() = %v; want nil", err)
+		}
+		if mt.AttributeDefinition == nil {
+			t.Error("AttributeDefinition = nil; want not nil")
+		}
+		o := mt.Type.(design.Object)
+		if len(o) != 1 {
+			t.Errorf("len(o) = %d; want 1", len(o))
+		}
+		if _, ok := o["name"]; !ok {
+			t.Error("name is not found")
+		}
 	})
 
-	Context("with views", func() {
-		const viewName = "view"
-		const viewAtt = "att"
-
-		BeforeEach(func() {
-			name = "application/foo"
-			dslFunc = func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute(viewAtt)
-				})
-				apidsl.View(viewName, func() {
-					apidsl.Attribute(viewAtt)
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute(viewAtt)
-				})
-			}
+	t.Run("with a content type", func(t *testing.T) {
+		dslengine.Reset()
+		mt := apidsl.MediaType("application/foo", func() {
+			apidsl.ContentType("application/json")
+			apidsl.Attributes(func() {
+				apidsl.Attribute("name")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("name")
+			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		It("sets the views", func() {
-			Ω(mt).ShouldNot(BeNil())
-			Ω(mt.Validate()).ShouldNot(HaveOccurred())
-			Ω(mt.Views).ShouldNot(BeNil())
-			Ω(mt.Views).Should(HaveLen(2))
-			Ω(mt.Views).Should(HaveKey(viewName))
-			v := mt.Views[viewName]
-			Ω(v.Name).Should(Equal(viewName))
-			Ω(v.Parent).Should(Equal(mt))
-			Ω(v.AttributeDefinition).ShouldNot(BeNil())
-			Ω(v.AttributeDefinition.Type).Should(BeAssignableToTypeOf(design.Object{}))
-			o := v.AttributeDefinition.Type.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(viewAtt))
-			Ω(o[viewAtt]).ShouldNot(BeNil())
-			Ω(o[viewAtt].Type).Should(Equal(design.String))
-		})
+		if err := mt.Validate(); err != nil {
+			t.Errorf("Validate() = %v; want nil", err)
+		}
+		if mt.ContentType != "application/json" {
+			t.Errorf("ContentType = %s; want application/json", mt.ContentType)
+		}
 	})
-})
 
-var _ = Describe("Duplicate media types", func() {
-	var duplicate *design.MediaTypeDefinition
-	const id = "application/foo"
-	const attName = "bar"
-	var dslFunc = func() {
+	t.Run("with a description", func(t *testing.T) {
+		dslengine.Reset()
+		mt := apidsl.MediaType("application/foo", func() {
+			apidsl.Description("desc")
+			apidsl.Attributes(func() {
+				apidsl.Attribute("name")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("name")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := mt.Validate(); err != nil {
+			t.Errorf("Validate() = %v; want nil", err)
+		}
+		if mt.Description != "desc" {
+			t.Errorf("Description = %q; want %q", mt.Description, "desc")
+		}
+	})
+
+	t.Run("with links", func(t *testing.T) {
+		dslengine.Reset()
+		mt1 := design.NewMediaTypeDefinition("application/mt1", "application/mt1", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("foo")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("foo")
+			})
+			apidsl.View("link", func() {
+				apidsl.Attribute("foo")
+			})
+		})
+		mt2 := design.NewMediaTypeDefinition("application/mt2", "application/mt2", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("foo")
+			})
+			apidsl.View("l2v", func() {
+				apidsl.Attribute("foo")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("foo")
+			})
+		})
+		design.Design.MediaTypes = map[string]*design.MediaTypeDefinition{
+			"application/mt1": mt1,
+			"application/mt2": mt2,
+		}
+		mt := apidsl.MediaType("foo", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("l1", mt1)
+				apidsl.Attribute("l2", mt2)
+			})
+			apidsl.Links(func() {
+				apidsl.Link("l1")
+				apidsl.Link("l2", "l2v")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("l1")
+				apidsl.Attribute("l2")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := mt.Validate(); err != nil {
+			t.Errorf("Validate() = %v; want nil", err)
+		}
+		if len(mt.Links) != 2 {
+			t.Errorf("len(mt.Links) = %d; want 2", len(mt.Links))
+		}
+		link1 := mt.Links["l1"]
+		if link1.Name != "l1" {
+			t.Errorf("link1.Name = %q; want %q", link1.Name, "l1")
+		}
+		if link1.View != "link" {
+			t.Errorf("link1.View = %q; want %q", link1.View, "link")
+		}
+		if link1.Parent != mt {
+			t.Error("link1.Parent is not set")
+		}
+		link2 := mt.Links["l2"]
+		if link2.Name != "l2" {
+			t.Errorf("link2.Name = %q; want %q", link2.Name, "l2")
+		}
+		if link2.View != "l2v" {
+			t.Errorf("link2.View = %q; want %q", link2.View, "l2v")
+		}
+		if link2.Parent != mt {
+			t.Error("link2.Parent is not set")
+		}
+	})
+
+	t.Run("with views", func(t *testing.T) {
+		dslengine.Reset()
+		mt := apidsl.MediaType("application/foo", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("name")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("name")
+			})
+			apidsl.View("view", func() {
+				apidsl.Attribute("name")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := mt.Validate(); err != nil {
+			t.Errorf("Validate() = %v; want nil", err)
+		}
+		if len(mt.Views) != 2 {
+			t.Errorf("len(mt.Views) = %d; want 2", len(mt.Views))
+		}
+		v := mt.Views["view"]
+		if v.Name != "view" {
+			t.Errorf("v.Name = %q; want %q", v.Name, "view")
+		}
+		if v.Parent != mt {
+			t.Error("v.Parent is not set")
+		}
+		o := v.AttributeDefinition.Type.(design.Object)
+		if len(o) != 1 {
+			t.Errorf("len(o) = %d; want 1", len(o))
+		}
+		if o["name"].Type != design.String {
+			t.Errorf("o['name'].Type = %s; want string", o["name"].Type)
+		}
+	})
+}
+
+func TestTestMediaType_duplicated(t *testing.T) {
+	dslengine.Reset()
+	apidsl.MediaType("application/foo", func() {
 		apidsl.Attributes(func() {
-			apidsl.Attribute(attName)
+			apidsl.Attribute("name")
 		})
-		apidsl.View("default", func() { apidsl.Attribute(attName) })
-	}
+		apidsl.View("default", func() {
+			apidsl.Attribute("name")
+		})
+	})
+	duplicate := apidsl.MediaType("application/foo", func() {
+		apidsl.Attributes(func() {
+			apidsl.Attribute("name")
+		})
+		apidsl.View("default", func() {
+			apidsl.Attribute("name")
+		})
+	})
+	apidsl.Resource("foo", func() {
+		apidsl.Action("show", func() {
+			apidsl.Routing(apidsl.GET(""))
+			apidsl.Response(design.OK, func() {
+				apidsl.Media(duplicate)
+			})
+		})
+	})
 
-	BeforeEach(func() {
+	_ = dslengine.Run()
+}
+
+func TestCollectionOf(t *testing.T) {
+	t.Run("used on a global variable", func(t *testing.T) {
 		dslengine.Reset()
-		apidsl.MediaType(id, dslFunc)
-		duplicate = apidsl.MediaType(id, dslFunc)
+		mt := apidsl.MediaType("application/vnd.example", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("name")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("name")
+			})
+		})
+		collection := apidsl.CollectionOf(mt)
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := collection.Validate(); err != nil {
+			t.Errorf("Validate() = %v; want nil", err)
+		}
+		if collection.Identifier != "application/vnd.example; type=collection" {
+			t.Errorf("Identifier = %q; want %q", collection.Identifier, "application/vnd.example; type=collection")
+		}
+		if _, ok := design.Design.MediaTypes[collection.Identifier]; !ok {
+			t.Errorf("design.Design.MediaTypes[%q] is not found", collection.Identifier)
+		}
 	})
 
-	It("produces an error", func() {
-		Ω(dslengine.Errors).Should(HaveOccurred())
-		Ω(dslengine.Errors.Error()).Should(ContainSubstring("is defined twice"))
+	t.Run("defined with a collection identifier", func(t *testing.T) {
+		dslengine.Reset()
+		mt := apidsl.MediaType("application/vnd.example", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("name")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("name")
+			})
+		})
+		collection := apidsl.CollectionOf(mt, "application/vnd.examples")
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := collection.Validate(); err != nil {
+			t.Errorf("Validate() = %v; want nil", err)
+		}
+		if collection.Identifier != "application/vnd.examples" {
+			t.Errorf("Identifier = %q; want %q", collection.Identifier, "application/vnd.examples")
+		}
+		if _, ok := design.Design.MediaTypes[collection.Identifier]; !ok {
+			t.Errorf("design.Design.MediaTypes[%q] is not found", collection.Identifier)
+		}
 	})
 
-	Context("with a response definition using the duplicate", func() {
-		BeforeEach(func() {
-			apidsl.Resource("foo", func() {
-				apidsl.Action("show", func() {
-					apidsl.Routing(apidsl.GET(""))
-					apidsl.Response(design.OK, func() {
-						apidsl.Media(duplicate)
-					})
-				})
+	t.Run("defined with the media type identifier", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.MediaType("application/vnd.example+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("name")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("name")
 			})
 		})
-
-		It("does not panic", func() {
-			Ω(func() { dslengine.Run() }).ShouldNot(Panic())
+		collection := apidsl.MediaType("application/vnd.parent+json", func() {
+			apidsl.Attribute("mt", apidsl.CollectionOf("application/vnd.example"))
+			apidsl.View("default", func() {
+				apidsl.Attribute("mt")
+			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		if collection.Identifier != "application/vnd.parent+json" {
+			t.Errorf("Identifier = %q; want %q", collection.Identifier, "application/vnd.parent+json")
+		}
+		if collection.TypeName != "Parent" {
+			t.Errorf("TypeName = %q; want %q", collection.TypeName, "Parent")
+		}
+		mt := collection.Type.(design.Object)["mt"]
+		if mt.Type.Name() != "array" {
+			t.Errorf("mt.Type.Name() = %q; want %q", mt.Type.Name(), "array")
+		}
+		et := mt.Type.ToArray().ElemType
+		if et.Type.(*design.MediaTypeDefinition).Identifier != "application/vnd.example+json" {
+			t.Errorf("et.Type.(*design.MediaTypeDefinition).Identifier = %q; want %q", et.Type.(*design.MediaTypeDefinition).Identifier, "application/vnd.example+json")
+		}
 	})
-})
+}
 
-var _ = Describe("CollectionOf", func() {
-	Context("used on a global variable", func() {
-		var col *design.MediaTypeDefinition
-		BeforeEach(func() {
-			dslengine.Reset()
-			mt := apidsl.MediaType("application/vnd.example", func() {
-				apidsl.Attribute("id")
-				apidsl.View("default", func() {
-					apidsl.Attribute("id")
+func TestExample(t *testing.T) {
+	t.Run("produces a media type with examples", func(t *testing.T) {
+		dslengine.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
+		mt := apidsl.MediaType("application/vnd.example+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", design.String, "test1 description", func() {
+					apidsl.Example("test1")
+				})
+				apidsl.Attribute("test2", design.String, "test2 description", func() {
+					apidsl.NoExample()
+				})
+				apidsl.Attribute("test3", design.Integer, "test3 description", func() {
+					apidsl.Minimum(1)
+				})
+				apidsl.Attribute("test4", design.String, func() {
+					apidsl.Format("email")
+					apidsl.Pattern("@")
+				})
+				apidsl.Attribute("test5", design.Any)
+
+				apidsl.Attribute("test-failure1", design.Integer, func() {
+					apidsl.Minimum(0)
+					apidsl.Maximum(0)
 				})
 			})
-			col = apidsl.CollectionOf(mt)
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
+			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		JustBeforeEach(func() {
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
-
-		It("produces a media type", func() {
-			Ω(col).ShouldNot(BeNil())
-			Ω(col.Identifier).Should(Equal("application/vnd.example; type=collection"))
-			Ω(col.TypeName).ShouldNot(BeEmpty())
-			Ω(design.Design.MediaTypes).Should(HaveKey(col.Identifier))
-		})
+		o := mt.Type.ToObject()
+		if o["test1"].Example != "test1" {
+			t.Errorf("o['test1'].Example = %q; want %q", o["test1"].Example, "test1")
+		}
+		if o["test2"].Example != "-" {
+			t.Errorf("o['test2'].Example = %q; want %q", o["test2"].Example, "-")
+		}
+		if v := o["test3"].Example.(int); v < 1 {
+			t.Errorf("o['test3'].Example = %v; want >= 1", v)
+		}
+		if ok, err := regexp.MatchString(`\w+@`, o["test4"].Example.(string)); !ok || err != nil {
+			t.Errorf("o['test4'].Example = %q; want to match %q", o["test4"].Example, `\w+@`)
+		}
+		if o["test5"].Example == nil {
+			t.Errorf("o['test5'].Example = nil; want not nil")
+		}
+		if o["test-failure1"].Example != 0 {
+			t.Errorf("o['test-failure1'].Example = %v; want 0", o["test-failure1"].Example)
+		}
 	})
 
-	Context("defined with a collection identifier", func() {
-		var col *design.MediaTypeDefinition
-		BeforeEach(func() {
-			dslengine.Reset()
-			mt := apidsl.MediaType("application/vnd.example", func() {
-				apidsl.Attribute("id")
-				apidsl.View("default", func() {
-					apidsl.Attribute("id")
+	t.Run("produces a media type with HashOf examples", func(t *testing.T) {
+		dslengine.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
+		ut := apidsl.Type("example", func() {
+			apidsl.Attribute("test1", design.Integer)
+			apidsl.Attribute("test2", design.Any)
+		})
+		mt := apidsl.MediaType("application/vnd.example+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", apidsl.HashOf(design.String, design.Integer))
+				apidsl.Attribute("test2", apidsl.HashOf(design.Any, design.String))
+				apidsl.Attribute("test3", apidsl.HashOf(design.String, design.Any))
+				apidsl.Attribute("test4", apidsl.HashOf(design.Any, design.Any))
+
+				apidsl.Attribute("test-with-user-type-1", apidsl.HashOf(design.String, ut))
+				apidsl.Attribute("test-with-user-type-2", apidsl.HashOf(design.Any, ut))
+
+				apidsl.Attribute("test-with-array-1", apidsl.HashOf(design.String, apidsl.ArrayOf(design.Integer)))
+				apidsl.Attribute("test-with-array-2", apidsl.HashOf(design.String, apidsl.ArrayOf(design.Any)))
+				apidsl.Attribute("test-with-array-3", apidsl.HashOf(design.String, apidsl.ArrayOf(ut)))
+				apidsl.Attribute("test-with-array-4", apidsl.HashOf(design.Any, apidsl.ArrayOf(design.String)))
+				apidsl.Attribute("test-with-array-5", apidsl.HashOf(design.Any, apidsl.ArrayOf(design.Any)))
+				apidsl.Attribute("test-with-array-6", apidsl.HashOf(design.Any, apidsl.ArrayOf(ut)))
+
+				apidsl.Attribute("test-with-example-1", apidsl.HashOf(design.String, design.Boolean), func() {
+					apidsl.Example(map[string]bool{})
+				})
+				apidsl.Attribute("test-with-example-2", apidsl.HashOf(design.Any, design.Boolean), func() {
+					apidsl.Example(map[string]int{})
 				})
 			})
-			col = apidsl.CollectionOf(mt, "application/vnd.examples")
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
-
-		JustBeforeEach(func() {
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
-
-		It("produces a media type", func() {
-			Ω(col).ShouldNot(BeNil())
-			Ω(col.Identifier).Should(Equal("application/vnd.examples"))
-			Ω(col.TypeName).ShouldNot(BeEmpty())
-			Ω(design.Design.MediaTypes).Should(HaveKey(col.Identifier))
-		})
-	})
-
-	Context("defined with the media type identifier", func() {
-		var col *design.MediaTypeDefinition
-		BeforeEach(func() {
-			dslengine.Reset()
-			apidsl.MediaType("application/vnd.example+json", func() {
-				apidsl.Attribute("id")
-				apidsl.View("default", func() {
-					apidsl.Attribute("id")
-				})
-			})
-			col = apidsl.MediaType("application/vnd.parent+json", func() {
-				apidsl.Attribute("mt", apidsl.CollectionOf("application/vnd.example"))
-				apidsl.View("default", func() {
-					apidsl.Attribute("mt")
-				})
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
 			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
 
-		JustBeforeEach(func() {
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
+		o := mt.Type.ToObject()
+		if _, ok := o["test1"].Example.(map[string]int); !ok {
+			t.Errorf("o['test1'].Example = %T; want map[string]int", o["test1"].Type)
+		}
+		if _, ok := o["test2"].Example.(map[any]string); !ok {
+			t.Errorf("o['test2'].Example = %T; want map[any]string", o["test2"].Type)
+		}
+		if _, ok := o["test3"].Example.(map[string]any); !ok {
+			t.Errorf("o['test3'].Example = %T; want map[string]any", o["test3"].Type)
+		}
+		if _, ok := o["test4"].Example.(map[any]any); !ok {
+			t.Errorf("o['test4'].Example = %T; want map[any]any", o["test4"].Type)
+		}
 
-		It("produces a media type", func() {
-			Ω(col).ShouldNot(BeNil())
-			Ω(col.Identifier).Should(Equal("application/vnd.parent+json"))
-			Ω(col.TypeName).Should(Equal("Parent"))
-			Ω(col.Type).ShouldNot(BeNil())
-			Ω(col.Type.ToObject()).ShouldNot(BeNil())
-			Ω(col.Type.ToObject()).Should(HaveKey("mt"))
-			mt := col.Type.ToObject()["mt"]
-			Ω(mt.Type).ShouldNot(BeNil())
-			Ω(mt.Type).Should(BeAssignableToTypeOf(&design.MediaTypeDefinition{}))
-			Ω(mt.Type.Name()).Should(Equal("array"))
-			et := mt.Type.ToArray().ElemType
-			Ω(et).ShouldNot(BeNil())
-			Ω(et.Type).Should(BeAssignableToTypeOf(&design.MediaTypeDefinition{}))
-			Ω(et.Type.(*design.MediaTypeDefinition).Identifier).Should(Equal("application/vnd.example+json"))
-		})
-	})
-})
-
-var _ = Describe("Example", func() {
-	Context("defined examples in a media type", func() {
-		BeforeEach(func() {
-			dslengine.Reset()
-			design.ProjectedMediaTypes = make(design.MediaTypeRoot)
-		})
-		It("produces a media type with examples", func() {
-			mt := apidsl.MediaType("application/vnd.example+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", design.String, "test1 desc", func() {
-						apidsl.Example("test1")
-					})
-					apidsl.Attribute("test2", design.String, "test2 desc", func() {
-						apidsl.NoExample()
-					})
-					apidsl.Attribute("test3", design.Integer, "test3 desc", func() {
-						apidsl.Minimum(1)
-					})
-					apidsl.Attribute("test4", design.String, func() {
-						apidsl.Format("email")
-						apidsl.Pattern("@")
-					})
-					apidsl.Attribute("test5", design.Any)
-
-					apidsl.Attribute("test-failure1", design.Integer, func() {
-						apidsl.Minimum(0)
-						apidsl.Maximum(0)
-					})
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-				})
-			})
-
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-
-			Ω(mt).ShouldNot(BeNil())
-			attr := mt.Type.ToObject()["test1"]
-			Ω(attr.Example).Should(Equal("test1"))
-			attr = mt.Type.ToObject()["test2"]
-			Ω(attr.Example).Should(Equal("-"))
-			attr = mt.Type.ToObject()["test3"]
-			Ω(attr.Example).Should(BeNumerically(">=", 1))
-			attr = mt.Type.ToObject()["test4"]
-			Ω(attr.Example).Should(MatchRegexp(`\w+@`))
-			attr = mt.Type.ToObject()["test5"]
-			Ω(attr.Example).ShouldNot(BeNil())
-			attr = mt.Type.ToObject()["test-failure1"]
-			Ω(attr.Example).Should(Equal(0))
-		})
-
-		It("produces a media type with HashOf examples", func() {
-			ut := apidsl.Type("example", func() {
-				apidsl.Attribute("test1", design.Integer)
-				apidsl.Attribute("test2", design.Any)
-			})
-
-			mt := apidsl.MediaType("application/vnd.example+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", apidsl.HashOf(design.String, design.Integer))
-					apidsl.Attribute("test2", apidsl.HashOf(design.Any, design.String))
-					apidsl.Attribute("test3", apidsl.HashOf(design.String, design.Any))
-					apidsl.Attribute("test4", apidsl.HashOf(design.Any, design.Any))
-
-					apidsl.Attribute("test-with-user-type-1", apidsl.HashOf(design.String, ut))
-					apidsl.Attribute("test-with-user-type-2", apidsl.HashOf(design.Any, ut))
-
-					apidsl.Attribute("test-with-array-1", apidsl.HashOf(design.String, apidsl.ArrayOf(design.Integer)))
-					apidsl.Attribute("test-with-array-2", apidsl.HashOf(design.String, apidsl.ArrayOf(design.Any)))
-					apidsl.Attribute("test-with-array-3", apidsl.HashOf(design.String, apidsl.ArrayOf(ut)))
-					apidsl.Attribute("test-with-array-4", apidsl.HashOf(design.Any, apidsl.ArrayOf(design.String)))
-					apidsl.Attribute("test-with-array-5", apidsl.HashOf(design.Any, apidsl.ArrayOf(design.Any)))
-					apidsl.Attribute("test-with-array-6", apidsl.HashOf(design.Any, apidsl.ArrayOf(ut)))
-
-					apidsl.Attribute("test-with-example-1", apidsl.HashOf(design.String, design.Boolean), func() {
-						apidsl.Example(map[string]bool{})
-					})
-					apidsl.Attribute("test-with-example-2", apidsl.HashOf(design.Any, design.Boolean), func() {
-						apidsl.Example(map[string]int{})
-					})
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-				})
-			})
-
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-			Ω(mt).ShouldNot(BeNil())
-
-			attr := mt.Type.ToObject()["test1"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string]int{}))
-			attr = mt.Type.ToObject()["test2"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[interface{}]string{}))
-			attr = mt.Type.ToObject()["test3"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string]interface{}{}))
-			attr = mt.Type.ToObject()["test4"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[interface{}]interface{}{}))
-
-			attr = mt.Type.ToObject()["test-with-user-type-1"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string]map[string]interface{}{}))
-			for _, utattr := range attr.Example.(map[string]map[string]interface{}) {
-				Expect(utattr).Should(HaveKey("test1"))
-				Expect(utattr).Should(HaveKey("test2"))
-				Expect(utattr["test1"]).Should(BeAssignableToTypeOf(int(0)))
+		for _, attr := range o["test-with-user-type-1"].Example.(map[string]map[string]any) {
+			if _, ok := attr["test1"].(int); !ok {
+				t.Errorf("attr['test1'] = %T; want int", attr["test1"])
 			}
-			attr = mt.Type.ToObject()["test-with-user-type-2"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[interface{}]map[string]interface{}{}))
-			for _, utattr := range attr.Example.(map[interface{}]map[string]interface{}) {
-				Expect(utattr).Should(HaveKey("test1"))
-				Expect(utattr).Should(HaveKey("test2"))
-				Expect(utattr["test1"]).Should(BeAssignableToTypeOf(int(0)))
+			if _, ok := attr["test2"]; !ok {
+				t.Errorf("attr['test2'] is not found")
 			}
+		}
+		for _, attr := range o["test-with-user-type-2"].Example.(map[any]map[string]any) {
+			if _, ok := attr["test1"].(int); !ok {
+				t.Errorf("attr['test1'] = %T; want int", attr["test1"])
+			}
+			if _, ok := attr["test2"]; !ok {
+				t.Errorf("attr['test2'] is not found")
+			}
+		}
 
-			attr = mt.Type.ToObject()["test-with-array-1"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string][]int{}))
-			attr = mt.Type.ToObject()["test-with-array-2"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string][]interface{}{}))
-			attr = mt.Type.ToObject()["test-with-array-3"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string][]map[string]interface{}{}))
-			attr = mt.Type.ToObject()["test-with-array-4"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[interface{}][]string{}))
-			attr = mt.Type.ToObject()["test-with-array-5"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[interface{}][]interface{}{}))
-			attr = mt.Type.ToObject()["test-with-array-6"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[interface{}][]map[string]interface{}{}))
+		if _, ok := o["test-with-array-1"].Example.(map[string][]int); !ok {
+			t.Errorf("o['test-with-array-1'].Example = %T; want map[string][]int", o["test-with-array-1"].Example)
+		}
+		if _, ok := o["test-with-array-2"].Example.(map[string][]any); !ok {
+			t.Errorf("o['test-with-array-2'].Example = %T; want map[string][]string", o["test-with-array-2"].Example)
+		}
+		if _, ok := o["test-with-array-3"].Example.(map[string][]map[string]any); !ok {
+			t.Errorf("o['test-with-array-3'].Example = %T; want map[string][]map[string]any", o["test-with-array-3"].Example)
+		}
+		if _, ok := o["test-with-array-4"].Example.(map[any][]string); !ok {
+			t.Errorf("o['test-with-array-4'].Example = %T; want map[any][]string", o["test-with-array-4"].Example)
+		}
+		if _, ok := o["test-with-array-5"].Example.(map[any][]any); !ok {
+			t.Errorf("o['test-with-array-5'].Example = %T; want map[any][]any", o["test-with-array-5"].Example)
+		}
+		if _, ok := o["test-with-array-6"].Example.(map[any][]map[string]any); !ok {
+			t.Errorf("o['test-with-array-6'].Example = %T; want map[any][]map[string]any", o["test-with-array-6"].Example)
+		}
 
-			attr = mt.Type.ToObject()["test-with-example-1"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string]bool{}))
-			attr = mt.Type.ToObject()["test-with-example-2"]
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string]int{}))
-		})
-
-		It("produces a media type with examples in cyclical dependencies", func() {
-			mt := apidsl.MediaType("vnd.application/foo", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("foo", "vnd.application/bar")
-					apidsl.Attribute("others", design.Integer, func() {
-						apidsl.Minimum(3)
-						apidsl.Maximum(3)
-					})
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("foo")
-					apidsl.Attribute("others")
-				})
-			})
-
-			mt2 := apidsl.MediaType("vnd.application/bar", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("bar", mt)
-					apidsl.Attribute("others", design.Integer, func() {
-						apidsl.Minimum(1)
-						apidsl.Maximum(2)
-					})
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("bar")
-					apidsl.Attribute("others")
-				})
-			})
-
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-
-			Ω(mt).ShouldNot(BeNil())
-			attr := mt.Type.ToObject()["foo"]
-			Ω(attr.Example).ShouldNot(BeNil())
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string]interface{}{}))
-			attrChild := attr.Example.(map[string]interface{})
-			Ω(attrChild).Should(HaveKey("bar"))
-			Ω(attrChild["others"]).Should(BeNumerically(">=", 1))
-			Ω(attrChild["others"]).Should(BeNumerically("<=", 2))
-			attr = mt.Type.ToObject()["others"]
-			Ω(attr.Example).Should(Equal(3))
-
-			Ω(mt2).ShouldNot(BeNil())
-			attr = mt2.Type.ToObject()["bar"]
-			Ω(attr.Example).ShouldNot(BeNil())
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string]interface{}{}))
-			attrChild = attr.Example.(map[string]interface{})
-			Ω(attrChild).Should(HaveKey("foo"))
-			Ω(attrChild["others"]).Should(Equal(3))
-			attr = mt2.Type.ToObject()["others"]
-			Ω(attr.Example).Should(BeNumerically(">=", 1))
-			Ω(attr.Example).Should(BeNumerically("<=", 2))
-		})
-
-		It("produces media type examples from the linked media type", func() {
-			mt := apidsl.MediaType("application/vnd.example+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", design.String, "test1 desc", func() {
-						apidsl.Example("test1")
-					})
-					apidsl.Attribute("test2", design.String, "test2 desc", func() {
-						apidsl.NoExample()
-					})
-					apidsl.Attribute("test3", design.Integer, "test3 desc", func() {
-						apidsl.Minimum(1)
-					})
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-					apidsl.Attribute("test2")
-					apidsl.Attribute("test3")
-				})
-			})
-
-			pmt := apidsl.MediaType("application/vnd.example.parent+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", design.String, "test1 desc", func() {
-						apidsl.Example("test1")
-					})
-					apidsl.Attribute("test2", design.String, "test2 desc", func() {
-						apidsl.NoExample()
-					})
-					apidsl.Attribute("test3", design.Integer, "test3 desc", func() {
-						apidsl.Minimum(1)
-					})
-					apidsl.Attribute("test4", mt, "test4 desc")
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-					apidsl.Attribute("test2")
-					apidsl.Attribute("test3")
-					apidsl.Attribute("test4")
-				})
-			})
-
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-
-			Ω(mt).ShouldNot(BeNil())
-			attr := mt.Type.ToObject()["test1"]
-			Ω(attr.Example).Should(Equal("test1"))
-			attr = mt.Type.ToObject()["test2"]
-			Ω(attr.Example).Should(Equal("-"))
-			attr = mt.Type.ToObject()["test3"]
-			Ω(attr.Example).Should(BeNumerically(">=", 1))
-
-			Ω(pmt).ShouldNot(BeNil())
-			attr = pmt.Type.ToObject()["test1"]
-			Ω(attr.Example).Should(Equal("test1"))
-			attr = pmt.Type.ToObject()["test2"]
-			Ω(attr.Example).Should(Equal("-"))
-			attr = pmt.Type.ToObject()["test3"]
-			Ω(attr.Example).Should(BeNumerically(">=", 1))
-			attr = pmt.Type.ToObject()["test4"]
-			Ω(attr.Example).ShouldNot(BeNil())
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string]interface{}{}))
-			attrChild := attr.Example.(map[string]interface{})
-			Ω(attrChild["test1"]).Should(Equal("test1"))
-			Ω(attrChild["test2"]).Should(Equal("-"))
-			Ω(attrChild["test3"]).Should(BeNumerically(">=", 1))
-		})
-
-		It("produces media type examples from the linked media type collection with custom examples", func() {
-			mt := apidsl.MediaType("application/vnd.example+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", design.String, "test1 desc", func() {
-						apidsl.Example("test1")
-					})
-					apidsl.Attribute("test2", design.String, "test2 desc", func() {
-						apidsl.NoExample()
-					})
-					apidsl.Attribute("test3", design.Integer, "test3 desc", func() {
-						apidsl.Minimum(1)
-					})
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-					apidsl.Attribute("test2")
-					apidsl.Attribute("test3")
-				})
-			})
-
-			pmt := apidsl.MediaType("application/vnd.example.parent+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", design.String, "test1 desc", func() {
-						apidsl.Example("test1")
-					})
-					apidsl.Attribute("test2", design.String, "test2 desc", func() {
-						apidsl.NoExample()
-					})
-					apidsl.Attribute("test3", design.String, "test3 desc", func() {
-						apidsl.Pattern("^1$")
-					})
-					apidsl.Attribute("test4", apidsl.CollectionOf(mt), "test4 desc")
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-					apidsl.Attribute("test2")
-					apidsl.Attribute("test3")
-					apidsl.Attribute("test4")
-				})
-			})
-
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-
-			Ω(mt).ShouldNot(BeNil())
-			attr := mt.Type.ToObject()["test1"]
-			Ω(attr.Example).Should(Equal("test1"))
-			attr = mt.Type.ToObject()["test2"]
-			Ω(attr.Example).Should(Equal("-"))
-			attr = mt.Type.ToObject()["test3"]
-			Ω(attr.Example).Should(BeNumerically(">=", 1))
-
-			Ω(pmt).ShouldNot(BeNil())
-			attr = pmt.Type.ToObject()["test1"]
-			Ω(attr.Example).Should(Equal("test1"))
-			attr = pmt.Type.ToObject()["test2"]
-			Ω(attr.Example).Should(Equal("-"))
-			attr = pmt.Type.ToObject()["test3"]
-			Ω(attr.Example).Should(Equal("1"))
-			attr = pmt.Type.ToObject()["test4"]
-			Ω(attr.Example).ShouldNot(BeNil())
-			Expect(attr.Example).Should(BeAssignableToTypeOf([]map[string]interface{}{}))
-			attrChildren := attr.Example.([]map[string]interface{})
-			Ω(attrChildren).Should(HaveLen(1))
-			Ω(attrChildren[0]).Should(BeAssignableToTypeOf(map[string]interface{}{}))
-			Ω(attrChildren[0]["test1"]).Should(Equal("test1"))
-			Ω(attrChildren[0]["test2"]).Should(Equal("-"))
-			Ω(attrChildren[0]["test3"]).Should(BeNumerically(">=", 1))
-		})
-
-		It("produces media type examples from the linked media type without custom examples", func() {
-			mt := apidsl.MediaType("application/vnd.example.child+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", design.String, "test1 desc")
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-				})
-			})
-
-			pmt := apidsl.MediaType("application/vnd.example.parent+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", design.String, "test1 desc", func() {
-						apidsl.Example("test1")
-					})
-					apidsl.Attribute("test2", design.String, "test2 desc", func() {
-						apidsl.NoExample()
-					})
-					apidsl.Attribute("test3", mt, "test3 desc")
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-					apidsl.Attribute("test2")
-					apidsl.Attribute("test3")
-				})
-			})
-
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-			Ω(mt).ShouldNot(BeNil())
-			attr := mt.Type.ToObject()["test1"]
-			cexample := attr.Example
-			Ω(cexample).ShouldNot(BeEmpty())
-
-			Ω(pmt).ShouldNot(BeNil())
-			attr = pmt.Type.ToObject()["test1"]
-			Ω(attr.Example).Should(Equal("test1"))
-			attr = pmt.Type.ToObject()["test2"]
-			Ω(attr.Example).Should(Equal("-"))
-			attr = pmt.Type.ToObject()["test3"]
-			Ω(attr.Example).ShouldNot(BeNil())
-			Expect(attr.Example).Should(BeAssignableToTypeOf(map[string]interface{}{}))
-		})
-
-		It("produces media type examples from the linked media type collection without custom examples", func() {
-			mt := apidsl.MediaType("application/vnd.example.child+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", design.String, "test1 desc")
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-				})
-			})
-
-			pmt := apidsl.MediaType("application/vnd.example.parent+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", design.String, "test1 desc", func() {
-						apidsl.Example("test1")
-					})
-					apidsl.Attribute("test2", design.String, "test2 desc", func() {
-						apidsl.NoExample()
-					})
-					apidsl.Attribute("test3", apidsl.CollectionOf(mt), "test3 desc")
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-				})
-			})
-
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-
-			Ω(mt).ShouldNot(BeNil())
-			attr := mt.Type.ToObject()["test1"]
-			cexample := attr.Example
-			Ω(cexample).ShouldNot(BeEmpty())
-
-			Ω(pmt).ShouldNot(BeNil())
-			attr = pmt.Type.ToObject()["test1"]
-			Ω(attr.Example).Should(Equal("test1"))
-			attr = pmt.Type.ToObject()["test2"]
-			Ω(attr.Example).Should(Equal("-"))
-			attr = pmt.Type.ToObject()["test3"]
-			Ω(attr.Example).ShouldNot(BeNil())
-			Expect(attr.Example).Should(BeAssignableToTypeOf([]map[string]interface{}{}))
-			attrChildren := attr.Example.([]map[string]interface{})
-			Ω(len(attrChildren)).Should(BeNumerically(">=", 1))
-		})
-
-		It("produces a media type with appropriate MinLength and MaxLength examples", func() {
-			ut := apidsl.Type("example", func() {
-				apidsl.Attribute("test1", design.Integer, func() {
-					apidsl.Minimum(-200)
-					apidsl.Maximum(-100)
-				})
-			})
-
-			mt := apidsl.MediaType("application/vnd.example+json", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("test1", apidsl.ArrayOf(design.Any), func() {
-						apidsl.MinLength(0)
-						apidsl.MaxLength(10)
-					})
-					apidsl.Attribute("test2", apidsl.ArrayOf(design.Any), func() {
-						apidsl.MinLength(1000)
-						apidsl.MaxLength(2000)
-					})
-					apidsl.Attribute("test3", apidsl.ArrayOf(design.Any), func() {
-						apidsl.MinLength(1000)
-						apidsl.MaxLength(1000)
-					})
-
-					apidsl.Attribute("test-failure1", apidsl.ArrayOf(ut), func() {
-						apidsl.MinLength(0)
-						apidsl.MaxLength(0)
-					})
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("test1")
-				})
-			})
-
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-
-			Ω(mt).ShouldNot(BeNil())
-			attr := mt.Type.ToObject()["test1"]
-			Ω(attr.Example).Should(BeAssignableToTypeOf([]interface{}{}))
-			Ω(len(attr.Example.([]interface{}))).Should(BeNumerically("<=", 10))
-			attr = mt.Type.ToObject()["test2"]
-			Ω(attr.Example).Should(BeAssignableToTypeOf([]interface{}{}))
-			Ω(attr.Example.([]interface{})).Should(HaveLen(10))
-			attr = mt.Type.ToObject()["test3"]
-			Ω(attr.Example).Should(BeAssignableToTypeOf([]interface{}{}))
-			Ω(attr.Example.([]interface{})).Should(HaveLen(10))
-			attr = mt.Type.ToObject()["test-failure1"]
-			Ω(attr.Example).Should(BeNil())
-		})
+		if _, ok := o["test-with-example-1"].Example.(map[string]bool); !ok {
+			t.Errorf("o['test-with-example-1'].Example = %T; want map[string]bool", o["test-with-example-1"].Example)
+		}
+		if _, ok := o["test-with-example-2"].Example.(map[string]int); !ok {
+			t.Errorf("o['test-with-example-2'].Example = %T; want map[any]bool", o["test-with-example-2"].Example)
+		}
 	})
-})
+
+	t.Run("produces a media type with examples in cyclical dependencies", func(t *testing.T) {
+		dslengine.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
+		mt := apidsl.MediaType("vnd.application/foo", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("foo", "vnd.application/bar")
+				apidsl.Attribute("others", design.Integer, func() {
+					apidsl.Minimum(3)
+					apidsl.Maximum(3)
+				})
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("foo")
+				apidsl.Attribute("others")
+			})
+		})
+		mt2 := apidsl.MediaType("vnd.application/bar", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("bar", mt)
+				apidsl.Attribute("others", design.Integer, func() {
+					apidsl.Minimum(1)
+					apidsl.Maximum(2)
+				})
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("bar")
+				apidsl.Attribute("others")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		o := mt.Type.ToObject()
+		child := o["foo"].Example.(map[string]any)
+		if _, ok := child["bar"]; !ok {
+			t.Errorf("child['bar'] is not found")
+		}
+		if v := child["others"].(int); v < 1 {
+			t.Errorf("child['others'] = %v; want >= 1", v)
+		}
+		if v := child["others"].(int); v > 2 {
+			t.Errorf("child['others'] = %v; want <= 2", v)
+		}
+		attr := mt.Type.ToObject()["others"]
+		if v := attr.Example.(int); v != 3 {
+			t.Errorf("attr.Example = %v; want 3", v)
+		}
+
+		o2 := mt2.Type.ToObject()
+		child2 := o2["bar"].Example.(map[string]any)
+		if _, ok := child2["foo"]; !ok {
+			t.Errorf("child2['foo'] is not found")
+		}
+		if v := child2["others"].(int); v != 3 {
+			t.Errorf("child2['others'] = %v; want 3", v)
+		}
+		attr2 := mt2.Type.ToObject()["others"]
+		if v := attr2.Example.(int); v < 1 {
+			t.Errorf("attr2.Example = %v; want >= 1", v)
+		}
+		if v := attr2.Example.(int); v > 2 {
+			t.Errorf("attr2.Example = %v; want <= 2", v)
+		}
+	})
+
+	t.Run("produces media type examples from the linked media type", func(t *testing.T) {
+		dslengine.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
+		mt := apidsl.MediaType("application/vnd.example+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", design.String, "test1 desc", func() {
+					apidsl.Example("test1")
+				})
+				apidsl.Attribute("test2", design.String, "test2 desc", func() {
+					apidsl.NoExample()
+				})
+				apidsl.Attribute("test3", design.Integer, "test3 desc", func() {
+					apidsl.Minimum(1)
+				})
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
+				apidsl.Attribute("test2")
+				apidsl.Attribute("test3")
+			})
+		})
+		pmt := apidsl.MediaType("application/vnd.example.parent+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", design.String, "test1 desc", func() {
+					apidsl.Example("test1")
+				})
+				apidsl.Attribute("test2", design.String, "test2 desc", func() {
+					apidsl.NoExample()
+				})
+				apidsl.Attribute("test3", design.Integer, "test3 desc", func() {
+					apidsl.Minimum(1)
+				})
+				apidsl.Attribute("test4", mt, "test4 desc")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
+				apidsl.Attribute("test2")
+				apidsl.Attribute("test3")
+				apidsl.Attribute("test4")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		o := mt.Type.ToObject()
+		if o["test1"].Example != "test1" {
+			t.Errorf("o['test1'].Example = %q; want %q", o["test1"].Example, "test1")
+		}
+		if o["test2"].Example != "-" {
+			t.Errorf("o['test2'].Example = %q; want %q", o["test2"].Example, "-")
+		}
+		if v := o["test3"].Example.(int); v < 1 {
+			t.Errorf("o['test3'].Example = %v; want >= 1", v)
+		}
+
+		o2 := pmt.Type.ToObject()
+		if o2["test1"].Example != "test1" {
+			t.Errorf("o2['test1'].Example = %q; want %q", o2["test1"].Example, "test1")
+		}
+		if o2["test2"].Example != "-" {
+			t.Errorf("o2['test2'].Example = %q; want %q", o2["test2"].Example, "-")
+		}
+		if v := o2["test3"].Example.(int); v < 1 {
+			t.Errorf("o2['test3'].Example = %v; want >= 1", v)
+		}
+		child := o2["test4"].Example.(map[string]any)
+		if child["test1"] != "test1" {
+			t.Errorf("child['test1'] = %q; want %q", child["test1"], "test1")
+		}
+		if child["test2"] != "-" {
+			t.Errorf("child['test2'] = %q; want %q", child["test2"], "-")
+		}
+		if v := child["test3"].(int); v < 1 {
+			t.Errorf("child['test3'] = %v; want >= 1", v)
+		}
+	})
+
+	t.Run("produces media type examples from the linked media type collection with custom examples", func(t *testing.T) {
+		dslengine.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
+		mt := apidsl.MediaType("application/vnd.example+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", design.String, "test1 desc", func() {
+					apidsl.Example("test1")
+				})
+				apidsl.Attribute("test2", design.String, "test2 desc", func() {
+					apidsl.NoExample()
+				})
+				apidsl.Attribute("test3", design.Integer, "test3 desc", func() {
+					apidsl.Minimum(1)
+				})
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
+				apidsl.Attribute("test2")
+				apidsl.Attribute("test3")
+			})
+		})
+
+		pmt := apidsl.MediaType("application/vnd.example.parent+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", design.String, "test1 desc", func() {
+					apidsl.Example("test1")
+				})
+				apidsl.Attribute("test2", design.String, "test2 desc", func() {
+					apidsl.NoExample()
+				})
+				apidsl.Attribute("test3", design.String, "test3 desc", func() {
+					apidsl.Pattern("^1$")
+				})
+				apidsl.Attribute("test4", apidsl.CollectionOf(mt), "test4 desc")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
+				apidsl.Attribute("test2")
+				apidsl.Attribute("test3")
+				apidsl.Attribute("test4")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		o := mt.Type.ToObject()
+		if o["test1"].Example != "test1" {
+			t.Errorf("o['test1'].Example = %q; want %q", o["test1"].Example, "test1")
+		}
+		if o["test2"].Example != "-" {
+			t.Errorf("o['test2'].Example = %q; want %q", o["test2"].Example, "-")
+		}
+		if v := o["test3"].Example.(int); v < 1 {
+			t.Errorf("o['test3'].Example = %v; want >= 1", v)
+		}
+
+		o2 := pmt.Type.ToObject()
+		if o2["test1"].Example != "test1" {
+			t.Errorf("o2['test1'].Example = %q; want %q", o2["test1"].Example, "test1")
+		}
+		if o2["test2"].Example != "-" {
+			t.Errorf("o2['test2'].Example = %q; want %q", o2["test2"].Example, "-")
+		}
+		if o2["test3"].Example != "1" {
+			t.Errorf("o2['test3'].Example = %q; want %q", o2["test3"].Example, "1")
+		}
+		child := o2["test4"].Example.([]map[string]any)
+		if len(child) != 1 {
+			t.Errorf("len(child) = %d; want 1", len(child))
+		}
+		if child[0]["test1"] != "test1" {
+			t.Errorf("child[0]['test1'] = %q; want %q", child[0]["test1"], "test1")
+		}
+		if child[0]["test2"] != "-" {
+			t.Errorf("child[0]['test2'] = %q; want %q", child[0]["test2"], "-")
+		}
+		if v := child[0]["test3"].(int); v < 1 {
+			t.Errorf("child[0]['test3'] = %v; want >= 1", v)
+		}
+	})
+
+	t.Run("produces media type examples from the linked media type without custom examples", func(t *testing.T) {
+		dslengine.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
+		mt := apidsl.MediaType("application/vnd.example.child+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", design.String, "test1 desc")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
+			})
+		})
+
+		pmt := apidsl.MediaType("application/vnd.example.parent+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", design.String, "test1 desc", func() {
+					apidsl.Example("test1")
+				})
+				apidsl.Attribute("test2", design.String, "test2 desc", func() {
+					apidsl.NoExample()
+				})
+				apidsl.Attribute("test3", mt, "test3 desc")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
+				apidsl.Attribute("test2")
+				apidsl.Attribute("test3")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		o := mt.Type.ToObject()
+		if o["test1"].Example == "" {
+			t.Errorf("o['test1'].Example = %q; want not empty", o["test1"].Example)
+		}
+
+		o2 := pmt.Type.ToObject()
+		if o2["test1"].Example != "test1" {
+			t.Errorf("o2['test1'].Example = %q; want %q", o2["test1"].Example, "test1")
+		}
+		if o2["test2"].Example != "-" {
+			t.Errorf("o2['test2'].Example = %q; want %q", o2["test2"].Example, "-")
+		}
+		child := o2["test3"].Example.(map[string]any)
+		if child["test1"] == "" {
+			t.Errorf("child['test1'].Example = %q; want not empty", child["test1"])
+		}
+	})
+
+	t.Run("produces media type examples from the linked media type collection without custom examples", func(t *testing.T) {
+		dslengine.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
+		mt := apidsl.MediaType("application/vnd.example.child+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", design.String, "test1 desc")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
+			})
+		})
+		pmt := apidsl.MediaType("application/vnd.example.parent+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", design.String, "test1 desc", func() {
+					apidsl.Example("test1")
+				})
+				apidsl.Attribute("test2", design.String, "test2 desc", func() {
+					apidsl.NoExample()
+				})
+				apidsl.Attribute("test3", apidsl.CollectionOf(mt), "test3 desc")
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		o := mt.Type.ToObject()
+		if o["test1"].Example == "" {
+			t.Errorf("o['test1'].Example = %q; want not empty", o["test1"].Example)
+		}
+
+		o2 := pmt.Type.ToObject()
+		if o2["test1"].Example != "test1" {
+			t.Errorf("o2['test1'].Example = %q; want %q", o2["test1"].Example, "test1")
+		}
+		if o2["test2"].Example != "-" {
+			t.Errorf("o2['test2'].Example = %q; want %q", o2["test2"].Example, "-")
+		}
+		child := o2["test3"].Example.([]map[string]any)
+		if len(child) < 1 {
+			t.Errorf("len(child) = %d; want >= 1", len(child))
+		}
+	})
+
+	t.Run("produces a media type with appropriate MinLength and MaxLength examples", func(t *testing.T) {
+		dslengine.Reset()
+		design.ProjectedMediaTypes = make(design.MediaTypeRoot)
+		ut := apidsl.Type("example", func() {
+			apidsl.Attribute("test1", design.Integer, func() {
+				apidsl.Minimum(-200)
+				apidsl.Maximum(-100)
+			})
+		})
+		mt := apidsl.MediaType("application/vnd.example+json", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("test1", apidsl.ArrayOf(design.Any), func() {
+					apidsl.MinLength(0)
+					apidsl.MaxLength(10)
+				})
+				apidsl.Attribute("test2", apidsl.ArrayOf(design.Any), func() {
+					apidsl.MinLength(1000)
+					apidsl.MaxLength(2000)
+				})
+				apidsl.Attribute("test3", apidsl.ArrayOf(design.Any), func() {
+					apidsl.MinLength(1000)
+					apidsl.MaxLength(1000)
+				})
+
+				apidsl.Attribute("test-failure1", apidsl.ArrayOf(ut), func() {
+					apidsl.MinLength(0)
+					apidsl.MaxLength(0)
+				})
+			})
+			apidsl.View("default", func() {
+				apidsl.Attribute("test1")
+			})
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		o := mt.Type.ToObject()
+		if len(o["test1"].Example.([]any)) > 10 {
+			t.Errorf("len(o['test1'].Example) = %d; want <= 10", len(o["test1"].Example.([]any)))
+		}
+		if len(o["test2"].Example.([]any)) != 10 {
+			t.Errorf("len(o['test2'].Example) = %d; want 10", len(o["test2"].Example.([]any)))
+		}
+		if len(o["test3"].Example.([]any)) != 10 {
+			t.Errorf("len(o['test3'].Example) = %d; want 10", len(o["test3"].Example.([]any)))
+		}
+		if o["test-failure1"].Example != nil {
+			t.Errorf("o['test-failure1'].Example = %v; want nil", o["test-failure1"].Example)
+		}
+	})
+}
