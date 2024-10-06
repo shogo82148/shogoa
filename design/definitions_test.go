@@ -360,6 +360,25 @@ func TestResourceDefinition_PathParams(t *testing.T) {
 	})
 }
 
+func TestResourceDefinition_AllFileServers(t *testing.T) {
+	resource := &ResourceDefinition{
+		FileServers: []*FileServerDefinition{
+			{FilePath: "/C"},
+			{FilePath: "/B"},
+			{FilePath: "/A"},
+		},
+	}
+
+	got := []string{}
+	for fs := range resource.AllFileServers() {
+		got = append(got, fs.FilePath)
+	}
+	want := []string{"/A", "/B", "/C"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected file servers (-want, +got):\n%s", diff)
+	}
+}
+
 func TestAPIDefinition_AllMediaTypes(t *testing.T) {
 	api := &APIDefinition{
 		MediaTypes: map[string]*MediaTypeDefinition{
