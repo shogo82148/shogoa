@@ -852,9 +852,20 @@ func (r *ResourceDefinition) IterateActions(it ActionIterator) error {
 	return nil
 }
 
+// AllFileServers return an iterator that yields all the resource file servers sorted by file path.
+func (r *ResourceDefinition) AllFileServers() iter.Seq[*FileServerDefinition] {
+	servers := slices.Clone(r.FileServers)
+	slices.SortFunc(servers, func(a, b *FileServerDefinition) int {
+		return strings.Compare(a.FilePath, b.FilePath)
+	})
+	return slices.Values(servers)
+}
+
 // IterateFileServers calls the given iterator passing each resource file server sorted by file
 // path. Iteration stops if an iterator returns an error and in this case IterateFileServers returns
 // that error.
+//
+// Deprecated: Use [AllFileServers] instead.
 func (r *ResourceDefinition) IterateFileServers(it FileServerIterator) error {
 	sort.Sort(ByFilePath(r.FileServers))
 	for _, f := range r.FileServers {
