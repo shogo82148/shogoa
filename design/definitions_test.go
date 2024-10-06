@@ -396,6 +396,24 @@ func TestAPIDefinition_AllUserTypes(t *testing.T) {
 	}
 }
 
+func TestAPIDefinition_AllResources(t *testing.T) {
+	api := &APIDefinition{
+		Resources: map[string]*ResourceDefinition{
+			"example":  {Name: "example"},
+			"example2": {Name: "example2"},
+		},
+	}
+
+	got := []string{}
+	for res := range api.AllResources() {
+		got = append(got, res.Name)
+	}
+	want := []string{"example", "example2"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected resources (-want, +got):\n%s", diff)
+	}
+}
+
 func TestAPIDefinition_AllSets(t *testing.T) {
 	t.Run("should order nested resources", func(t *testing.T) {
 		api := &APIDefinition{
