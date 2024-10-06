@@ -1,291 +1,257 @@
 package apidsl_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"testing"
+
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/design/apidsl"
 	"github.com/shogo82148/shogoa/dslengine"
 )
 
-var _ = Describe("Type", func() {
-	var name string
-	var dsl func()
-
-	var ut *design.UserTypeDefinition
-
-	BeforeEach(func() {
+func TestType(t *testing.T) {
+	t.Run("with no dsl and no name", func(t *testing.T) {
 		dslengine.Reset()
-		name = ""
-		dsl = nil
+		apidsl.Type("", nil)
+		if err := dslengine.Run(); err == nil {
+			t.Errorf("expected an error, but no error")
+		}
 	})
 
-	JustBeforeEach(func() {
-		apidsl.Type(name, dsl)
-		dslengine.Run()
-		ut = design.Design.Types[name]
+	t.Run("with no dsl", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("foo", nil)
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 	})
 
-	Context("with no dsl and no name", func() {
-		It("produces an invalid type definition", func() {
-			Ω(ut).ShouldNot(BeNil())
-			Ω(ut.Validate("test", design.Design)).Should(HaveOccurred())
+	t.Run("with attributes", func(t *testing.T) {
+		dslengine.Reset()
+		ut := apidsl.Type("foo", func() {
+			apidsl.Attribute("att")
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+
+		if ut.AttributeDefinition == nil {
+			t.Error("AttributeDefinition is nil")
+		}
 	})
 
-	Context("with no dsl", func() {
-		BeforeEach(func() {
-			name = "foo"
+	t.Run("with a name and uuid datatype", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("foo", func() {
+			apidsl.Attribute("att", design.UUID)
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 
-		It("produces a valid type definition", func() {
-			Ω(ut).ShouldNot(BeNil())
-			Ω(ut.Validate("test", design.Design)).ShouldNot(HaveOccurred())
-		})
+		ut := design.Design.Types["foo"]
+		if err := ut.Validate("test", design.Design); err != nil {
+			t.Errorf("Validate() = %v; want nil", err)
+		}
+		if ut.AttributeDefinition == nil {
+			t.Error("AttributeDefinition is nil")
+		}
+		if ut.Type == nil {
+			t.Error("Type is nil")
+		}
+		if _, ok := ut.Type.(design.Object); !ok {
+			t.Errorf("Type is %T; want design.Object", ut.Type)
+		}
+		o := ut.Type.(design.Object)
+		if len(o) != 1 {
+			t.Errorf("len(o) = %d; want 1", len(o))
+		}
+		if _, ok := o["att"]; !ok {
+			t.Error("att is not found")
+		}
+		if o["att"].Type != design.UUID {
+			t.Errorf("att.Type = %v; want %v", o["att"].Type, design.UUID)
+		}
 	})
 
-	Context("with attributes", func() {
-		const attName = "att"
-
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.Attribute(attName)
-			}
+	t.Run("with a name and date datatype", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("foo", func() {
+			apidsl.Attribute("att", design.DateTime)
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 
-		It("sets the attributes", func() {
-			Ω(ut).ShouldNot(BeNil())
-			Ω(ut.Validate("test", design.Design)).ShouldNot(HaveOccurred())
-			Ω(ut.AttributeDefinition).ShouldNot(BeNil())
-			Ω(ut.Type).Should(BeAssignableToTypeOf(design.Object{}))
-			o := ut.Type.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(attName))
+		ut := design.Design.Types["foo"]
+		if err := ut.Validate("test", design.Design); err != nil {
+			t.Errorf("Validate() = %v; want nil", err)
+		}
+		if ut.AttributeDefinition == nil {
+			t.Error("AttributeDefinition is nil")
+		}
+		if ut.Type == nil {
+			t.Error("Type is nil")
+		}
+		if _, ok := ut.Type.(design.Object); !ok {
+			t.Errorf("Type is %T; want design.Object", ut.Type)
+		}
+		o := ut.Type.(design.Object)
+		if len(o) != 1 {
+			t.Errorf("len(o) = %d; want 1", len(o))
+		}
+		if _, ok := o["att"]; !ok {
+			t.Error("att is not found")
+		}
+		if o["att"].Type != design.DateTime {
+			t.Errorf("att.Type = %v; want %v", o["att"].Type, design.DateTime)
+		}
+	})
+}
+
+func TestArrayOf(t *testing.T) {
+	t.Run("used on a global variable", func(t *testing.T) {
+		dslengine.Reset()
+		ut := apidsl.Type("example", func() {
+			apidsl.Attribute("id")
 		})
+		ar := apidsl.ArrayOf(ut)
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+
+		if ar.Kind() != design.ArrayKind {
+			t.Errorf("ar.Kind() = %v; want %v", ar.Kind(), design.ArrayKind)
+		}
+		if ar.ElemType.Type != ut {
+			t.Errorf("ar.ElemType.Type = %v; want %v", ar.ElemType.Type, ut)
+		}
 	})
 
-	Context("with a name and uuid datatype", func() {
-		const attName = "att"
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.Attribute(attName, design.UUID)
-			}
+	t.Run("with a DSL", func(t *testing.T) {
+		dslengine.Reset()
+		ar := apidsl.ArrayOf(design.String, func() {
+			apidsl.Pattern("foo")
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 
-		It("produces an attribute of date type", func() {
-			Ω(ut).ShouldNot(BeNil())
-			Ω(ut.Validate("test", design.Design)).ShouldNot(HaveOccurred())
-			Ω(ut.AttributeDefinition).ShouldNot(BeNil())
-			Ω(ut.Type).Should(BeAssignableToTypeOf(design.Object{}))
-			o := ut.Type.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(attName))
-			Ω(o[attName].Type).Should(Equal(design.UUID))
-		})
+		if ar.Kind() != design.ArrayKind {
+			t.Errorf("ar.Kind() = %v; want %v", ar.Kind(), design.ArrayKind)
+		}
+		if ar.ElemType.Type != design.String {
+			t.Errorf("ar.ElemType.Type = %v; want %v", ar.ElemType.Type, design.String)
+		}
+		if ar.ElemType.Validation.Pattern != "foo" {
+			t.Errorf("ar.ElemType.Validation.Pattern = %v; want foo", ar.ElemType.Validation.Pattern)
+		}
 	})
 
-	Context("with a name and date datatype", func() {
-		const attName = "att"
-		BeforeEach(func() {
-			name = "foo"
-			dsl = func() {
-				apidsl.Attribute(attName, design.DateTime)
-			}
+	t.Run("defined with the type name", func(t *testing.T) {
+		dslengine.Reset()
+		apidsl.Type("name", func() {
+			apidsl.Attribute("id")
 		})
+		ar := apidsl.Type("names", func() {
+			apidsl.Attribute("ut", apidsl.ArrayOf("name"))
+		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 
-		It("produces an attribute of date type", func() {
-			Ω(ut).ShouldNot(BeNil())
-			Ω(ut.Validate("test", design.Design)).ShouldNot(HaveOccurred())
-			Ω(ut.AttributeDefinition).ShouldNot(BeNil())
-			Ω(ut.Type).Should(BeAssignableToTypeOf(design.Object{}))
-			o := ut.Type.(design.Object)
-			Ω(o).Should(HaveLen(1))
-			Ω(o).Should(HaveKey(attName))
-			Ω(o[attName].Type).Should(Equal(design.DateTime))
-		})
+		if ar.TypeName != "names" {
+			t.Errorf("ar.TypeName = %v; want names", ar.TypeName)
+		}
+		o := ar.Type.ToObject()
+		ut := o["ut"]
+		if _, ok := ut.Type.(*design.Array); !ok {
+			t.Errorf("ut.Type = %T; want *design.Array", ut.Type)
+		}
+		et := ut.Type.ToArray().ElemType
+		if v := et.Type.(*design.UserTypeDefinition).TypeName; v != "name" {
+			t.Errorf("et.Type.(*design.UserTypeDefinition).TypeName = %v; want name", v)
+		}
 	})
-})
 
-var _ = Describe("ArrayOf", func() {
-	Context("used on a global variable", func() {
-		var (
-			ut *design.UserTypeDefinition
-			ar *design.Array
-		)
-		BeforeEach(func() {
-			dslengine.Reset()
-			ut = apidsl.Type("example", func() {
-				apidsl.Attribute("id")
+	t.Run("defined with a media type name", func(t *testing.T) {
+		dslengine.Reset()
+		mt := apidsl.MediaType("application/vnd.test", func() {
+			apidsl.Attributes(func() {
+				apidsl.Attribute("ut", apidsl.ArrayOf("application/vnd.test"))
 			})
-			ar = apidsl.ArrayOf(ut)
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
-
-		JustBeforeEach(func() {
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
-
-		It("produces a array type", func() {
-			Ω(ar).ShouldNot(BeNil())
-			Ω(ar.Kind()).Should(Equal(design.ArrayKind))
-			Ω(ar.ElemType.Type).Should(Equal(ut))
-		})
-	})
-
-	Context("with a DSL", func() {
-		var (
-			pattern = "foo"
-			ar      *design.Array
-		)
-
-		BeforeEach(func() {
-			dslengine.Reset()
-			ar = apidsl.ArrayOf(design.String, func() {
-				apidsl.Pattern(pattern)
-			})
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
-
-		It("records the validations", func() {
-			Ω(ar).ShouldNot(BeNil())
-			Ω(ar.Kind()).Should(Equal(design.ArrayKind))
-			Ω(ar.ElemType.Type).Should(Equal(design.String))
-			Ω(ar.ElemType.Validation).ShouldNot(BeNil())
-			Ω(ar.ElemType.Validation.Pattern).Should(Equal(pattern))
-		})
-	})
-
-	Context("defined with the type name", func() {
-		var ar *design.UserTypeDefinition
-		BeforeEach(func() {
-			dslengine.Reset()
-			apidsl.Type("name", func() {
-				apidsl.Attribute("id")
-			})
-			ar = apidsl.Type("names", func() {
-				apidsl.Attribute("ut", apidsl.ArrayOf("name"))
-			})
-		})
-
-		JustBeforeEach(func() {
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
-
-		It("produces a user type", func() {
-			Ω(ar).ShouldNot(BeNil())
-			Ω(ar.TypeName).Should(Equal("names"))
-			Ω(ar.Type).ShouldNot(BeNil())
-			Ω(ar.Type.ToObject()).ShouldNot(BeNil())
-			Ω(ar.Type.ToObject()).Should(HaveKey("ut"))
-			ut := ar.Type.ToObject()["ut"]
-			Ω(ut.Type).ShouldNot(BeNil())
-			Ω(ut.Type).Should(BeAssignableToTypeOf(&design.Array{}))
-			et := ut.Type.ToArray().ElemType
-			Ω(et).ShouldNot(BeNil())
-			Ω(et.Type).Should(BeAssignableToTypeOf(&design.UserTypeDefinition{}))
-			Ω(et.Type.(*design.UserTypeDefinition).TypeName).Should(Equal("name"))
-		})
-	})
-
-	Context("defined with a media type name", func() {
-		var mt *design.MediaTypeDefinition
-		BeforeEach(func() {
-			dslengine.Reset()
-			mt = apidsl.MediaType("application/vnd.test", func() {
-				apidsl.Attributes(func() {
-					apidsl.Attribute("ut", apidsl.ArrayOf("application/vnd.test"))
-				})
-				apidsl.View("default", func() {
-					apidsl.Attribute("ut")
-				})
+			apidsl.View("default", func() {
+				apidsl.Attribute("ut")
 			})
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 
-		JustBeforeEach(func() {
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
-
-		It("produces a user type", func() {
-			Ω(mt).ShouldNot(BeNil())
-			Ω(mt.TypeName).Should(Equal("Test"))
-			Ω(mt.Type).ShouldNot(BeNil())
-			Ω(mt.Type.ToObject()).ShouldNot(BeNil())
-			Ω(mt.Type.ToObject()).Should(HaveKey("ut"))
-			ut := mt.Type.ToObject()["ut"]
-			Ω(ut.Type).ShouldNot(BeNil())
-			Ω(ut.Type).Should(BeAssignableToTypeOf(&design.Array{}))
-			et := ut.Type.ToArray().ElemType
-			Ω(et).ShouldNot(BeNil())
-			Ω(et.Type).Should(BeAssignableToTypeOf(&design.MediaTypeDefinition{}))
-			Ω(et.Type.(*design.MediaTypeDefinition).TypeName).Should(Equal("Test"))
-		})
+		if mt.TypeName != "Test" {
+			t.Errorf("mt.TypeName = %v; want Test", mt.TypeName)
+		}
+		o := mt.Type.ToObject()
+		ut := o["ut"]
+		if _, ok := ut.Type.(*design.Array); !ok {
+			t.Errorf("ut.Type = %T; want *design.Array", ut.Type)
+		}
+		et := ut.Type.ToArray().ElemType
+		if v := et.Type.(*design.MediaTypeDefinition).TypeName; v != "Test" {
+			t.Errorf("et.Type.(*design.MediaTypeDefinition).TypeName = %v; want Test", v)
+		}
 	})
-})
+}
 
-var _ = Describe("HashOf", func() {
-	Context("used on a global variable", func() {
-		var (
-			kt *design.UserTypeDefinition
-			vt *design.UserTypeDefinition
-			ha *design.Hash
-		)
-		BeforeEach(func() {
-			dslengine.Reset()
-			kt = apidsl.Type("key", func() {
-				apidsl.Attribute("id")
-			})
-			vt = apidsl.Type("val", func() {
-				apidsl.Attribute("id")
-			})
-			ha = apidsl.HashOf(kt, vt)
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
+func TestHashOf(t *testing.T) {
+	t.Run("used on a global variable", func(t *testing.T) {
+		dslengine.Reset()
+		kt := apidsl.Type("key", func() {
+			apidsl.Attribute("id")
 		})
+		vt := apidsl.Type("val", func() {
+			apidsl.Attribute("id")
+		})
+		ha := apidsl.HashOf(kt, vt)
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 
-		JustBeforeEach(func() {
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
-
-		It("produces a hash type", func() {
-			Ω(ha).ShouldNot(BeNil())
-			Ω(ha.Kind()).Should(Equal(design.HashKind))
-			Ω(ha.KeyType.Type).Should(Equal(kt))
-			Ω(ha.ElemType.Type).Should(Equal(vt))
-		})
+		if ha.Kind() != design.HashKind {
+			t.Errorf("ha.Kind() = %v; want %v", ha.Kind(), design.HashKind)
+		}
+		if ha.KeyType.Type != kt {
+			t.Errorf("ha.KeyType.Type = %v; want %v", ha.KeyType.Type, kt)
+		}
+		if ha.ElemType.Type != vt {
+			t.Errorf("ha.ElemType.Type = %v; want %v", ha.ElemType.Type, vt)
+		}
 	})
 
-	Context("with DSLs", func() {
-		var (
-			kp = "foo"
-			vp = "bar"
-			ha *design.Hash
-		)
-
-		BeforeEach(func() {
-			dslengine.Reset()
-			ha = apidsl.HashOf(design.String, design.String, func() { apidsl.Pattern(kp) }, func() { apidsl.Pattern(vp) })
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
+	t.Run("with a DSL", func(t *testing.T) {
+		dslengine.Reset()
+		ha := apidsl.HashOf(design.String, design.String, func() {
+			apidsl.Pattern("foo")
+		}, func() {
+			apidsl.Pattern("bar")
 		})
+		if err := dslengine.Run(); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
 
-		JustBeforeEach(func() {
-			dslengine.Run()
-			Ω(dslengine.Errors).ShouldNot(HaveOccurred())
-		})
-
-		It("records the validations", func() {
-			Ω(ha).ShouldNot(BeNil())
-			Ω(ha.Kind()).Should(Equal(design.HashKind))
-			Ω(ha.KeyType.Type).Should(Equal(design.String))
-			Ω(ha.KeyType.Validation).ShouldNot(BeNil())
-			Ω(ha.KeyType.Validation.Pattern).Should(Equal(kp))
-			Ω(ha.ElemType.Type).Should(Equal(design.String))
-			Ω(ha.ElemType.Validation).ShouldNot(BeNil())
-			Ω(ha.ElemType.Validation.Pattern).Should(Equal(vp))
-		})
+		if ha.Kind() != design.HashKind {
+			t.Errorf("ha.Kind() = %v; want %v", ha.Kind(), design.HashKind)
+		}
+		if ha.KeyType.Type != design.String {
+			t.Errorf("ha.KeyType.Type = %v; want %v", ha.KeyType.Type, design.String)
+		}
+		if ha.KeyType.Validation.Pattern != "foo" {
+			t.Errorf("ha.KeyType.Validation.Pattern = %v; want foo", ha.KeyType.Validation.Pattern)
+		}
+		if ha.ElemType.Type != design.String {
+			t.Errorf("ha.ElemType.Type = %v; want %v", ha.ElemType.Type, design.String)
+		}
+		if ha.ElemType.Validation.Pattern != "bar" {
+			t.Errorf("ha.ElemType.Validation.Pattern = %v; want bar", ha.ElemType.Validation.Pattern)
+		}
 	})
-})
+}
