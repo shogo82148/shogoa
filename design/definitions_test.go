@@ -360,6 +360,24 @@ func TestResourceDefinition_PathParams(t *testing.T) {
 	})
 }
 
+func TestResourceDefinition_AllActions(t *testing.T) {
+	resource := &ResourceDefinition{
+		Actions: map[string]*ActionDefinition{
+			"action1": {Name: "action1"},
+			"action2": {Name: "action2"},
+		},
+	}
+
+	got := []string{}
+	for act := range resource.AllActions() {
+		got = append(got, act.Name)
+	}
+	want := []string{"action1", "action2"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected actions (-want, +got):\n%s", diff)
+	}
+}
+
 func TestResourceDefinition_AllFileServers(t *testing.T) {
 	resource := &ResourceDefinition{
 		FileServers: []*FileServerDefinition{
