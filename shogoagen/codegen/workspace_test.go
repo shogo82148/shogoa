@@ -119,7 +119,7 @@ func TestWorkspaceFor(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// with GO111MODULE=on
+		// with GO111MODULE=off
 		t.Setenv("GO111MODULE", "off")
 
 		// should return a Module mode workspace
@@ -142,7 +142,7 @@ func TestWorkspaceFor(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// with GO111MODULE=on
+		// with GO111MODULE=off
 		t.Setenv("GO111MODULE", "off")
 
 		// should return a Module mode workspace
