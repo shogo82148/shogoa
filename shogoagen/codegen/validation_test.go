@@ -5,11 +5,15 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/shogo82148/pointer"
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/dslengine"
 	"github.com/shogo82148/shogoa/shogoagen/codegen"
 )
+
+// ptr returns a pointer to the given value.
+func ptr[T any](v T) *T {
+	return &v
+}
 
 func TestValidator(t *testing.T) {
 	t.Run("given an attribute definition and validations of enum", func(t *testing.T) {
@@ -52,7 +56,7 @@ func TestValidator(t *testing.T) {
 		att := &design.AttributeDefinition{
 			Type: design.Integer,
 			Validation: &dslengine.ValidationDefinition{
-				Minimum: pointer.Ptr(0.0),
+				Minimum: ptr(0.0),
 			},
 		}
 		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
@@ -70,7 +74,7 @@ func TestValidator(t *testing.T) {
 		att := &design.AttributeDefinition{
 			Type: design.Integer,
 			Validation: &dslengine.ValidationDefinition{
-				Maximum: pointer.Ptr(float64(math.MaxInt64)),
+				Maximum: ptr(float64(math.MaxInt64)),
 			},
 		}
 		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
@@ -88,7 +92,7 @@ func TestValidator(t *testing.T) {
 		att := &design.AttributeDefinition{
 			Type: design.Integer,
 			Validation: &dslengine.ValidationDefinition{
-				Minimum: pointer.Ptr(float64(math.MinInt64)),
+				Minimum: ptr(float64(math.MinInt64)),
 			},
 		}
 		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
@@ -110,7 +114,7 @@ func TestValidator(t *testing.T) {
 				},
 			},
 			Validation: &dslengine.ValidationDefinition{
-				MinLength: pointer.Ptr(1),
+				MinLength: ptr(1),
 			},
 		}
 		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
@@ -231,7 +235,7 @@ func TestValidator(t *testing.T) {
 		att := &design.AttributeDefinition{
 			Type: design.String,
 			Validation: &dslengine.ValidationDefinition{
-				MinLength: pointer.Ptr(2),
+				MinLength: ptr(2),
 			},
 		}
 		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
