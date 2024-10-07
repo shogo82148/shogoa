@@ -2,383 +2,173 @@ package codegen_test
 
 import (
 	"math"
-	"strings"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/google/go-cmp/cmp"
 	"github.com/shogo82148/shogoa/design"
 	"github.com/shogo82148/shogoa/dslengine"
 	"github.com/shogo82148/shogoa/shogoagen/codegen"
 )
 
-var _ = Describe("validation code generation", func() {
-	BeforeEach(func() {
-		codegen.TempCount = 0
-	})
+// ptr returns a pointer to the given value.
+func ptr[T any](v T) *T {
+	return &v
+}
 
-	Describe("ValidationChecker", func() {
-		Context("given an attribute definition and validations", func() {
-			var attType design.DataType
-			var validation *dslengine.ValidationDefinition
-
-			att := new(design.AttributeDefinition)
-			target := "val"
-			context := "context"
-			var code string // generated code
-
-			JustBeforeEach(func() {
-				att.Type = attType
-				att.Validation = validation
-				code = codegen.NewValidator().Code(att, false, false, false, target, context, 1, false)
-			})
-
-			Context("of enum", func() {
-				BeforeEach(func() {
-					attType = design.Integer
-					validation = &dslengine.ValidationDefinition{
-						Values: []interface{}{1, 2, 3},
-					}
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(enumValCode))
-				})
-			})
-
-			Context("of pattern", func() {
-				BeforeEach(func() {
-					attType = design.String
-					validation = &dslengine.ValidationDefinition{
-						Pattern: ".*",
-					}
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(patternValCode))
-				})
-			})
-
-			Context("of min value 0", func() {
-				BeforeEach(func() {
-					attType = design.Integer
-					min := 0.0
-					validation = &dslengine.ValidationDefinition{
-						Minimum: &min,
-					}
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(minValCode))
-				})
-			})
-
-			Context("of max value math.MaxInt64", func() {
-				BeforeEach(func() {
-					attType = design.Integer
-					max := float64(math.MaxInt64)
-					validation = &dslengine.ValidationDefinition{
-						Maximum: &max,
-					}
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(maxValCode))
-				})
-			})
-
-			Context("of min value math.MinInt64", func() {
-				BeforeEach(func() {
-					attType = design.Integer
-					min := float64(math.MinInt64)
-					validation = &dslengine.ValidationDefinition{
-						Minimum: &min,
-					}
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(minminValCode))
-				})
-			})
-
-			Context("of array min length 1", func() {
-				BeforeEach(func() {
-					attType = &design.Array{
-						ElemType: &design.AttributeDefinition{
-							Type: design.String,
-						},
-					}
-					min := 1
-					validation = &dslengine.ValidationDefinition{
-						MinLength: &min,
-					}
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(arrayMinLengthValCode))
-				})
-			})
-
-			Context("of array elements", func() {
-				BeforeEach(func() {
-					attType = &design.Array{
-						ElemType: &design.AttributeDefinition{
-							Type: design.String,
-							Validation: &dslengine.ValidationDefinition{
-								Pattern: ".*",
-							},
-						},
-					}
-					validation = nil
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(arrayElementsValCode))
-				})
-			})
-
-			Context("of hash elements (key, elem)", func() {
-				BeforeEach(func() {
-					attType = &design.Hash{
-						KeyType: &design.AttributeDefinition{
-							Type: design.String,
-							Validation: &dslengine.ValidationDefinition{
-								Pattern: ".*",
-							},
-						},
-						ElemType: &design.AttributeDefinition{
-							Type: design.String,
-							Validation: &dslengine.ValidationDefinition{
-								Pattern: ".*",
-							},
-						},
-					}
-					validation = nil
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(hashKeyElemValCode))
-				})
-			})
-
-			Context("of hash elements (key, _)", func() {
-				BeforeEach(func() {
-					attType = &design.Hash{
-						KeyType: &design.AttributeDefinition{
-							Type: design.String,
-							Validation: &dslengine.ValidationDefinition{
-								Pattern: ".*",
-							},
-						},
-						ElemType: &design.AttributeDefinition{
-							Type: design.String,
-						},
-					}
-					validation = nil
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(hashKeyValCode))
-				})
-			})
-
-			Context("of hash elements (_, elem)", func() {
-				BeforeEach(func() {
-					attType = &design.Hash{
-						KeyType: &design.AttributeDefinition{
-							Type: design.String,
-						},
-						ElemType: &design.AttributeDefinition{
-							Type: design.String,
-							Validation: &dslengine.ValidationDefinition{
-								Pattern: ".*",
-							},
-						},
-					}
-					validation = nil
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(hashElemValCode))
-				})
-			})
-
-			Context("of string min length 2", func() {
-				BeforeEach(func() {
-					attType = design.String
-					min := 2
-					validation = &dslengine.ValidationDefinition{
-						MinLength: &min,
-					}
-				})
-
-				It("produces the validation go code", func() {
-					Ω(code).Should(Equal(stringMinLengthValCode))
-				})
-			})
-
-			Context("of embedded object", func() {
-				var catt, ccatt *design.AttributeDefinition
-
-				BeforeEach(func() {
-					enumVal := &dslengine.ValidationDefinition{
-						Values: []interface{}{1, 2, 3},
-					}
-					ccatt = &design.AttributeDefinition{
-						Type:       design.Integer,
-						Validation: enumVal,
-					}
-					catt = &design.AttributeDefinition{
-						Type: design.Object{"bar": ccatt},
-					}
-
-					attType = design.Object{"foo": catt}
-				})
-				Context("and the parent is optional", func() {
-					BeforeEach(func() {
-						validation = nil
-					})
-					It("checks the child & parent object are not nil", func() {
-						Ω(code).Should(Equal(embeddedValCode))
-					})
-				})
-				Context("and the parent is required", func() {
-					BeforeEach(func() {
-						validation = &dslengine.ValidationDefinition{
-							Required: []string{"foo"},
-						}
-					})
-					It("checks the child & parent object are not nil", func() {
-						Ω(code).Should(Equal(embeddedRequiredValCode))
-					})
-				})
-				Context("with a child attribute with struct:tag:name metadata", func() {
-					const fieldTag = "FOO"
-
-					BeforeEach(func() {
-						catt.Metadata = dslengine.MetadataDefinition{"struct:field:name": []string{fieldTag}}
-						ccatt.Metadata = nil
-						validation = nil
-					})
-
-					It("produces the validation go code using the field tag", func() {
-						Ω(code).Should(Equal(strings.Replace(tagCode, "__tag__", fieldTag, -1)))
-					})
-				})
-				Context("with a grand child attribute with struct:tag:name metadata", func() {
-					const fieldTag = "FOO"
-
-					BeforeEach(func() {
-						catt.Metadata = nil
-						ccatt.Metadata = dslengine.MetadataDefinition{"struct:field:name": []string{fieldTag}}
-						validation = nil
-					})
-
-					It("produces the validation go code using the field tag", func() {
-						Ω(code).Should(Equal(strings.Replace(tagChildCode, "__tag__", fieldTag, -1)))
-					})
-				})
-
-			})
-
-			Context("of required user type attribute with no validation", func() {
-				var ut *design.UserTypeDefinition
-
-				BeforeEach(func() {
-					ut = &design.UserTypeDefinition{
-						TypeName: "UT",
-						AttributeDefinition: &design.AttributeDefinition{
-							Type: design.Object{
-								"bar": &design.AttributeDefinition{Type: design.String},
-							},
-						},
-					}
-					uatt := &design.AttributeDefinition{Type: design.Dup(ut)}
-					arr := &design.AttributeDefinition{
-						Type: &design.Array{
-							ElemType: &design.AttributeDefinition{Type: ut},
-						},
-					}
-
-					attType = design.Object{"foo": arr, "foo2": uatt}
-					validation = &dslengine.ValidationDefinition{
-						Required: []string{"foo"},
-					}
-				})
-
-				Context("with only direct required attributes", func() {
-					BeforeEach(func() {
-						validation = &dslengine.ValidationDefinition{
-							Required: []string{"foo"},
-						}
-					})
-
-					It("does not call Validate on the user type attribute", func() {
-						Ω(code).Should(Equal(utCode))
-					})
-				})
-
-				Context("with required attributes on inner attribute", func() {
-					BeforeEach(func() {
-						ut.AttributeDefinition.Validation = &dslengine.ValidationDefinition{
-							Required: []string{"bar"},
-						}
-						validation = nil
-					})
-
-					It("calls Validate on the user type attribute", func() {
-						Ω(code).Should(Equal(utRequiredCode))
-					})
-				})
-			})
-
-		})
-	})
-})
-
-const (
-	enumValCode = `	if val != nil {
+func TestValidator(t *testing.T) {
+	t.Run("given an attribute definition and validations of enum", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.Integer,
+			Validation: &dslengine.ValidationDefinition{
+				Values: []any{1, 2, 3},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val != nil {
 		if !(*val == 1 || *val == 2 || *val == 3) {
 			err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`context`" + `, *val, []interface{}{1, 2, 3}))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	patternValCode = `	if val != nil {
+	t.Run("given an attribute definition and validations of pattern", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.String,
+			Validation: &dslengine.ValidationDefinition{
+				Pattern: ".*",
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val != nil {
 		if ok := shogoa.ValidatePattern(` + "`.*`" + `, *val); !ok {
 			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`context`" + `, *val, ` + "`.*`" + `))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	minValCode = `	if val != nil {
+	t.Run("given an attribute definition and validations of min value 0", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.Integer,
+			Validation: &dslengine.ValidationDefinition{
+				Minimum: ptr(0.0),
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val != nil {
 		if *val < 0 {
 			err = shogoa.MergeErrors(err, shogoa.InvalidRangeError(` + "`" + `context` + "`" + `, *val, 0, true))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	maxValCode = `	if val != nil {
+	t.Run("given an attribute definition and validations of max value math.MaxInt64", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.Integer,
+			Validation: &dslengine.ValidationDefinition{
+				Maximum: ptr(float64(math.MaxInt64)),
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val != nil {
 		if *val > 9223372036854775807 {
 			err = shogoa.MergeErrors(err, shogoa.InvalidRangeError(` + "`" + `context` + "`" + `, *val, 9223372036854775807, false))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	minminValCode = `	if val != nil {
+	t.Run("given an attribute definition and validations of min value math.MinInt64", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.Integer,
+			Validation: &dslengine.ValidationDefinition{
+				Minimum: ptr(float64(math.MinInt64)),
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val != nil {
 		if *val < -9223372036854775808 {
 			err = shogoa.MergeErrors(err, shogoa.InvalidRangeError(` + "`" + `context` + "`" + `, *val, -9223372036854775808, true))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	arrayMinLengthValCode = `	if val != nil {
+	t.Run("given an attribute definition and validations of array min length 1", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: &design.Array{
+				ElemType: &design.AttributeDefinition{
+					Type: design.String,
+				},
+			},
+			Validation: &dslengine.ValidationDefinition{
+				MinLength: ptr(1),
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val != nil {
 		if len(val) < 1 {
 			err = shogoa.MergeErrors(err, shogoa.InvalidLengthError(` + "`" + `context` + "`" + `, val, len(val), 1, true))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	arrayElementsValCode = `	for _, e := range val {
+	t.Run("given an attribute definition and validations of array elements", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: &design.Array{
+				ElemType: &design.AttributeDefinition{
+					Type: design.String,
+					Validation: &dslengine.ValidationDefinition{
+						Pattern: ".*",
+					},
+				},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	for _, e := range val {
 		if ok := shogoa.ValidatePattern(` + "`" + `.*` + "`" + `, e); !ok {
 			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, e, ` + "`" + `.*` + "`" + `))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	hashKeyElemValCode = `	for k, e := range val {
+	t.Run("given an attribute definition and validations of hash elements (key, elem)", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: &design.Hash{
+				KeyType: &design.AttributeDefinition{
+					Type: design.String,
+					Validation: &dslengine.ValidationDefinition{
+						Pattern: ".*",
+					},
+				},
+				ElemType: &design.AttributeDefinition{
+					Type: design.String,
+					Validation: &dslengine.ValidationDefinition{
+						Pattern: ".*",
+					},
+				},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	for k, e := range val {
 		if ok := shogoa.ValidatePattern(` + "`" + `.*` + "`" + `, k); !ok {
 			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, k, ` + "`" + `.*` + "`" + `))
 		}
@@ -386,34 +176,127 @@ const (
 			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, e, ` + "`" + `.*` + "`" + `))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	hashKeyValCode = `	for k, _ := range val {
+	t.Run("given an attribute definition and validations of hash elements (key, _)", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: &design.Hash{
+				KeyType: &design.AttributeDefinition{
+					Type: design.String,
+					Validation: &dslengine.ValidationDefinition{
+						Pattern: ".*",
+					},
+				},
+				ElemType: &design.AttributeDefinition{
+					Type: design.String,
+				},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	for k, _ := range val {
 		if ok := shogoa.ValidatePattern(` + "`" + `.*` + "`" + `, k); !ok {
 			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, k, ` + "`" + `.*` + "`" + `))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	hashElemValCode = `	for _, e := range val {
+	t.Run("given an attribute definition and validations of hash elements (key, _)", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: &design.Hash{
+				KeyType: &design.AttributeDefinition{
+					Type: design.String,
+				},
+				ElemType: &design.AttributeDefinition{
+					Type: design.String,
+					Validation: &dslengine.ValidationDefinition{
+						Pattern: ".*",
+					},
+				},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	for _, e := range val {
 		if ok := shogoa.ValidatePattern(` + "`" + `.*` + "`" + `, e); !ok {
 			err = shogoa.MergeErrors(err, shogoa.InvalidPatternError(` + "`" + `context[*]` + "`" + `, e, ` + "`" + `.*` + "`" + `))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	stringMinLengthValCode = `	if val != nil {
+	t.Run("given an attribute definition and validations of string min length 2", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.String,
+			Validation: &dslengine.ValidationDefinition{
+				MinLength: ptr(2),
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val != nil {
 		if utf8.RuneCountInString(*val) < 2 {
 			err = shogoa.MergeErrors(err, shogoa.InvalidLengthError(` + "`" + `context` + "`" + `, *val, utf8.RuneCountInString(*val), 2, true))
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	embeddedValCode = `	if val.Foo != nil {
+	t.Run("given an attribute definition and validations of embedded object and the parent is optional", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.Object{
+				"foo": &design.AttributeDefinition{
+					Type: design.Object{
+						"bar": &design.AttributeDefinition{
+							Type: design.Integer,
+							Validation: &dslengine.ValidationDefinition{
+								Values: []interface{}{1, 2, 3},
+							},
+						},
+					},
+				},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val.Foo != nil {
 		if val.Foo.Bar != nil {
 			if !(*val.Foo.Bar == 1 || *val.Foo.Bar == 2 || *val.Foo.Bar == 3) {
 				err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.Foo.Bar, []interface{}{1, 2, 3}))
 			}
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	embeddedRequiredValCode = `	if val.Foo == nil {
+	t.Run("given an attribute definition and validations of embedded object and the parent is required", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.Object{
+				"foo": &design.AttributeDefinition{
+					Type: design.Object{
+						"bar": &design.AttributeDefinition{
+							Type: design.Integer,
+							Validation: &dslengine.ValidationDefinition{
+								Values: []interface{}{1, 2, 3},
+							},
+						},
+					},
+				},
+			},
+			Validation: &dslengine.ValidationDefinition{
+				Required: []string{"foo"},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val.Foo == nil {
 		err = shogoa.MergeErrors(err, shogoa.MissingAttributeError(` + "`context`" + `, "foo"))
 	}
 	if val.Foo != nil {
@@ -423,24 +306,107 @@ const (
 			}
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	tagCode = `	if val.__tag__ != nil {
-		if val.__tag__.Bar != nil {
-			if !(*val.__tag__.Bar == 1 || *val.__tag__.Bar == 2 || *val.__tag__.Bar == 3) {
-				err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.__tag__.Bar, []interface{}{1, 2, 3}))
+	t.Run("given an attribute definition and validations of embedded object with a child attribute with struct:tag:name metadata", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.Object{
+				"foo": &design.AttributeDefinition{
+					Type: design.Object{
+						"bar": &design.AttributeDefinition{
+							Type: design.Integer,
+							Validation: &dslengine.ValidationDefinition{
+								Values: []interface{}{1, 2, 3},
+							},
+						},
+					},
+					Metadata: dslengine.MetadataDefinition{
+						"struct:field:name": []string{"FOO"},
+					},
+				},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val.FOO != nil {
+		if val.FOO.Bar != nil {
+			if !(*val.FOO.Bar == 1 || *val.FOO.Bar == 2 || *val.FOO.Bar == 3) {
+				err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.FOO.Bar, []interface{}{1, 2, 3}))
 			}
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	tagChildCode = `	if val.Foo != nil {
-		if val.Foo.__tag__ != nil {
-			if !(*val.Foo.__tag__ == 1 || *val.Foo.__tag__ == 2 || *val.Foo.__tag__ == 3) {
-				err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.Foo.__tag__, []interface{}{1, 2, 3}))
+	t.Run("given an attribute definition and validations of embedded object with a child attribute with a grand child attribute with struct:tag:name metadata", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.Object{
+				"foo": &design.AttributeDefinition{
+					Type: design.Object{
+						"bar": &design.AttributeDefinition{
+							Type: design.Integer,
+							Validation: &dslengine.ValidationDefinition{
+								Values: []interface{}{1, 2, 3},
+							},
+							Metadata: dslengine.MetadataDefinition{
+								"struct:field:name": []string{"FOO"},
+							},
+						},
+					},
+				},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val.Foo != nil {
+		if val.Foo.FOO != nil {
+			if !(*val.Foo.FOO == 1 || *val.Foo.FOO == 2 || *val.Foo.FOO == 3) {
+				err = shogoa.MergeErrors(err, shogoa.InvalidEnumValueError(` + "`" + `context.foo.bar` + "`" + `, *val.Foo.FOO, []interface{}{1, 2, 3}))
 			}
 		}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	utCode = `	if val.Foo == nil {
+	t.Run("given an attribute definition and validations of required user type attribute with no validation with only direct required attributes", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.Object{
+				"foo": &design.AttributeDefinition{
+					Type: &design.Array{
+						ElemType: &design.AttributeDefinition{
+							Type: &design.UserTypeDefinition{
+								TypeName: "UT",
+								AttributeDefinition: &design.AttributeDefinition{
+									Type: design.Object{
+										"bar": &design.AttributeDefinition{Type: design.String},
+									},
+								},
+							},
+						},
+					},
+				},
+				"foo2": &design.AttributeDefinition{
+					Type: &design.UserTypeDefinition{
+						TypeName: "UT",
+						AttributeDefinition: &design.AttributeDefinition{
+							Type: design.Object{
+								"bar": &design.AttributeDefinition{Type: design.String},
+							},
+						},
+					},
+				},
+			},
+			Validation: &dslengine.ValidationDefinition{
+				Required: []string{"foo"},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val.Foo == nil {
 		err = shogoa.MergeErrors(err, shogoa.MissingAttributeError(` + "`context`" + `, "foo"))
 	}
 	if val.Foo2 != nil {
@@ -448,10 +414,52 @@ const (
 		err = shogoa.MergeErrors(err, err2)
 	}
 	}`
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
 
-	utRequiredCode = `	if val.Foo2 != nil {
+	t.Run("given an attribute definition and validations of required user type attribute with no validation with only direct required attributes", func(t *testing.T) {
+		att := &design.AttributeDefinition{
+			Type: design.Object{
+				"foo": &design.AttributeDefinition{
+					Type: &design.Array{
+						ElemType: &design.AttributeDefinition{
+							Type: &design.UserTypeDefinition{
+								TypeName: "UT",
+								AttributeDefinition: &design.AttributeDefinition{
+									Type: design.Object{
+										"bar": &design.AttributeDefinition{Type: design.String},
+									},
+									Validation: &dslengine.ValidationDefinition{
+										Required: []string{"bar"},
+									},
+								},
+							},
+						},
+					},
+				},
+				"foo2": &design.AttributeDefinition{
+					Type: &design.UserTypeDefinition{
+						TypeName: "UT",
+						AttributeDefinition: &design.AttributeDefinition{
+							Type: design.Object{
+								"bar": &design.AttributeDefinition{Type: design.String},
+							},
+						},
+					},
+				},
+			},
+		}
+		got := codegen.NewValidator().Code(att, false, false, false, "val", "context", 1, false)
+		want := `	if val.Foo2 != nil {
 	if err2 := val.Foo2.Validate(); err2 != nil {
 		err = shogoa.MergeErrors(err, err2)
 	}
 	}`
-)
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("unexpected code (-want +got):\n%s", diff)
+		}
+	})
+
+}
