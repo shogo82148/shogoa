@@ -1,13 +1,10 @@
 package codegen_test
 
 import (
-	"fmt"
-	"go/build"
 	"os"
 	"path/filepath"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/shogo82148/shogoa/shogoagen/codegen"
 )
 
@@ -19,786 +16,709 @@ func abs(elems ...string) string {
 	return r
 }
 
-// TODO: @shogo82148 GO111MODULE doesn't work correctly
-var _ = Describe("Workspace", func() {
-	Describe("WorkspaceFor", func() {
-		oldGOPATH := build.Default.GOPATH
-		xx := abs("xx")
-		BeforeEach(func() {
-			os.Setenv("GOPATH", xx)
-		})
-		AfterEach(func() {
-			os.Setenv("GOPATH", oldGOPATH)
-		})
+func TestWorkspaceFor(t *testing.T) {
+	t.Run("with GOMOD, with GO111MODULE=auto, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
 
-		var (
-			err    error
-			gopath string
-		)
-		Context("with GOMOD", func() {
-			var (
-				f *os.File
-			)
-			BeforeEach(func() {
-				f, err = os.OpenFile("go.mod", os.O_CREATE, 0755)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(f.Close()).ShouldNot(HaveOccurred())
-			})
-			AfterEach(func() {
-				Ω(os.RemoveAll("go.mod")).ShouldNot(HaveOccurred())
-			})
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
 
-			Context("with GO111MODULE=auto", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Unsetenv("GO111MODULE")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
 
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode workspace", func() {
-						workspace, err := codegen.WorkspaceFor(abs("", "xx", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(workspace.Path).To(Equal(xx))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return a Module mode workspace", func() {
-						abs, err := filepath.Abs(".")
-						Ω(err).ShouldNot(HaveOccurred())
-						workspace, err := codegen.WorkspaceFor(abs)
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(workspace.Path).To(Equal(abs))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=on", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "on")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a Module mode workspace", func() {
-						abs, err := filepath.Abs(".")
-						Ω(err).ShouldNot(HaveOccurred())
-						workspace, err := codegen.WorkspaceFor(abs)
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(workspace.Path).To(Equal(abs))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return a Module mode workspace", func() {
-						abs, err := filepath.Abs(".")
-						Ω(err).ShouldNot(HaveOccurred())
-						workspace, err := codegen.WorkspaceFor(abs)
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(workspace.Path).To(Equal(abs))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=off", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "off")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode workspace", func() {
-						workspace, err := codegen.WorkspaceFor(abs("", "xx", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(workspace.Path).To(Equal(xx))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.WorkspaceFor(abs("", "bar", "xx", "42"))
-						Ω(err).Should(Equal(fmt.Errorf(`Go source file "%s" not in Go workspace, adjust GOPATH %s or use modules`, abs("", "bar", "xx", "42"), gopath)))
-					})
-				})
-			})
-		})
-
-		Context("with no GOMOD", func() {
-			Context("with GO111MODULE=auto", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Unsetenv("GO111MODULE")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode workspace", func() {
-						workspace, err := codegen.WorkspaceFor(abs("xx", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(workspace.Path).To(Equal(abs("xx")))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.WorkspaceFor(abs("bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						// Ω(err).Should(Equal(fmt.Errorf(`Go source file "%s" not in Go workspace, adjust GOPATH %s or use modules`, abs("bar", "xx", "42"), gopath)))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=on", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "on")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should not return an error", func() {
-						_, err := codegen.WorkspaceFor(abs("bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should not return an error", func() {
-						_, err := codegen.WorkspaceFor(abs("bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-					})
-				})
-			})
-
-			Context("with GO111MODULE=off", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "off")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode workspace", func() {
-						workspace, err := codegen.WorkspaceFor(abs("xx", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(workspace.Path).To(Equal(abs("xx")))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.WorkspaceFor(abs("bar", "xx", "42"))
-						Ω(err).Should(Equal(fmt.Errorf(`Go source file "%s" not in Go workspace, adjust GOPATH %s or use modules`, abs("bar", "xx", "42"), gopath)))
-					})
-				})
-			})
-		})
+		// should return a GOPATH mode workspace
+		workspace, err := codegen.WorkspaceFor(abs(dir, "xx", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if workspace.Path != gopath {
+			t.Errorf("unexpected workspace.Path: %s, want %s", workspace.Path, gopath)
+		}
 	})
 
-	Describe("PackageFor", func() {
-		oldGOPATH := build.Default.GOPATH
-		BeforeEach(func() {
-			os.Setenv("GOPATH", abs("xx"))
-		})
-		AfterEach(func() {
-			os.Setenv("GOPATH", oldGOPATH)
-		})
+	t.Run("with GOMOD, with GO111MODULE=auto, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
 
-		var (
-			err    error
-			gopath string
-		)
-		Context("with GOMOD", func() {
-			var (
-				f *os.File
-			)
-			BeforeEach(func() {
-				f, err = os.OpenFile("go.mod", os.O_CREATE, 0755)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(f.Close()).ShouldNot(HaveOccurred())
-			})
-			AfterEach(func() {
-				Ω(os.RemoveAll("go.mod")).ShouldNot(HaveOccurred())
-			})
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
 
-			Context("with GO111MODULE=auto", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Unsetenv("GO111MODULE")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
 
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode package", func() {
-						pkg, err := codegen.PackageFor(abs("xx", "src", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(pkg.Path).To(Equal("bar/xx"))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return a Module mode package", func() {
-						ab, err := filepath.Abs(".")
-						Ω(err).ShouldNot(HaveOccurred())
-						pkg, err := codegen.PackageFor(abs(ab, "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(pkg.Path).To(Equal("bar/xx"))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=on", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "on")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a Module mode package", func() {
-						ab, err := filepath.Abs(".")
-						Ω(err).ShouldNot(HaveOccurred())
-						pkg, err := codegen.PackageFor(abs(ab, "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(pkg.Path).To(Equal("bar/xx"))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return a Module mode package", func() {
-						ab, err := filepath.Abs(".")
-						Ω(err).ShouldNot(HaveOccurred())
-						pkg, err := codegen.PackageFor(abs(ab, "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(pkg.Path).To(Equal("bar/xx"))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=off", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "off")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode package", func() {
-						pkg, err := codegen.PackageFor(abs("xx", "src", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(pkg.Path).To(Equal("bar/xx"))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.PackageFor(abs("bar", "xx", "42"))
-						Ω(err).Should(Equal(fmt.Errorf(`Go source file "%s" not in Go workspace, adjust GOPATH %s or use modules`, abs("bar", "xx", "42"), gopath)))
-					})
-				})
-			})
-		})
-
-		Context("with no GOMOD", func() {
-			Context("with GO111MODULE=auto", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Unsetenv("GO111MODULE")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode package", func() {
-						pkg, err := codegen.PackageFor(abs("xx", "src", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(pkg.Path).To(Equal("bar/xx"))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.PackageFor(abs("bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						// Ω(err).Should(Equal(fmt.Errorf(`Go source file "%s" not in Go workspace, adjust GOPATH %s or use modules`, abs("bar", "xx", "42"), gopath)))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=on", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "on")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return an error", func() {
-						_, err := codegen.PackageFor(abs("bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						// Ω(err).Should(Equal(fmt.Errorf(`Go source file "%s" not in Go workspace, adjust GOPATH %s or use modules`, abs("bar", "xx", "42"), abs("xx"))))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.PackageFor(abs("bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						// Ω(err).Should(Equal(fmt.Errorf(`Go source file "%s" not in Go workspace, adjust GOPATH %s or use modules`, abs("bar", "xx", "42"), gopath)))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=off", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "off")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode package", func() {
-						pkg, err := codegen.PackageFor(abs("xx", "src", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(pkg.Path).To(Equal("bar/xx"))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.PackageFor(abs("bar", "xx", "42"))
-						Ω(err).Should(Equal(fmt.Errorf(`Go source file "%s" not in Go workspace, adjust GOPATH %s or use modules`, abs("bar", "xx", "42"), gopath)))
-					})
-				})
-			})
-		})
+		// should return a Module mode workspace
+		workspace, err := codegen.WorkspaceFor(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if workspace.Path != dir {
+			t.Errorf("unexpected workspace.Path: %s, want %s", workspace.Path, dir)
+		}
 	})
 
-	Describe("Package.Abs", func() {
-		var (
-			err            error
-			gopath         string
-			f              *os.File
-			oldGOPATH      = build.Default.GOPATH
-			oldGO111MODULE = os.Getenv("GO111MODULE")
-		)
-		BeforeEach(func() {
-			os.Setenv("GOPATH", "/xx")
-			f, err = os.OpenFile("go.mod", os.O_CREATE, 0755)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(f.Close()).ShouldNot(HaveOccurred())
-			os.Unsetenv("GO111MODULE")
-		})
-		AfterEach(func() {
-			os.Setenv("GOPATH", oldGOPATH)
-			Ω(os.RemoveAll("go.mod")).ShouldNot(HaveOccurred())
-			os.Setenv("GO111MODULE", oldGO111MODULE)
-		})
+	t.Run("with GOMOD, with GO111MODULE=on, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
 
-		Context("inside GOPATH", func() {
-			It("should return the absolute path to the GOPATH directory", func() {
-				pkg, err := codegen.PackageFor(abs("xx", "src", "bar", "xx", "42"))
-				Ω(err).ShouldNot(HaveOccurred())
-				Expect(pkg.Abs()).To(Equal(abs("xx", "src", "bar", "xx")))
-			})
-		})
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
 
-		Context("outside GOPATH", func() {
-			BeforeEach(func() {
-				gopath, err = os.MkdirTemp(".", "go")
-				Ω(err).ShouldNot(HaveOccurred())
-				os.Setenv("GOPATH", gopath)
-			})
-			AfterEach(func() {
-				Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-			})
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
 
-			It("should return the absolute path to the Module directory", func() {
-				ab, err := filepath.Abs(".")
-				Ω(err).ShouldNot(HaveOccurred())
-				pkg, err := codegen.PackageFor(abs(ab, "bar", "xx", "42"))
-				Ω(err).ShouldNot(HaveOccurred())
-				Expect(pkg.Abs()).To(Equal(abs(ab, "bar", "xx")))
-			})
-		})
+		// should return a Module mode workspace
+		workspace, err := codegen.WorkspaceFor(abs(dir, "xx", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if workspace.Path != dir {
+			t.Errorf("unexpected workspace.Path: %s, want %s", workspace.Path, dir)
+		}
 	})
 
-	Describe("PackagePath", func() {
-		oldGOPATH := build.Default.GOPATH
-		BeforeEach(func() {
-			os.Setenv("GOPATH", abs("xx"))
-		})
-		AfterEach(func() {
-			os.Setenv("GOPATH", oldGOPATH)
-		})
+	t.Run("with GOMOD, with GO111MODULE=on, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
 
-		var (
-			err    error
-			gopath string
-		)
-		Context("with GOMOD", func() {
-			var (
-				f *os.File
-			)
-			BeforeEach(func() {
-				f, err = os.OpenFile("go.mod", os.O_CREATE, 0755)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(f.Close()).ShouldNot(HaveOccurred())
-			})
-			AfterEach(func() {
-				Ω(os.RemoveAll("go.mod")).ShouldNot(HaveOccurred())
-			})
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
 
-			Context("with GO111MODULE=auto", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Unsetenv("GO111MODULE")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
 
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode package path", func() {
-						p, err := codegen.PackagePath(abs("xx", "src", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(p).To(Equal("bar/xx/42"))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return a Module mode package path", func() {
-						ab, err := filepath.Abs(".")
-						Ω(err).ShouldNot(HaveOccurred())
-						p, err := codegen.PackagePath(abs(ab, "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(p).To(Equal("bar/xx/42"))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=on", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "on")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a Module mode package path", func() {
-						ab, err := filepath.Abs(".")
-						Ω(err).ShouldNot(HaveOccurred())
-						p, err := codegen.PackagePath(abs(ab, "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(p).To(Equal("bar/xx/42"))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return a Module mode package path", func() {
-						ab, err := filepath.Abs(".")
-						Ω(err).ShouldNot(HaveOccurred())
-						p, err := codegen.PackagePath(abs(ab, "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(p).To(Equal("bar/xx/42"))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=off", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "off")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode package path", func() {
-						p, err := codegen.PackagePath(abs("xx", "src", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(p).To(Equal("bar/xx/42"))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.PackagePath(abs("bar", "xx", "42"))
-						Ω(err).Should(Equal(fmt.Errorf("%s does not contain a Go package", abs("bar", "xx", "42"))))
-					})
-				})
-			})
-		})
-
-		Context("with no GOMOD", func() {
-			Context("with GO111MODULE=auto", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Unsetenv("GO111MODULE")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode package path", func() {
-						p, err := codegen.PackagePath(abs("xx", "src", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(p).To(Equal("bar/xx/42"))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.PackagePath(abs("bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						// Ω(err).Should(Equal(fmt.Errorf("%s does not contain a Go package", abs("bar", "xx", "42"))))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=on", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "on")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return an error", func() {
-						_, err := codegen.PackagePath(abs("bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						// Ω(err).Should(Equal(fmt.Errorf("%s does not contain a Go package", abs("bar", "xx", "42"))))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.PackagePath(abs("bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						// Ω(err).Should(Equal(fmt.Errorf("%s does not contain a Go package", abs("bar", "xx", "42"))))
-					})
-				})
-			})
-
-			Context("with GO111MODULE=off", func() {
-				oldGO111MODULE := os.Getenv("GO111MODULE")
-				BeforeEach(func() {
-					os.Setenv("GO111MODULE", "off")
-				})
-				AfterEach(func() {
-					os.Setenv("GO111MODULE", oldGO111MODULE)
-				})
-
-				Context("inside GOPATH", func() {
-					It("should return a GOPATH mode package path", func() {
-						p, err := codegen.PackagePath(abs("xx", "src", "bar", "xx", "42"))
-						Ω(err).ShouldNot(HaveOccurred())
-						Expect(p).To(Equal("bar/xx/42"))
-					})
-				})
-
-				Context("outside GOPATH", func() {
-					BeforeEach(func() {
-						gopath, err = os.MkdirTemp(".", "go")
-						Ω(err).ShouldNot(HaveOccurred())
-						os.Setenv("GOPATH", gopath)
-					})
-					AfterEach(func() {
-						Ω(os.RemoveAll(gopath)).ShouldNot(HaveOccurred())
-					})
-
-					It("should return an error", func() {
-						_, err := codegen.PackagePath(abs("bar", "xx", "42"))
-						Ω(err).Should(Equal(fmt.Errorf("%s does not contain a Go package", abs("bar", "xx", "42"))))
-					})
-				})
-			})
-		})
+		// should return a Module mode workspace
+		workspace, err := codegen.WorkspaceFor(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if workspace.Path != dir {
+			t.Errorf("unexpected workspace.Path: %s, want %s", workspace.Path, dir)
+		}
 	})
 
-})
+	t.Run("with GOMOD, with GO111MODULE=off, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=off
+		t.Setenv("GO111MODULE", "off")
+
+		// should return a Module mode workspace
+		workspace, err := codegen.WorkspaceFor(abs(dir, "xx", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if workspace.Path != gopath {
+			t.Errorf("unexpected workspace.Path: %s, want %s", workspace.Path, gopath)
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=off, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=off
+		t.Setenv("GO111MODULE", "off")
+
+		// should return a Module mode workspace
+		_, err := codegen.WorkspaceFor(dir)
+		if err == nil {
+			t.Error("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=auto, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
+
+		// should return a GOPATH mode workspace
+		workspace, err := codegen.WorkspaceFor(abs(dir, "xx", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if workspace.Path != gopath {
+			t.Errorf("unexpected workspace.Path: %s, want %s", workspace.Path, gopath)
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=auto, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
+
+		// should return an error
+		_, err := codegen.WorkspaceFor(dir)
+		if err == nil {
+			t.Error("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=on, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
+
+		// should return an error
+		_, err := codegen.WorkspaceFor(abs(dir, "xx", "bar", "xx", "42"))
+		if err == nil {
+			t.Error("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=on, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
+
+		// should return an error
+		_, err := codegen.WorkspaceFor(dir)
+		if err == nil {
+			t.Error("expected an error, but no error")
+		}
+	})
+}
+
+func TestPackageFor(t *testing.T) {
+	t.Run("with GOMOD, with GO111MODULE=auto, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
+
+		// should return a GOPATH mode package
+		pkg, err := codegen.PackageFor(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg.Path != "bar/xx" {
+			t.Errorf("unexpected pkg.Path: %s, want %s", pkg.Path, "bar/xx")
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=auto, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
+
+		// should return a GOPATH mode package
+		pkg, err := codegen.PackageFor(abs(dir, "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg.Path != "bar/xx" {
+			t.Errorf("unexpected pkg.Path: %s, want %s", pkg.Path, "bar/xx")
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=on, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
+
+		// should return a GOPATH mode package
+		pkg, err := codegen.PackageFor(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg.Path != "xx/src/bar/xx" {
+			t.Errorf("unexpected pkg.Path: %s, want %s", pkg.Path, "xx/src/bar/xx")
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=on, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
+
+		// should return a GOPATH mode package
+		pkg, err := codegen.PackageFor(abs(dir, "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg.Path != "bar/xx" {
+			t.Errorf("unexpected pkg.Path: %s, want %s", pkg.Path, "bar/xx")
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=off, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=off
+		t.Setenv("GO111MODULE", "off")
+
+		// should return a GOPATH mode package
+		pkg, err := codegen.PackageFor(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg.Path != "bar/xx" {
+			t.Errorf("unexpected pkg.Path: %s, want %s", pkg.Path, "bar/xx")
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=off, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=off
+		t.Setenv("GO111MODULE", "off")
+
+		// should return an error
+		_, err := codegen.PackageFor(abs(dir, "bar", "xx", "42"))
+		if err == nil {
+			t.Error("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=auto, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
+
+		// should return a GOPATH mode package
+		pkg, err := codegen.PackageFor(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg.Path != "bar/xx" {
+			t.Errorf("unexpected pkg.Path: %s, want %s", pkg.Path, "bar/xx")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=auto, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
+
+		// should return an error
+		_, err := codegen.PackageFor(abs(dir, "bar", "xx", "42"))
+		if err == nil {
+			t.Error("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=on, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
+
+		// should return an error
+		_, err := codegen.PackageFor(abs(gopath, "src", "bar", "xx", "42"))
+		if err == nil {
+			t.Error("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=on, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
+
+		// should return an error
+		_, err := codegen.PackageFor(abs(dir, "bar", "xx", "42"))
+		if err == nil {
+			t.Error("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=off, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=off
+		t.Setenv("GO111MODULE", "off")
+
+		// should return a GOPATH mode package
+		pkg, err := codegen.PackageFor(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg.Path != "bar/xx" {
+			t.Errorf("unexpected pkg.Path: %s, want %s", pkg.Path, "bar/xx")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=off, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=off
+		t.Setenv("GO111MODULE", "off")
+
+		// should return an error
+		_, err := codegen.PackageFor(abs(dir, "bar", "xx", "42"))
+		if err == nil {
+			t.Error("expected an error, but no error")
+		}
+	})
+}
+
+func TestPackage_Abs(t *testing.T) {
+	// with GO111MODULE=auto
+	dir := t.TempDir()
+	gopath := abs(dir, "xx")
+	t.Setenv("GOPATH", gopath)
+	t.Setenv("GO111MODULE", "auto")
+
+	// with go.mod
+	if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("inside GOPATH", func(t *testing.T) {
+		pkg, err := codegen.PackageFor(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// should return the absolute path to the GOPATH directory
+		got := pkg.Abs()
+		want := abs(gopath, "src", "bar", "xx")
+		if got != want {
+			t.Errorf("unexpected pkg.Abs(): %s, want %s", got, want)
+		}
+	})
+
+	t.Run("outside GOPATH", func(t *testing.T) {
+		pkg, err := codegen.PackageFor(abs(dir, "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// should return the absolute path to the Module directory
+		got := pkg.Abs()
+		want := abs(dir, "bar", "xx")
+		if got != want {
+			t.Errorf("unexpected pkg.Abs(): %s, want %s", got, want)
+		}
+	})
+}
+
+func TestPackagePath(t *testing.T) {
+	t.Run("with GOMOD, with GO111MODULE=auto, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
+
+		// should return a GOPATH mode package
+		pkg, err := codegen.PackagePath(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg != "bar/xx/42" {
+			t.Errorf("unexpected pkg: %s, want %s", pkg, "bar/xx/42")
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=auto, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
+
+		// should return a Module mode package path
+		pkg, err := codegen.PackagePath(abs(dir, "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg != "bar/xx/42" {
+			t.Errorf("unexpected pkg: %s, want %s", pkg, "bar/xx/42")
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=on, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
+
+		// should return a Module mode package path
+		pkg, err := codegen.PackagePath(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg != "xx/src/bar/xx/42" {
+			t.Errorf("unexpected pkg: %s, want %s", pkg, "xx/src/bar/xx/42")
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=on, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
+
+		// should return a Module mode package path
+		pkg, err := codegen.PackagePath(abs(dir, "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg != "bar/xx/42" {
+			t.Errorf("unexpected pkg: %s, want %s", pkg, "bar/xx/42")
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=off, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=off
+		t.Setenv("GO111MODULE", "off")
+
+		// should return a GOPATH mode package path
+		pkg, err := codegen.PackagePath(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg != "bar/xx/42" {
+			t.Errorf("unexpected pkg: %s, want %s", pkg, "bar/xx/42")
+		}
+	})
+
+	t.Run("with GOMOD, with GO111MODULE=off, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with go.mod
+		if err := os.WriteFile(abs(dir, "go.mod"), []byte{}, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// with GO111MODULE=off
+		t.Setenv("GO111MODULE", "off")
+
+		// should return an error
+		_, err := codegen.PackagePath(abs(dir, "bar", "xx", "42"))
+		if err == nil {
+			t.Errorf("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=auto, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
+
+		// should return a GOPATH mode package
+		pkg, err := codegen.PackagePath(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg != "bar/xx/42" {
+			t.Errorf("unexpected pkg: %s, want %s", pkg, "bar/xx/42")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=auto, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=auto
+		t.Setenv("GO111MODULE", "auto")
+
+		// should return an error
+		_, err := codegen.PackagePath(abs(dir, "bar", "xx", "42"))
+		if err == nil {
+			t.Errorf("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=on, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
+
+		// should return an error
+		_, err := codegen.PackagePath(abs(gopath, "src", "bar", "xx", "42"))
+		if err == nil {
+			t.Errorf("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=on, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=on
+		t.Setenv("GO111MODULE", "on")
+
+		// should return an error
+		_, err := codegen.PackagePath(abs(dir, "bar", "xx", "42"))
+		if err == nil {
+			t.Errorf("expected an error, but no error")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=off, inside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=off
+		t.Setenv("GO111MODULE", "off")
+
+		// should return a GOPATH mode package
+		pkg, err := codegen.PackagePath(abs(gopath, "src", "bar", "xx", "42"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pkg != "bar/xx/42" {
+			t.Errorf("unexpected pkg: %s, want %s", pkg, "bar/xx/42")
+		}
+	})
+
+	t.Run("with no GOMOD, with GO111MODULE=off, outside GOPATH", func(t *testing.T) {
+		dir := t.TempDir()
+		gopath := abs(dir, "xx")
+		t.Setenv("GOPATH", gopath)
+
+		// with GO111MODULE=off
+		t.Setenv("GO111MODULE", "off")
+
+		// should return an error
+		_, err := codegen.PackagePath(abs(dir, "bar", "xx", "42"))
+		if err == nil {
+			t.Errorf("expected an error, but no error")
+		}
+	})
+}
