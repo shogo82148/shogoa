@@ -36,7 +36,7 @@ func TestValidator(t *testing.T) {
 
 	t.Run("given an attribute definition and validations of pattern", func(t *testing.T) {
 		att := &design.AttributeDefinition{
-			Type: design.Integer,
+			Type: design.String,
 			Validation: &dslengine.ValidationDefinition{
 				Pattern: ".*",
 			},
