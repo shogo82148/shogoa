@@ -596,7 +596,7 @@ func TestPackagePath(t *testing.T) {
 		// with GO111MODULE=off
 		t.Setenv("GO111MODULE", "off")
 
-		// should return a Module mode package path
+		// should return a GOPATH mode package path
 		pkg, err := codegen.PackagePath(abs(gopath, "src", "bar", "xx", "42"))
 		if err != nil {
 			t.Fatal(err)
