@@ -37,7 +37,7 @@ jobs:
       - run: make test
         working-directory: src/github.com/shogo82148/shogoa
       - name: upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: src/github.com/shogo82148/shogoa/coverage.txt
