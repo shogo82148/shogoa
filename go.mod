@@ -2,6 +2,8 @@ module github.com/shogo82148/shogoa
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	github.com/ajg/form v1.5.1
 	github.com/dimfeld/httppath v0.0.0-20170720192232-ee938bf73598
@@ -18,7 +20,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/ugorji/go/codec v1.2.12
 	github.com/zach-klippenstein/goregen v0.0.0-20160303162051-795b5e3961ea
-	golang.org/x/net v0.34.0
+	golang.org/x/net v0.38.0
 	golang.org/x/tools v0.28.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -44,8 +46,8 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/smartystreets/goconvey v1.8.1 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
