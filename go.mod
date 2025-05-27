@@ -18,7 +18,7 @@ require (
 	github.com/onsi/gomega v1.33.1
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
-	github.com/ugorji/go/codec v1.2.12
+	github.com/ugorji/go/codec v1.2.14
 	github.com/zach-klippenstein/goregen v0.0.0-20160303162051-795b5e3961ea
 	golang.org/x/net v0.38.0
 	golang.org/x/tools v0.31.0
